@@ -1,0 +1,369 @@
+<template>
+  <section>
+    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div class="flex-1">
+        <label class="sr-only" for="inc-search">Buscar</label>
+        <input
+          id="inc-search"
+          v-model="searchInput"
+          type="search"
+          placeholder="Buscar por título, correlativo, cliente…"
+          class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+        />
+      </div>
+
+      <div class="flex items-center gap-2">
+        <select
+          v-model.number="perPage"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+          @change="applyFilters({ page: 1 })"
+        >
+          <option :value="10">10</option>
+          <option :value="15">15</option>
+          <option :value="25">25</option>
+          <option :value="50">50</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="mb-4 overflow-x-auto">
+      <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <button
+          type="button"
+          class="px-3 py-2 text-sm font-medium rounded-md transition"
+          :class="activeStageId === null ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-800'"
+          @click="applyFilters({ stageId: null, page: 1 })"
+        >
+          Todos
+          <span class="ml-2 rounded bg-black/5 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-slate-200">{{ totalCount }}</span>
+        </button>
+
+        <button
+          v-for="stage in stages"
+          :key="stage.id"
+          type="button"
+          class="px-3 py-2 text-sm font-medium rounded-md transition"
+          :class="activeStageId === stage.id ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50 dark:text-slate-200 dark:hover:bg-slate-800'"
+          @click="applyFilters({ stageId: stage.id, page: 1 })"
+        >
+          {{ stage.name }}
+          <span class="ml-2 rounded bg-black/5 px-2 py-0.5 text-xs font-semibold text-gray-700 dark:bg-white/10 dark:text-slate-200">{{ stage.count ?? 0 }}</span>
+        </button>
+      </div>
+    </div>
+
+    <div v-if="error" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/30 dark:text-red-200">
+      {{ error }}
+    </div>
+
+    <div class="bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-slate-900 dark:border-slate-800">
+      <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between">
+        <div>
+          <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">Incidencias</div>
+          <div class="mt-1 text-xs text-gray-600 dark:text-slate-300">
+            <span v-if="pagination.total !== null">
+              Mostrando {{ pagination.from ?? 0 }}–{{ pagination.to ?? 0 }} de {{ pagination.total ?? 0 }}
+            </span>
+          </div>
+        </div>
+
+        <div v-if="loading" class="text-xs text-gray-600 dark:text-slate-300">Cargando…</div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="min-w-[1300px] w-full text-sm text-left text-gray-700 dark:text-slate-200">
+          <thead class="text-xs uppercase bg-gray-50 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
+            <tr>
+              <th class="px-4 py-3">ID</th>
+              <th class="px-4 py-3">Correlativo</th>
+              <th class="px-4 py-3">Columna</th>
+              <th class="px-4 py-3">Acciones</th>
+              <th class="px-4 py-3">Título</th>
+              <th class="px-4 py-3">Cliente</th>
+              <th class="px-4 py-3">Prioridad</th>
+              <th class="px-4 py-3">Fecha</th>
+              <th class="px-4 py-3">Archivado</th>
+              <th class="px-4 py-3">Actualizado</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <tr
+              v-for="it in incidences"
+              :key="it.id"
+              class="border-b border-gray-100 bg-white hover:bg-blue-50/40 transition-colors dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800/60"
+            >
+              <td class="px-4 py-3 font-medium text-gray-900 dark:text-slate-100">{{ it.id }}</td>
+              <td class="px-4 py-3">{{ it.correlative || '—' }}</td>
+
+              <td class="px-4 py-3">
+                <select
+                  :value="it.stage_id"
+                  class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+                  :disabled="savingStageIds.has(it.id) || isLocked(it)"
+                  @change="onChangeStage(it, $event)"
+                >
+                  <option v-for="stage in stages" :key="stage.id" :value="stage.id">
+                    {{ stage.name }}
+                  </option>
+                </select>
+              </td>
+
+              <td class="px-4 py-3">
+                <button
+                  v-if="canArchive(it)"
+                  type="button"
+                  class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  :disabled="archivingIds.has(it.id)"
+                  @click="archive(it)"
+                >
+                  {{ archivingIds.has(it.id) ? 'Archivando…' : 'Archivar' }}
+                </button>
+                <span v-else class="text-xs text-gray-500 dark:text-slate-400">—</span>
+              </td>
+
+              <td class="px-4 py-3">{{ it.title ?? '' }}</td>
+              <td class="px-4 py-3">
+                <span v-if="it.customer">{{ it.customer.company_name || it.customer.name }}</span>
+                <span v-else class="text-gray-500 dark:text-slate-400">—</span>
+              </td>
+              <td class="px-4 py-3">{{ it.priority ?? '' }}</td>
+              <td class="px-4 py-3">{{ formatDate(it.date) }}</td>
+              <td class="px-4 py-3">{{ formatDateTime(it.archived_at) }}</td>
+              <td class="px-4 py-3">{{ formatDateTime(it.updated_at) }}</td>
+            </tr>
+
+            <tr v-if="!loading && incidences.length === 0">
+              <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
+                Sin incidencias.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="p-4 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="loading || pagination.current_page <= 1"
+          @click="applyFilters({ page: pagination.current_page - 1 })"
+        >
+          Anterior
+        </button>
+
+        <div class="text-xs text-gray-600 dark:text-slate-300">
+          Página {{ pagination.current_page }} / {{ pagination.last_page }}
+        </div>
+
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="loading || pagination.current_page >= pagination.last_page"
+          @click="applyFilters({ page: pagination.current_page + 1 })"
+        >
+          Siguiente
+        </button>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script setup>
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import axios from 'axios';
+import { confirmDialog, toastError, toastSuccess } from '../ui/alerts';
+
+const stages = ref([]);
+const incidences = ref([]);
+const totalCount = ref(0);
+
+const loading = ref(false);
+const error = ref('');
+
+const savingStageIds = ref(new Set());
+const archivingIds = ref(new Set());
+
+const searchInput = ref('');
+const searchQuery = ref('');
+let searchTimer = null;
+
+const perPage = ref(15);
+const activeStageId = ref(null);
+
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 15,
+  total: 0,
+  from: 0,
+  to: 0,
+});
+
+const readInitialFilters = () => {
+  const url = new URL(window.location.href);
+  const q = url.searchParams.get('q');
+  if (q) {
+    searchInput.value = q;
+    searchQuery.value = q;
+  }
+};
+
+const applyFilters = ({ stageId = activeStageId.value, page = pagination.value.current_page } = {}) => {
+  activeStageId.value = stageId === undefined ? activeStageId.value : stageId;
+  pagination.value.current_page = page;
+  load();
+};
+
+const load = async () => {
+  loading.value = true;
+  error.value = '';
+
+  try {
+    const res = await axios.get('/incidencias/data', {
+      params: {
+        stage_id: activeStageId.value,
+        q: searchQuery.value || '',
+        page: pagination.value.current_page,
+        per_page: perPage.value,
+      },
+    });
+
+    const data = res?.data?.data ?? {};
+    stages.value = data.stages ?? [];
+    totalCount.value = data.total_count ?? 0;
+    incidences.value = data.incidences ?? [];
+    pagination.value = { ...pagination.value, ...(data.pagination || {}) };
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo cargar incidencias.';
+    error.value = msg;
+  } finally {
+    loading.value = false;
+  }
+};
+
+const stageById = computed(() => {
+  const m = new Map();
+  for (const s of stages.value) m.set(s.id, s);
+  return m;
+});
+
+const isLocked = (it) => !!it?.archived_at;
+
+const canArchive = (it) => {
+  if (!it || isLocked(it)) return false;
+  const stage = stageById.value.get(it.stage_id);
+  return !!stage?.is_done;
+};
+
+const onChangeStage = async (it, ev) => {
+  const targetStageId = Number(ev?.target?.value);
+  if (!it?.id || !Number.isFinite(targetStageId)) return;
+
+  savingStageIds.value.add(it.id);
+  error.value = '';
+  try {
+    const res = await axios.patch(`/incidencias/${it.id}/move-stage`, { stage_id: targetStageId });
+    const updated = res?.data?.data;
+    if (updated && typeof updated === 'object') {
+      Object.assign(it, updated);
+    } else {
+      it.stage_id = targetStageId;
+    }
+    toastSuccess('Incidencia actualizada');
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo mover la incidencia.';
+    error.value = msg;
+    toastError(msg);
+  } finally {
+    savingStageIds.value.delete(it.id);
+  }
+};
+
+const archive = async (it) => {
+  if (!it?.id) return;
+  if (!canArchive(it)) return;
+
+  const ok = await confirmDialog({
+    title: 'Archivar incidencia',
+    text: 'Se ocultará del backlog, pero seguirá visible en la tabla (historial).',
+    confirmText: 'Archivar',
+    cancelText: 'Cancelar',
+    icon: 'warning',
+  });
+  if (!ok) return;
+
+  archivingIds.value.add(it.id);
+  error.value = '';
+  try {
+    const res = await axios.patch(`/incidencias/${it.id}/archive`);
+    const updated = res?.data?.data;
+    if (updated && typeof updated === 'object') {
+      Object.assign(it, updated);
+    } else {
+      it.archived_at = new Date().toISOString();
+    }
+    toastSuccess('Incidencia archivada');
+    window.dispatchEvent(new CustomEvent('incidencias:archived'));
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo archivar la incidencia.';
+    error.value = msg;
+    toastError(msg);
+  } finally {
+    archivingIds.value.delete(it.id);
+  }
+};
+
+const formatDate = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(String(iso));
+    if (Number.isNaN(d.getTime())) return String(iso);
+    return d.toLocaleDateString();
+  } catch {
+    return String(iso);
+  }
+};
+
+const formatDateTime = (iso) => {
+  if (!iso) return '';
+  try {
+    const d = new Date(String(iso));
+    if (Number.isNaN(d.getTime())) return String(iso);
+    return d.toLocaleString();
+  } catch {
+    return String(iso);
+  }
+};
+
+const onCreated = () => {
+  pagination.value.current_page = 1;
+  load();
+};
+
+onMounted(async () => {
+  readInitialFilters();
+  window.addEventListener('incidencias:created', onCreated);
+  window.addEventListener('incidencias:archived', onCreated);
+  await load();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('incidencias:created', onCreated);
+  window.removeEventListener('incidencias:archived', onCreated);
+  if (searchTimer) window.clearTimeout(searchTimer);
+});
+
+watch(
+  searchInput,
+  (value) => {
+    if (searchTimer) window.clearTimeout(searchTimer);
+    searchTimer = window.setTimeout(() => {
+      searchQuery.value = value;
+      pagination.value.current_page = 1;
+      load();
+    }, 350);
+  },
+  { flush: 'post' }
+);
+</script>

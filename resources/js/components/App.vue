@@ -1,0 +1,285 @@
+<template>
+  <div
+    class="min-h-screen flex flex-col bg-gradient-to-br from-blue-50/60 via-gray-50 to-gray-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900"
+  >
+    <Header :sidebar-collapsed="sidebarCollapsed" @toggle-sidebar="toggleSidebar" />
+    <Sidebar :collapsed="sidebarCollapsed" />
+
+    <main
+      class="transition-[margin] duration-200 flex-1 flex flex-col"
+      :class="sidebarCollapsed ? 'sm:ml-20' : 'sm:ml-64'"
+    >
+      <div class="flex-1 p-4 pt-20">
+        <div class="max-w-7xl mx-auto w-full">
+          <div class="flex items-center justify-between mb-6">
+            <div class="border-l-4 border-blue-600 pl-4">
+              <h1 class="text-2xl font-semibold text-gray-900 dark:text-slate-100">{{ pageTitle }}</h1>
+              <p class="mt-1 text-sm text-gray-600 dark:text-slate-300">{{ pageSubtitle }}</p>
+            </div>
+
+            <button
+              v-if="isUsers"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createUser"
+            >
+              Crear usuario
+            </button>
+
+            <button
+              v-else-if="isRoles"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createRole"
+            >
+              Crear rol
+            </button>
+
+            <button
+              v-else-if="isLeads"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createQuickLead"
+            >
+              Lead rápido
+            </button>
+
+            <button
+              v-if="isLeads"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800"
+              @click="toggleLeadsView"
+            >
+              {{ isLeadsBoard ? 'Vista lista' : 'Vista pipeline' }}
+            </button>
+
+            <button
+              v-else-if="isPostventaIncidences"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800"
+              @click="togglePostventaView"
+            >
+              {{ isBacklog ? 'Vista lista' : 'Vista backlog' }}
+            </button>
+
+            <button
+              v-else-if="false"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+            >
+              Nuevo registro
+            </button>
+
+            <button
+              v-if="isPostventaIncidences || isPostventaCustomers"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createIncidence"
+            >
+              Nueva incidencia
+            </button>
+
+            <button
+              v-else-if="isPostventaContadores"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createContador"
+            >
+              Nuevo contador
+            </button>
+
+            <button
+              v-else-if="isPostventaCertificados"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createCertificado"
+            >
+              Nuevo certificado
+            </button>
+          </div>
+
+          <UsersTable v-if="isUsers" />
+
+          <RolesTable v-else-if="isRoles" />
+
+          <LeadsBoard v-else-if="isLeadsBoard" />
+
+          <LeadsTable v-else-if="isLeadsList" />
+
+          <IncidenciasTable v-else-if="isIncidencias" />
+
+          <BacklogBoard v-else-if="isBacklog" />
+
+          <PostventaCustomersTable v-else-if="isPostventaCustomers" />
+
+          <ContadoresTable v-else-if="isPostventaContadores" />
+
+          <CertificadosTable v-else-if="isPostventaCertificados" />
+
+          <CustomersTable v-else-if="isCustomers" />
+
+          <LostLeadsList v-else-if="isLostLeads" />
+
+          <WaitingLeadsList v-else-if="isWaitingLeads" />
+
+          <CalendarView v-else-if="isCalendar" />
+
+          <template v-else>
+            <DashboardView />
+          </template>
+        </div>
+      </div>
+
+      <Footer class="mt-auto w-full" />
+    </main>
+
+    <IncidenceQuickModal />
+  </div>
+</template>
+
+<script setup>
+import { computed, ref } from 'vue';
+import { onMounted } from 'vue';
+import { initFlowbite } from 'flowbite';
+
+import Header from './Header.vue';
+import Sidebar from './Sidebar.vue';
+import Footer from './Footer.vue';
+import UsersTable from './UsersTable.vue';
+import RolesTable from './RolesTable.vue';
+import LeadsBoard from './LeadsBoard.vue';
+import LeadsTable from './LeadsTable.vue';
+import CustomersTable from './CustomersTable.vue';
+import CalendarView from './CalendarView.vue';
+import IncidenciasTable from './IncidenciasTable.vue';
+import BacklogBoard from './BacklogBoard.vue';
+import PostventaCustomersTable from './PostventaCustomersTable.vue';
+import ContadoresTable from './ContadoresTable.vue';
+import CertificadosTable from './CertificadosTable.vue';
+import DashboardView from './DashboardView.vue';
+import IncidenceQuickModal from './IncidenceQuickModal.vue';
+import LostLeadsList from './LostLeadsList.vue';
+import WaitingLeadsList from './WaitingLeadsList.vue';
+
+const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+const isUsers = computed(() => normalizedPath.startsWith('/users'));
+const isRoles = computed(() => normalizedPath.startsWith('/roles'));
+const isLeadsBoard = computed(() => normalizedPath === '/leads');
+const isLeadsList = computed(() => normalizedPath === '/leads/list');
+const isLeads = computed(() => normalizedPath.startsWith('/leads'));
+const isCustomers = computed(() => normalizedPath.startsWith('/customers'));
+const isCalendar = computed(() => normalizedPath.startsWith('/calendar'));
+const isIncidencias = computed(() => normalizedPath.startsWith('/incidencias'));
+const isBacklog = computed(() => normalizedPath.startsWith('/backlog'));
+const isPostventaCustomers = computed(() => normalizedPath === '/postventa/clientes');
+const isPostventaContadores = computed(() => normalizedPath === '/postventa/contadores');
+const isPostventaCertificados = computed(() => normalizedPath === '/postventa/certificados');
+
+const isPostventaIncidences = computed(() => isIncidencias.value || isBacklog.value);
+
+const pageTitle = computed(() =>
+  isUsers.value
+    ? 'Usuarios'
+    : isRoles.value
+      ? 'Roles'
+      : isLeads.value
+        ? 'Leads'
+        : normalizedPath === '/desistidos'
+          ? 'Desistidos'
+          : normalizedPath === '/espera'
+            ? 'Zona de espera'
+          : isCustomers.value
+            ? 'Clientes'
+            : isCalendar.value
+              ? 'Calendario'
+              : isPostventaIncidences.value
+                ? 'Incidencias'
+                  : isPostventaCustomers.value
+                    ? 'Clientes'
+                    : isPostventaContadores.value
+                      ? 'Contadores'
+                      : isPostventaCertificados.value
+                        ? 'Certificados'
+            : 'Dashboard'
+);
+const pageSubtitle = computed(() =>
+  isUsers.value
+    ? 'Gestión de usuarios del sistema'
+    : isRoles.value
+      ? 'Crea roles y asigna permisos'
+      : isLeadsBoard.value
+        ? 'Pipeline de oportunidades'
+        : isLeadsList.value
+          ? 'Gestión de leads por etapas'
+          : normalizedPath === '/desistidos'
+            ? 'Leads marcados como desistidos'
+            : normalizedPath === '/espera'
+              ? 'Leads enviados a zona de espera'
+            : isCustomers.value
+              ? 'Listado de clientes'
+              : isCalendar.value
+                ? 'Agenda y recordatorios'
+                  : isIncidencias.value
+                    ? 'Registro y seguimiento de incidencias (vista lista)'
+                    : isBacklog.value
+                      ? 'Registro y seguimiento de incidencias (vista backlog)'
+                    : isPostventaCustomers.value
+                      ? 'Clientes (postventa)'
+                      : isPostventaContadores.value
+                        ? 'Gestión de contadores'
+                        : isPostventaCertificados.value
+                          ? 'Gestión de certificados'
+      : 'Resumen general del sistema'
+);
+
+const isPostventa = computed(
+  () => isPostventaIncidences.value || isPostventaCustomers.value || isPostventaContadores.value || isPostventaCertificados.value
+);
+
+const isLostLeads = computed(() => normalizedPath === '/desistidos');
+
+const isWaitingLeads = computed(() => normalizedPath === '/espera');
+
+const toggleLeadsView = () => {
+  if (!isLeads.value) return;
+  window.location.assign(isLeadsBoard.value ? '/leads/list' : '/leads');
+};
+
+const togglePostventaView = () => {
+  if (!isPostventaIncidences.value) return;
+  window.location.assign(isBacklog.value ? '/incidencias' : '/backlog');
+};
+
+const createUser = () => {
+  window.dispatchEvent(new CustomEvent('users:create'));
+};
+
+const createRole = () => {
+  window.dispatchEvent(new CustomEvent('roles:create'));
+};
+
+const createQuickLead = () => {
+  window.dispatchEvent(new CustomEvent('leads:create-quick'));
+};
+
+const createIncidence = () => {
+  window.dispatchEvent(new CustomEvent('incidencias:create'));
+};
+
+const createContador = () => {
+  window.dispatchEvent(new CustomEvent('contadores:create'));
+};
+
+const createCertificado = () => {
+  window.dispatchEvent(new CustomEvent('certificados:create'));
+};
+
+const sidebarCollapsed = ref(true);
+const toggleSidebar = () => {
+  sidebarCollapsed.value = !sidebarCollapsed.value;
+};
+
+onMounted(() => {
+  initFlowbite();
+});
+</script>

@@ -1,0 +1,35 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@popperjs/core": "^2.11.6",
+        "@tailwindcss/postcss": "^4.1.18",
+        "@tailwindcss/vite": "^4.1.18",
+        "@vitejs/plugin-vue": "^6.0.3",
+        "alpinejs": "^3.4.2",
+        "autoprefixer": "^10.4.2",
+        "axios": "^1.11.0",
+        "bootstrap": "^5.2.3",
+        "concurrently": "^9.0.1",
+        "laravel-vite-plugin": "^2.0.0",
+        "postcss": "^8.4.31",
+        "sass": "^1.56.1",
+        "tailwindcss": "^4.1.18",
+        "vite": "^7.0.7",
+        "vue": "^3.2.37"
+    },
+    "dependencies": {
+        "@fullcalendar/core": "^6.1.20",
+        "@fullcalendar/daygrid": "^6.1.20",
+        "@fullcalendar/interaction": "^6.1.20",
+        "@fullcalendar/timegrid": "^6.1.20",
+        "@fullcalendar/vue3": "^6.1.20",
+        "flowbite": "^4.0.1",
+        "sweetalert2": "^11.26.17"
+    }
+}

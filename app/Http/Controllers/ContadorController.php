@@ -1,0 +1,175 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Contador;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class ContadorController extends Controller
+{
+    public function data(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+        $perPage = (int) $request->query('per_page', 15);
+        $perPage = max(5, min(100, $perPage));
+
+        $query = Contador::query()->with(['customers:id,name']);
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('nro', 'like', "%{$q}%")
+                    ->orWhere('comercio', 'like', "%{$q}%")
+                    ->orWhere('nom_contador', 'like', "%{$q}%")
+                    ->orWhere('usuario', 'like', "%{$q}%")
+                    ->orWhere('servidor', 'like', "%{$q}%");
+            });
+        }
+
+        $rows = $query
+            ->orderByDesc('id')
+            ->paginate($perPage)
+            ->appends($request->query());
+
+        return response()->json([
+            'contadores' => collect($rows->items())->map(function (Contador $c) {
+                $customer = $c->customers->first();
+                return [
+                    'id' => $c->id,
+                    'nro' => $c->nro,
+                    'comercio' => $c->comercio,
+                    'nom_contador' => $c->nom_contador,
+                    'titular_tlf' => $c->titular_tlf,
+                    'telefono' => $c->telefono,
+                    'telefono_actu' => $c->telefono_actu,
+                    'link' => $c->link,
+                    'usuario' => $c->usuario,
+                    'contrasena' => $c->contrasena,
+                    'servidor' => $c->servidor,
+                    'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->name] : null,
+                ];
+            })->values(),
+            'pagination' => [
+                'current_page' => $rows->currentPage(),
+                'last_page' => $rows->lastPage(),
+                'per_page' => $rows->perPage(),
+                'total' => $rows->total(),
+                'from' => $rows->firstItem(),
+                'to' => $rows->lastItem(),
+            ],
+            'filters' => [
+                'q' => $q,
+                'per_page' => $perPage,
+            ],
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'nro' => ['nullable', 'string', 'max:50'],
+            'comercio' => ['nullable', 'string', 'max:255'],
+            'nom_contador' => ['nullable', 'string', 'max:255'],
+            'titular_tlf' => ['nullable', 'string', 'max:100'],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'telefono_actu' => ['nullable', 'string', 'max:50'],
+            'link' => ['nullable', 'string', 'max:512'],
+            'usuario' => ['nullable', 'string', 'max:150'],
+            'contrasena' => ['nullable', 'string', 'max:255'],
+            'servidor' => ['nullable', 'string', 'max:50'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+        ]);
+
+        $contador = null;
+
+        DB::transaction(function () use ($validated, &$contador) {
+            $contador = Contador::query()->create([
+                'nro' => $validated['nro'] ?? null,
+                'comercio' => $validated['comercio'] ?? null,
+                'nom_contador' => $validated['nom_contador'] ?? null,
+                'titular_tlf' => $validated['titular_tlf'] ?? null,
+                'telefono' => $validated['telefono'] ?? null,
+                'telefono_actu' => $validated['telefono_actu'] ?? null,
+                'link' => $validated['link'] ?? null,
+                'usuario' => $validated['usuario'] ?? null,
+                'contrasena' => $validated['contrasena'] ?? null,
+                'servidor' => $validated['servidor'] ?? null,
+            ]);
+
+            $customerId = $validated['customer_id'] ?? null;
+            if ($customerId) {
+                $contador->customers()->sync([
+                    $customerId => ['fecha_asignacion' => now()],
+                ]);
+            }
+        });
+
+        if (!$contador) {
+            return response()->json([
+                'message' => 'No se pudo crear el contador.',
+            ], 500);
+        }
+
+        return response()->json([
+            'message' => 'Contador creado.',
+            'data' => $contador->fresh()->load(['customers:id,name']),
+        ], 201);
+    }
+
+    public function update(Request $request, Contador $contador): JsonResponse
+    {
+        $validated = $request->validate([
+            'nro' => ['nullable', 'string', 'max:50'],
+            'comercio' => ['nullable', 'string', 'max:255'],
+            'nom_contador' => ['nullable', 'string', 'max:255'],
+            'titular_tlf' => ['nullable', 'string', 'max:100'],
+            'telefono' => ['nullable', 'string', 'max:50'],
+            'telefono_actu' => ['nullable', 'string', 'max:50'],
+            'link' => ['nullable', 'string', 'max:512'],
+            'usuario' => ['nullable', 'string', 'max:150'],
+            'contrasena' => ['nullable', 'string', 'max:255'],
+            'servidor' => ['nullable', 'string', 'max:50'],
+            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+        ]);
+
+        DB::transaction(function () use ($validated, $contador) {
+            $contador->fill([
+                'nro' => $validated['nro'] ?? null,
+                'comercio' => $validated['comercio'] ?? null,
+                'nom_contador' => $validated['nom_contador'] ?? null,
+                'titular_tlf' => $validated['titular_tlf'] ?? null,
+                'telefono' => $validated['telefono'] ?? null,
+                'telefono_actu' => $validated['telefono_actu'] ?? null,
+                'link' => $validated['link'] ?? null,
+                'usuario' => $validated['usuario'] ?? null,
+                'contrasena' => $validated['contrasena'] ?? null,
+                'servidor' => $validated['servidor'] ?? null,
+            ]);
+            $contador->save();
+
+            $customerId = $validated['customer_id'] ?? null;
+            if ($customerId) {
+                $contador->customers()->sync([
+                    $customerId => ['fecha_asignacion' => now()],
+                ]);
+            } else {
+                $contador->customers()->detach();
+            }
+        });
+
+        return response()->json([
+            'message' => 'Contador actualizado.',
+            'data' => $contador->fresh()->load(['customers:id,name']),
+        ]);
+    }
+
+    public function destroy(Request $request, Contador $contador): JsonResponse
+    {
+        $contador->delete();
+
+        return response()->json([
+            'message' => 'Contador eliminado.',
+        ]);
+    }
+}

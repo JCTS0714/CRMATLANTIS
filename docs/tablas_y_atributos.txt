@@ -1,0 +1,207 @@
+actividades
+- id
+- cliente_id
+- usuario_id
+- tipo
+- asunto
+- fecha_hora
+- resultado
+
+clientes
+- id
+- nombre
+- empresa
+- tipo
+- documento
+- telefono
+- correo
+- motivo
+- ciudad
+- migracion
+- referencia
+- fecha_contacto
+- fecha_creacion
+- estado
+- post_precio
+- post_rubro
+- post_ano
+- post_mes
+- post_link
+- post_usuario
+- post_contrasena
+
+clientes_backup
+- id
+- nombre
+- empresa
+- tipo
+- documento
+- telefono
+- correo
+- motivo
+- ciudad
+- migracion
+- referencia
+- fecha_contacto
+- fecha_creacion
+- estado
+
+contador
+- id
+- nro
+- comercio
+- nom_contador
+- titular_tlf
+- telefono
+- telefono_actu
+- link
+- usuario
+- contrasena
+- created_at
+
+contadores_clientes
+- id
+- contador_id
+- cliente_id
+- fecha_asignacion
+
+evento
+- id
+- titulo
+- color
+
+incidencias
+- id
+- correlativo
+- nombre_incidencia
+- cliente_id
+- usuario_id
+- fecha
+- prioridad
+- observaciones
+- fecha_creacion
+- columna_backlog
+
+oportunidades
+- id
+- cliente_id
+- usuario_id
+- titulo
+- descripcion
+- valor_estimado
+- probabilidad
+- estado
+- fecha_apertura
+- fecha_cierre_estimada
+- fecha_modificacion
+- alta_prioridad
+- actividad
+- fecha_actividad
+
+reuniones
+- id
+- cliente_id
+- usuario_id
+- evento_id
+- ultima_notificacion
+- titulo
+- descripcion
+- fecha
+- hora_inicio
+- hora_fin
+- ubicacion
+- estado
+- archivado
+- archivado_por
+- archivado_en
+- recordatorio
+- observaciones
+
+usuarios
+- id
+- nombre
+- usuario
+- password
+- perfil
+- foto
+- estado
+- ultimo_login
+- fecha
+- sesion_token
+- sesion_expira
+- remember_token
+- remember_expires
+
+tenants
+- id
+- ruc
+- subdomain
+- status
+- created_at
+- updated_at
+
+tenant_db
+- tenant_id
+- db_host
+- db_name
+- db_user
+- db_pass
+- db_charset
+- created_at
+- updated_at
+
+admin_users
+- id
+- username
+- password_hash
+- is_active
+- last_login_at
+- created_at
+- updated_at
+
+audit_log
+- id
+- admin_user_id
+- tenant_id
+- action
+- details
+- ip
+- created_at
+
+notificaciones_certificados
+- id
+- certificado_id
+- tipo
+- fecha_envio
+- usuario_id
+
+whatsapp_plantillas
+- id
+- nombre
+- contenido
+- tipo
+- creado_por
+- creado_en
+
+programados_whatsapp
+- id
+- cliente_id
+- telefono
+- plantilla_id
+- mensaje
+- datos_personalizacion
+- programado_para
+- estado
+- intentos
+- proveedor
+- proveedor_id
+- creado_en
+- creado_por
+- actualizado_en
+
+programados_whatsapp_logs
+- id
+- programado_id
+- respuesta_proveedor
+- codigo_error
+- creado_en

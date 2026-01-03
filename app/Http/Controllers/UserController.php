@@ -1,0 +1,179 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rule;
+use Spatie\Permission\Models\Role;
+
+class UserController extends Controller
+{
+    public function roleOptions(Request $request): JsonResponse
+    {
+        $guard = config('auth.defaults.guard', 'web');
+
+        $roles = Role::query()
+            ->where('guard_name', $guard)
+            ->orderBy('name')
+            ->pluck('name')
+            ->values();
+
+        return response()->json([
+            'data' => $roles,
+        ]);
+    }
+
+    public function index(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:100'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
+            'sort' => ['nullable', 'string', Rule::in(['id', 'name', 'email', 'created_at'])],
+            'dir' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
+        ]);
+
+        $search = trim((string) ($validated['search'] ?? ''));
+        $perPage = (int) ($validated['per_page'] ?? 10);
+        $sort = (string) ($validated['sort'] ?? 'id');
+        $dir = (string) ($validated['dir'] ?? 'desc');
+
+        $query = User::query()
+            ->select(['id', 'name', 'email', 'created_at'])
+            ->with(['roles:id,name']);
+
+        if ($search !== '') {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        $query->orderBy($sort, $dir);
+
+        if ($sort !== 'id') {
+            $query->orderByDesc('id');
+        }
+
+        $paginator = $query->paginate($perPage)->appends($request->query());
+
+        $data = collect($paginator->items())->map(function (User $user) {
+            return [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'created_at' => $user->created_at,
+                'role' => $user->roles->pluck('name')->first(),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $paginator->currentPage(),
+                'last_page' => $paginator->lastPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'from' => $paginator->firstItem(),
+                'to' => $paginator->lastItem(),
+            ],
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $guard = config('auth.defaults.guard', 'web');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
+            'role' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', $guard)),
+            ],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user = User::create([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        $role = $validated['role'] ?? 'employee';
+        Role::findOrCreate('employee', $guard);
+        $user->syncRoles([$role]);
+
+        return response()->json([
+            'message' => 'Usuario creado.',
+            'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+                'role' => $role,
+            ]),
+        ], 201);
+    }
+
+    public function update(Request $request, User $user): JsonResponse
+    {
+        $guard = config('auth.defaults.guard', 'web');
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique(User::class, 'email')->ignore($user->id),
+            ],
+            'role' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', $guard)),
+            ],
+            'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $user->name = $validated['name'];
+        $user->email = $validated['email'];
+
+        if (!empty($validated['password'])) {
+            $user->password = Hash::make($validated['password']);
+        }
+
+        $user->save();
+
+        if (array_key_exists('role', $validated)) {
+            $role = $validated['role'] ?? 'employee';
+            Role::findOrCreate('employee', $guard);
+            $user->syncRoles([$role]);
+        }
+
+        return response()->json([
+            'message' => 'Usuario actualizado.',
+            'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+                'role' => $user->roles()->pluck('name')->first(),
+            ]),
+        ]);
+    }
+
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        if ($request->user()?->id === $user->id) {
+            return response()->json([
+                'message' => 'No puedes eliminar tu propio usuario mientras estás autenticado.',
+            ], 422);
+        }
+
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Usuario eliminado.',
+        ]);
+    }
+}
