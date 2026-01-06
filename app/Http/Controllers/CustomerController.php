@@ -4,7 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
@@ -180,6 +184,39 @@ class CustomerController extends Controller
 
         return response()->json([
             'message' => 'Cliente eliminado.',
+        ]);
+    }
+
+    public function importCsv(Request $request): JsonResponse
+    {
+        $request->validate([
+            'csv' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('csv');
+        $filename = 'customers_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('imports', $filename);
+
+        $fullPath = Storage::path($path);
+        $dry = $request->boolean('dry');
+
+        $exit = Artisan::call('import:customers', ['file' => $fullPath, '--dry-run' => $dry]);
+        $output = Artisan::output();
+
+        if ($exit !== 0) {
+            return response()->json([
+                'message' => trim($output) !== '' ? trim($output) : 'Error importing CSV',
+                'exit' => $exit,
+                'output' => $output,
+                'path' => $path,
+            ], 422);
+        }
+
+        return response()->json([
+            'exit' => $exit,
+            'output' => $output,
+            'path' => $path,
         ]);
     }
 }

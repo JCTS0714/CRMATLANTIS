@@ -5,7 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\Contador;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ContadorController extends Controller
 {
@@ -170,6 +174,39 @@ class ContadorController extends Controller
 
         return response()->json([
             'message' => 'Contador eliminado.',
+        ]);
+    }
+
+    public function importCsv(Request $request): JsonResponse
+    {
+        $request->validate([
+            'csv' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('csv');
+        $filename = 'contadores_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('imports', $filename);
+
+        $fullPath = Storage::path($path);
+        $dry = $request->boolean('dry');
+
+        $exit = Artisan::call('import:contadores', ['file' => $fullPath, '--dry-run' => $dry]);
+        $output = Artisan::output();
+
+        if ($exit !== 0) {
+            return response()->json([
+                'message' => trim($output) !== '' ? trim($output) : 'Error importing CSV',
+                'exit' => $exit,
+                'output' => $output,
+                'path' => $path,
+            ], 422);
+        }
+
+        return response()->json([
+            'exit' => $exit,
+            'output' => $output,
+            'path' => $path,
         ]);
     }
 }

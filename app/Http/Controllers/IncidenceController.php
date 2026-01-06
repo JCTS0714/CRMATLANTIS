@@ -6,8 +6,12 @@ use App\Models\Customer;
 use App\Models\Incidence;
 use App\Models\IncidenceStage;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 
@@ -286,6 +290,39 @@ class IncidenceController extends Controller
         return response()->json([
             'message' => 'Incidencia archivada.',
             'data' => $incidence->fresh(['customer:id,name,company_name']),
+        ]);
+    }
+
+    public function importCsv(Request $request): JsonResponse
+    {
+        $request->validate([
+            'csv' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('csv');
+        $filename = 'incidencias_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('imports', $filename);
+
+        $fullPath = Storage::path($path);
+        $dry = $request->boolean('dry');
+
+        $exit = Artisan::call('import:incidencias', ['file' => $fullPath, '--dry-run' => $dry]);
+        $output = Artisan::output();
+
+        if ($exit !== 0) {
+            return response()->json([
+                'message' => trim($output) !== '' ? trim($output) : 'Error importing CSV',
+                'exit' => $exit,
+                'output' => $output,
+                'path' => $path,
+            ], 422);
+        }
+
+        return response()->json([
+            'exit' => $exit,
+            'output' => $output,
+            'path' => $path,
         ]);
     }
 }

@@ -10,10 +10,38 @@
         />
       </div>
 
-      <div class="text-sm text-slate-600 dark:text-slate-300">
-        <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
-        <span v-else>Sin resultados</span>
+      <div class="flex items-center gap-2">
+        <div class="text-sm text-slate-600 dark:text-slate-300">
+          <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
+          <span v-else>Sin resultados</span>
+        </div>
+
+        <label
+          class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :class="importingData ? 'pointer-events-none opacity-50' : ''"
+        >
+          <input type="file" class="hidden" accept=".csv,.txt,text/csv" @change="onImportDataChange" />
+          Importar datos (CSV)
+        </label>
+
+        <label
+          class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :class="importingImages ? 'pointer-events-none opacity-50' : ''"
+        >
+          <input
+            type="file"
+            class="hidden"
+            multiple
+            accept="image/*,.pdf,application/pdf"
+            @change="onImportImagesChange"
+          />
+          Importar imágenes
+        </label>
       </div>
+    </div>
+
+    <div v-if="importStatus" class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+      {{ importStatus }}
     </div>
 
     <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -25,6 +53,7 @@
             <th class="px-4 py-3">Tipo</th>
             <th class="px-4 py-3">Estado</th>
             <th class="px-4 py-3">Vencimiento</th>
+            <th class="px-4 py-3">Imagen</th>
             <th class="px-4 py-3">Acciones</th>
           </tr>
         </thead>
@@ -38,7 +67,24 @@
             <td class="px-4 py-3">{{ c.ruc || '—' }}</td>
             <td class="px-4 py-3">{{ c.tipo || '—' }}</td>
             <td class="px-4 py-3">{{ c.estado || '—' }}</td>
-            <td class="px-4 py-3">{{ c.fecha_vencimiento || '—' }}</td>
+            <td class="px-4 py-3">{{ formatDate(c.fecha_vencimiento) || '—' }}</td>
+            <td class="px-4 py-3">
+              <a v-if="c.imagen" :href="publicFileUrl(c.imagen)" target="_blank" rel="noreferrer">
+                <img
+                  v-if="!isPdf(c.imagen)"
+                  :src="publicFileUrl(c.imagen)"
+                  alt=""
+                  class="h-10 w-10 rounded object-cover"
+                />
+                <span
+                  v-else
+                  class="inline-flex items-center rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700 dark:border-slate-700 dark:text-slate-200"
+                >
+                  PDF
+                </span>
+              </a>
+              <span v-else>—</span>
+            </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
@@ -93,6 +139,29 @@ import axios from 'axios';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { confirmDialog, promptCertificadoCreate, promptCertificadoEdit, toastError, toastSuccess } from '../ui/alerts';
 
+const publicFileUrl = (path) => {
+  if (!path) return '';
+  const s = String(path);
+  if (s.startsWith('http://') || s.startsWith('https://')) return s;
+  return `/storage/${s.replace(/^\/+/, '')}`;
+};
+
+const isPdf = (path) => String(path || '').toLowerCase().endsWith('.pdf');
+
+const formatDate = (value) => {
+  if (!value) return '';
+  const s = String(value).trim();
+  if (s === '') return '';
+
+  // Handles "YYYY-MM-DD" reliably without timezone shifts.
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return s;
+  return new Intl.DateTimeFormat('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(d);
+};
+
 const certificados = ref([]);
 const loading = ref(false);
 const savingIds = ref(new Set());
@@ -100,6 +169,10 @@ const deletingIds = ref(new Set());
 
 const searchInput = ref('');
 let searchTimeout = null;
+
+const importingData = ref(false);
+const importingImages = ref(false);
+const importStatus = ref('');
 
 const pagination = ref({
   current_page: 1,
@@ -134,6 +207,62 @@ const fetchRows = async (page = 1) => {
 const goToPage = (page) => {
   const p = Math.max(1, Math.min(pagination.value.last_page || 1, page));
   fetchRows(p);
+};
+
+const onImportDataChange = async (evt) => {
+  const file = evt?.target?.files?.[0];
+  if (evt?.target) evt.target.value = '';
+  if (!file) return;
+
+  importingData.value = true;
+  importStatus.value = 'Importando datos...';
+  try {
+    const fd = new FormData();
+    fd.append('csv', file);
+    const { data } = await axios.post('/postventa/certificados/import-data', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    const output = (data?.output ?? '').trim();
+    importStatus.value = output !== '' ? output : 'Importación de datos finalizada.';
+    toastSuccess('Datos importados');
+    fetchRows(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
+    importStatus.value = msg;
+    toastError(msg);
+  } finally {
+    importingData.value = false;
+  }
+};
+
+const onImportImagesChange = async (evt) => {
+  const files = Array.from(evt?.target?.files ?? []);
+  if (evt?.target) evt.target.value = '';
+  if (!files.length) return;
+
+  importingImages.value = true;
+  importStatus.value = 'Importando imágenes...';
+  try {
+    const fd = new FormData();
+    files.forEach((f) => fd.append('images[]', f));
+    const { data } = await axios.post('/postventa/certificados/import-images', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    if (typeof data?.updated === 'number') {
+      importStatus.value = `Importación de imágenes finalizada. Actualizados: ${data.updated} · Saltados: ${data.skipped ?? 0} · Sin match: ${data.unmatched ?? 0}`;
+    } else {
+      const output = (data?.output ?? '').trim();
+      importStatus.value = output !== '' ? output : 'Importación de imágenes finalizada.';
+    }
+    toastSuccess('Imágenes importadas');
+    fetchRows(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el ZIP.';
+    importStatus.value = msg;
+    toastError(msg);
+  } finally {
+    importingImages.value = false;
+  }
 };
 
 const createCertificado = async () => {

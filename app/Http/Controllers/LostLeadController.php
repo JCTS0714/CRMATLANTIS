@@ -6,7 +6,11 @@ use App\Models\Lead;
 use App\Models\LostLead;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class LostLeadController extends Controller
 {
@@ -108,6 +112,39 @@ class LostLeadController extends Controller
         return response()->json([
             'message' => 'Lead marcado como desistido.',
             'location' => $location,
+        ]);
+    }
+
+    public function importCsv(Request $request): JsonResponse
+    {
+        $request->validate([
+            'csv' => ['required', 'file', 'mimes:csv,txt'],
+        ]);
+
+        /** @var UploadedFile $file */
+        $file = $request->file('csv');
+        $filename = 'lost_leads_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $path = $file->storeAs('imports', $filename);
+
+        $fullPath = Storage::path($path);
+        $dry = $request->boolean('dry');
+
+        $exit = Artisan::call('import:lost-leads', ['file' => $fullPath, '--dry-run' => $dry]);
+        $output = Artisan::output();
+
+        if ($exit !== 0) {
+            return response()->json([
+                'message' => trim($output) !== '' ? trim($output) : 'Error importing CSV',
+                'exit' => $exit,
+                'output' => $output,
+                'path' => $path,
+            ], 422);
+        }
+
+        return response()->json([
+            'exit' => $exit,
+            'output' => $output,
+            'path' => $path,
         ]);
     }
 }

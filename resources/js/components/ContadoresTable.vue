@@ -10,10 +10,24 @@
         />
       </div>
 
-      <div class="text-sm text-slate-600 dark:text-slate-300">
-        <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
-        <span v-else>Sin resultados</span>
+      <div class="flex items-center gap-2">
+        <div class="text-sm text-slate-600 dark:text-slate-300">
+          <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
+          <span v-else>Sin resultados</span>
+        </div>
+
+        <label
+          class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :class="importing ? 'pointer-events-none opacity-50' : ''"
+        >
+          <input type="file" class="hidden" accept=".csv,.txt,text/csv" @change="onImportFileChange" />
+          Importar CSV
+        </label>
       </div>
+    </div>
+
+    <div v-if="importStatus" class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+      {{ importStatus }}
     </div>
 
     <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
@@ -103,6 +117,9 @@ const deletingIds = ref(new Set());
 const searchInput = ref('');
 let searchTimeout = null;
 
+const importing = ref(false);
+const importStatus = ref('');
+
 const pagination = ref({
   current_page: 1,
   last_page: 1,
@@ -136,6 +153,34 @@ const fetchRows = async (page = 1) => {
 const goToPage = (page) => {
   const p = Math.max(1, Math.min(pagination.value.last_page || 1, page));
   fetchRows(p);
+};
+
+const onImportFileChange = async (event) => {
+  const file = event?.target?.files?.[0];
+  if (event?.target) event.target.value = '';
+  if (!file) return;
+
+  importing.value = true;
+  importStatus.value = 'Importando...';
+  try {
+    const form = new FormData();
+    form.append('csv', file);
+
+    const { data } = await axios.post('/postventa/contadores/import', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    const output = (data?.output ?? '').trim();
+    importStatus.value = output !== '' ? output : 'Importación finalizada.';
+    toastSuccess('Importación finalizada');
+    fetchRows(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
+    importStatus.value = msg;
+    toastError(msg);
+  } finally {
+    importing.value = false;
+  }
 };
 
 const createContador = async () => {

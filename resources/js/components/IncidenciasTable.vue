@@ -13,6 +13,16 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <input ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="importing"
+          @click="triggerImport"
+        >
+          {{ importing ? 'Importando…' : 'Importar CSV' }}
+        </button>
+
         <select
           v-model.number="perPage"
           class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
@@ -184,6 +194,9 @@ const error = ref('');
 const savingStageIds = ref(new Set());
 const archivingIds = ref(new Set());
 
+const importInput = ref(null);
+const importing = ref(false);
+
 const searchInput = ref('');
 const searchQuery = ref('');
 let searchTimer = null;
@@ -239,6 +252,35 @@ const load = async () => {
     error.value = msg;
   } finally {
     loading.value = false;
+  }
+};
+
+const triggerImport = () => {
+  importInput.value?.click?.();
+};
+
+const onImportFileSelected = async (ev) => {
+  const file = ev?.target?.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  error.value = '';
+  try {
+    const fd = new FormData();
+    fd.append('csv', file);
+    const { data } = await axios.post('/incidencias/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toastSuccess(data?.output?.trim() ? 'Importación finalizada' : 'Importación finalizada');
+    pagination.value.current_page = 1;
+    await load();
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
+    error.value = msg;
+    toastError(msg);
+  } finally {
+    importing.value = false;
+    if (importInput.value) importInput.value.value = '';
   }
 };
 

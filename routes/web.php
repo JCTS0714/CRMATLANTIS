@@ -107,6 +107,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:customers.create')
         ->name('customers.store');
 
+    Route::post('/customers/import', [CustomerController::class, 'importCsv'])
+        ->middleware('permission:customers.create')
+        ->name('customers.import');
+
     Route::middleware('permission:calendar.view')->group(function () {
         Route::get('/calendar', function () {
             return view('dashboard');
@@ -131,6 +135,10 @@ Route::middleware('auth')->group(function () {
         Route::get('/backlog/board-data', [IncidenceController::class, 'boardData'])->name('backlog.boardData');
     });
 
+    Route::post('/incidencias/import', [IncidenceController::class, 'importCsv'])
+        ->middleware('permission:incidencias.create')
+        ->name('incidencias.import');
+
     Route::middleware('permission:customers.view')->group(function () {
         Route::get('/postventa/clientes', function () {
             return view('dashboard');
@@ -148,6 +156,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/postventa/contadores', [ContadorController::class, 'store'])
         ->middleware('permission:contadores.create')
         ->name('postventa.contadores.store');
+
+    Route::post('/postventa/contadores/import', [ContadorController::class, 'importCsv'])
+        ->middleware('permission:contadores.create')
+        ->name('postventa.contadores.import');
 
     Route::put('/postventa/contadores/{contador}', [ContadorController::class, 'update'])
         ->middleware('permission:contadores.update')
@@ -168,6 +180,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/postventa/certificados', [CertificadoController::class, 'store'])
         ->middleware('permission:certificados.create')
         ->name('postventa.certificados.store');
+
+    Route::post('/postventa/certificados/import-data', [CertificadoController::class, 'importData'])
+        ->middleware('permission:certificados.create')
+        ->name('postventa.certificados.importData');
+
+    Route::post('/postventa/certificados/import-images', [CertificadoController::class, 'importImages'])
+        ->middleware('permission:certificados.create')
+        ->name('postventa.certificados.importImages');
 
     Route::put('/postventa/certificados/{certificado}', [CertificadoController::class, 'update'])
         ->middleware('permission:certificados.update')
@@ -211,6 +231,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/leads/import/prospectos', [LeadController::class, 'importProspectos'])
         ->middleware('permission:leads.create')
         ->name('leads.import.prospectos');
+
+    Route::post('/desistidos/import', [\App\Http\Controllers\LostLeadController::class, 'importCsv'])
+        ->middleware('permission:leads.create')
+        ->name('desistidos.import');
+
+    Route::post('/espera/import', [\App\Http\Controllers\WaitingLeadController::class, 'importCsv'])
+        ->middleware('permission:leads.create')
+        ->name('espera.import');
 
     Route::post('/incidencias', [IncidenceController::class, 'store'])
         ->middleware('permission:incidencias.create')

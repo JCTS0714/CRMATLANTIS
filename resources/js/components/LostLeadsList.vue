@@ -25,6 +25,16 @@
       </div>
 
       <div class="flex items-center gap-2">
+        <input ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
+        <button
+          type="button"
+          class="px-3 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-50"
+          :disabled="importing"
+          @click="triggerImport"
+        >
+          {{ importing ? 'Importando…' : 'Importar CSV' }}
+        </button>
+
         <button
           type="button"
           class="px-3 py-2 text-sm font-medium rounded-lg border border-slate-700 text-slate-200 hover:bg-slate-800 disabled:opacity-50"
@@ -191,6 +201,9 @@ const q = ref('');
 const items = ref([]);
 const loading = ref(false);
 
+const importInput = ref(null);
+const importing = ref(false);
+
 const modalOpen = ref(false);
 const modalItem = ref(null);
 const observacion = ref('');
@@ -237,6 +250,32 @@ const load = async (page = 1) => {
     pagination.value = { current_page: 1, last_page: 1, per_page: pagination.value.per_page, total: 0 };
   } finally {
     loading.value = false;
+  }
+};
+
+const triggerImport = () => {
+  importInput.value?.click?.();
+};
+
+const onImportFileSelected = async (ev) => {
+  const file = ev?.target?.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('csv', file);
+    const { data } = await axios.post('/desistidos/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toastSuccess(data?.output?.trim() ? 'Importación finalizada' : 'Importación finalizada');
+    await load(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
+    toastError(msg);
+  } finally {
+    importing.value = false;
+    if (importInput.value) importInput.value.value = '';
   }
 };
 

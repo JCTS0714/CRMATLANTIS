@@ -15,6 +15,27 @@
     </div>
 
     <div v-else class="space-y-6">
+      <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <div class="flex items-center gap-2">
+          <label class="text-sm text-slate-600 dark:text-slate-300">Mes</label>
+          <input
+                ref="monthInput"
+            v-model="selectedMonth"
+            type="month"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                @click="openMonthPicker"
+          />
+          <button
+            type="button"
+            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            :disabled="loading"
+            @click="applyMonth"
+          >
+            Ver
+          </button>
+        </div>
+      </section>
+
       <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <a
           v-if="cards.leads"
@@ -258,6 +279,16 @@ const lists = ref({
   recent_incidences: null,
 });
 
+const monthInput = ref(null);
+const selectedMonth = ref('');
+
+const openMonthPicker = () => {
+  const el = monthInput.value;
+  if (!el) return;
+  el.focus();
+  if (typeof el.showPicker === 'function') el.showPicker();
+};
+
 const formatDateTime = (value) => {
   if (!value) return '—';
   try {
@@ -295,7 +326,11 @@ const load = async () => {
   loading.value = true;
   error.value = '';
   try {
-    const { data } = await axios.get('/dashboard/summary');
+    const { data } = await axios.get('/dashboard/summary', {
+      params: {
+        month: selectedMonth.value || undefined,
+      },
+    });
     cards.value = data?.cards || {};
     lists.value = {
       ...lists.value,
@@ -306,6 +341,10 @@ const load = async () => {
   } finally {
     loading.value = false;
   }
+};
+
+const applyMonth = () => {
+  load();
 };
 
 onMounted(() => {

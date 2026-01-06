@@ -10,9 +10,21 @@
         />
       </div>
 
-      <div class="text-sm text-slate-600 dark:text-slate-300">
-        <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
-        <span v-else>Sin resultados</span>
+      <div class="flex items-center gap-3">
+        <input ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="importing"
+          @click="triggerImport"
+        >
+          {{ importing ? 'Importando…' : 'Importar CSV' }}
+        </button>
+
+        <div class="text-sm text-slate-600 dark:text-slate-300">
+          <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
+          <span v-else>Sin resultados</span>
+        </div>
       </div>
     </div>
 
@@ -113,6 +125,9 @@ const loading = ref(false);
 const savingIds = ref(new Set());
 const deletingIds = ref(new Set());
 
+const importInput = ref(null);
+const importing = ref(false);
+
 const searchInput = ref('');
 let searchTimeout = null;
 
@@ -143,6 +158,32 @@ const fetchCustomers = async (page = 1) => {
     };
   } finally {
     loading.value = false;
+  }
+};
+
+const triggerImport = () => {
+  importInput.value?.click?.();
+};
+
+const onImportFileSelected = async (ev) => {
+  const file = ev?.target?.files?.[0];
+  if (!file) return;
+
+  importing.value = true;
+  try {
+    const fd = new FormData();
+    fd.append('csv', file);
+    const { data } = await axios.post('/customers/import', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toastSuccess(data?.output?.trim() ? 'Importación finalizada' : 'Importación finalizada');
+    await fetchCustomers(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
+    toastError(msg);
+  } finally {
+    importing.value = false;
+    if (importInput.value) importInput.value.value = '';
   }
 };
 
