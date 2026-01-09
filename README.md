@@ -11,6 +11,10 @@
 
 CRM interno (Laravel 12 + Breeze + Vue 3 + Vite + Tailwind v4 + Flowbite) con RBAC (spatie/laravel-permission) y módulos iniciales: Usuarios, Roles/Permisos y Leads (Kanban).
 
+### Deploy (Hostinger / subdominio)
+
+Guía paso a paso: [docs/deploy-hostinger-subdominio.md](docs/deploy-hostinger-subdominio.md)
+
 ### Estado actual (implementado)
 
 **Stack**
