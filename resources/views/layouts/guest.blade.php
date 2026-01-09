@@ -15,7 +15,7 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased text-slate-900 dark:text-slate-100">
-        @php($loginBackground = Vite::asset('resources/images/fondo_login.jpg'))
+        @php($loginBackground = asset('images/fondo_login.jpg'))
 
         <div class="min-h-screen relative flex flex-col sm:justify-center items-center px-4 py-10 bg-slate-950 bg-cover bg-center" style="background-image: url('{{ $loginBackground }}');">
             <div class="absolute inset-0 bg-linear-to-br from-slate-950/85 via-slate-900/75 to-slate-950/85"></div>
