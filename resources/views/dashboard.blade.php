@@ -8,13 +8,20 @@
 
         @php
             $user = auth()->user();
+            $guard = config('auth.defaults.guard', 'web');
             $authPayload = $user
                 ? [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
                     'roles' => $user->getRoleNames()->values()->all(),
-                    'permissions' => $user->getAllPermissions()->pluck('name')->values()->all(),
+                    'permissions' => $user->hasRole('admin')
+                        ? \Spatie\Permission\Models\Permission::query()
+                            ->where('guard_name', $guard)
+                            ->pluck('name')
+                            ->values()
+                            ->all()
+                        : $user->getAllPermissions()->pluck('name')->values()->all(),
                 ]
                 : null;
         @endphp
