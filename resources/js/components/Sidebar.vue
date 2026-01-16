@@ -120,7 +120,7 @@
               class="w-full flex items-center p-2 rounded-lg group"
               :class="[
                 collapsed ? 'justify-center' : '',
-                isActive('/leads') || isActive('/desistidos') || isActive('/espera')
+                isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera')
                   ? 'text-white bg-slate-800 border border-slate-700'
                   : 'text-slate-200 hover:bg-slate-800'
               ]"
@@ -128,7 +128,7 @@
             >
               <svg
                 class="w-5 h-5"
-                :class="(isActive('/leads') || isActive('/desistidos') || isActive('/espera'))
+                :class="(isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera'))
                   ? 'text-white/90'
                   : 'text-slate-300 group-hover:text-white'"
                 aria-hidden="true"
@@ -162,11 +162,37 @@
                   class="flex items-center gap-3 p-2 rounded-lg group"
                   :class="[
                     'text-slate-200 hover:bg-slate-800',
-                    isActive('/leads') ? 'bg-slate-800 border border-slate-700' : ''
+                    path === '/leads' ? 'bg-slate-800 border border-slate-700' : ''
                   ]"
                 >
                   <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                   <span class="whitespace-nowrap">Leads</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/leads/whatsapp"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    path === '/leads/whatsapp' ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">WhatsApp masivo</span>
+                </a>
+              </li>
+              <li>
+                <a
+                  href="/leads/email"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">Email masivo</span>
                 </a>
               </li>
               <li>
@@ -453,6 +479,12 @@
               </a>
             </li>
             <li>
+              <a href="/leads/whatsapp" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                <span class="whitespace-nowrap">WhatsApp masivo</span>
+              </a>
+            </li>
+            <li>
               <a href="/espera" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Zona de espera</span>
@@ -549,7 +581,7 @@ const onTogglePostventa = () => {
 };
 
 // Pipeline submenu state & handlers
-const pipelineOpen = ref(isActive('/leads') || isActive('/desistidos') || isActive('/espera'));
+const pipelineOpen = ref(isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera'));
 const pipelineHoverOpen = ref(false);
 const pipelineAnchor = ref(null);
 const pipelineFlyoutStyle = ref({ left: '0px', top: '0px' });

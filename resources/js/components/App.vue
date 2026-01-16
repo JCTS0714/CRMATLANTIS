@@ -36,7 +36,7 @@
             </button>
 
             <button
-              v-else-if="isLeads"
+              v-else-if="isLeadsBoard || isLeadsList"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createQuickLead"
@@ -45,7 +45,7 @@
             </button>
 
             <button
-              v-if="isLeads"
+              v-if="isLeadsBoard || isLeadsList"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800"
               @click="toggleLeadsView"
@@ -106,6 +106,10 @@
 
           <LeadsTable v-else-if="isLeadsList" />
 
+          <LeadsWhatsAppCampaign v-else-if="isLeadsWhatsApp" />
+
+          <LeadsEmailCampaign v-else-if="isLeadsEmail" />
+
           <IncidenciasTable v-else-if="isIncidencias" />
 
           <BacklogBoard v-else-if="isBacklog" />
@@ -149,6 +153,8 @@ import UsersTable from './UsersTable.vue';
 import RolesTable from './RolesTable.vue';
 import LeadsBoard from './LeadsBoard.vue';
 import LeadsTable from './LeadsTable.vue';
+import LeadsWhatsAppCampaign from './LeadsWhatsAppCampaign.vue';
+import LeadsEmailCampaign from './LeadsEmailCampaign.vue';
 import CustomersTable from './CustomersTable.vue';
 import CalendarView from './CalendarView.vue';
 import IncidenciasTable from './IncidenciasTable.vue';
@@ -166,6 +172,8 @@ const isUsers = computed(() => normalizedPath.startsWith('/users'));
 const isRoles = computed(() => normalizedPath.startsWith('/roles'));
 const isLeadsBoard = computed(() => normalizedPath === '/leads');
 const isLeadsList = computed(() => normalizedPath === '/leads/list');
+const isLeadsWhatsApp = computed(() => normalizedPath === '/leads/whatsapp');
+const isLeadsEmail = computed(() => normalizedPath === '/leads/email');
 const isLeads = computed(() => normalizedPath.startsWith('/leads'));
 const isCustomers = computed(() => normalizedPath.startsWith('/customers'));
 const isCalendar = computed(() => normalizedPath.startsWith('/calendar'));
@@ -182,6 +190,10 @@ const pageTitle = computed(() =>
     ? 'Usuarios'
     : isRoles.value
       ? 'Roles'
+      : isLeadsWhatsApp.value
+        ? 'WhatsApp'
+      : isLeadsEmail.value
+        ? 'Email'
       : isLeads.value
         ? 'Leads'
         : normalizedPath === '/desistidos'
@@ -207,6 +219,10 @@ const pageSubtitle = computed(() =>
     ? 'Gestión de usuarios del sistema'
     : isRoles.value
       ? 'Crea roles y asigna permisos'
+      : isLeadsWhatsApp.value
+        ? 'Campañas manuales asistidas (sin API)'
+      : isLeadsEmail.value
+        ? 'Campañas informativas por correo (con baja automática)'
       : isLeadsBoard.value
         ? 'Pipeline de oportunidades'
         : isLeadsList.value

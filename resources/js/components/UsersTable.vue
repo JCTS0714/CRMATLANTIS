@@ -63,6 +63,7 @@
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-200">
           <tr>
             <th scope="col" class="px-6 py-3">ID</th>
+            <th scope="col" class="px-6 py-3">Foto</th>
             <th scope="col" class="px-6 py-3">Nombre</th>
             <th scope="col" class="px-6 py-3">Email</th>
             <th scope="col" class="px-6 py-3">Creado</th>
@@ -71,11 +72,11 @@
         </thead>
         <tbody>
           <tr v-if="loading" class="bg-white dark:bg-slate-900">
-            <td colspan="5" class="px-6 py-6 text-gray-500 dark:text-slate-300">Cargando...</td>
+            <td colspan="6" class="px-6 py-6 text-gray-500 dark:text-slate-300">Cargando...</td>
           </tr>
 
           <tr v-else-if="rows.length === 0" class="bg-white dark:bg-slate-900">
-            <td colspan="5" class="px-6 py-6 text-gray-500 dark:text-slate-300">No hay usuarios.</td>
+            <td colspan="6" class="px-6 py-6 text-gray-500 dark:text-slate-300">No hay usuarios.</td>
           </tr>
 
           <tr
@@ -85,6 +86,23 @@
             class="bg-white border-b border-gray-100 hover:bg-blue-50/40 transition-colors dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800/60"
           >
             <td class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap dark:text-slate-100">{{ user.id }}</td>
+            <td class="px-6 py-4">
+              <div class="w-9 h-9 rounded-full overflow-hidden ring-1 ring-gray-200 dark:ring-slate-700 bg-gray-100 dark:bg-slate-800">
+                <img
+                  v-if="user.profile_photo_url"
+                  :src="user.profile_photo_url"
+                  :alt="user.name"
+                  class="w-full h-full object-cover"
+                  loading="lazy"
+                />
+                <div
+                  v-else
+                  class="w-full h-full flex items-center justify-center text-[10px] font-semibold text-gray-700 dark:text-slate-100"
+                >
+                  {{ userInitials(user.name) }}
+                </div>
+              </div>
+            </td>
             <td class="px-6 py-4 text-gray-900 dark:text-slate-100">{{ user.name }}</td>
             <td class="px-6 py-4">{{ user.email }}</td>
             <td class="px-6 py-4">{{ formatDate(user.created_at) }}</td>
@@ -238,6 +256,31 @@
                 </div>
 
                 <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">Foto de perfil (opcional)</label>
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      <img
+                        v-if="createPhotoPreview"
+                        :src="createPhotoPreview"
+                        alt="Preview"
+                        class="w-full h-full object-cover"
+                      />
+                      <span v-else class="text-[9px] leading-none text-gray-500 dark:text-slate-300">Sin foto</span>
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-slate-100 focus:outline-none dark:bg-slate-800 dark:border-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 dark:file:bg-slate-700 dark:file:text-slate-100 dark:hover:file:bg-slate-600"
+                      @change="onCreatePhotoChange"
+                    />
+                  </div>
+                  <p class="mt-2 text-xs text-gray-500 dark:text-slate-300">JPG, PNG o WebP. Máximo 2MB.</p>
+                </div>
+
+                <div>
                   <label class="block mb-2 text-sm font-medium text-gray-900">Contraseña</label>
                   <input
                     v-model="createForm.password"
@@ -366,6 +409,31 @@
                 </div>
 
                 <div>
+                  <label class="block mb-2 text-sm font-medium text-gray-900">Foto de perfil (opcional)</label>
+                  <div class="flex items-center gap-3">
+                    <div
+                      class="w-9 h-9 rounded-full bg-gray-100 border border-gray-200 flex items-center justify-center overflow-hidden dark:bg-slate-800 dark:border-slate-700"
+                    >
+                      <img
+                        v-if="editPhotoPreview"
+                        :src="editPhotoPreview"
+                        alt="Preview"
+                        class="w-full h-full object-cover"
+                      />
+                      <span v-else class="text-[9px] leading-none text-gray-500 dark:text-slate-300">Sin foto</span>
+                    </div>
+
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-slate-100 focus:outline-none dark:bg-slate-800 dark:border-slate-700 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200 dark:file:bg-slate-700 dark:file:text-slate-100 dark:hover:file:bg-slate-600"
+                      @change="onEditPhotoChange"
+                    />
+                  </div>
+                  <p class="mt-2 text-xs text-gray-500 dark:text-slate-300">JPG, PNG o WebP. Máximo 2MB.</p>
+                </div>
+
+                <div>
                   <label class="block mb-2 text-sm font-medium text-gray-900">Nueva contraseña (opcional)</label>
                   <input
                     v-model="editForm.password"
@@ -439,6 +507,9 @@ const createForm = ref({
   password_confirmation: '',
 });
 
+const createPhotoFile = ref(null);
+const createPhotoPreview = ref('');
+
 const updating = ref(false);
 const editError = ref('');
 const editingUserId = ref(null);
@@ -449,6 +520,9 @@ const editForm = ref({
   password: '',
   password_confirmation: '',
 });
+
+const editPhotoFile = ref(null);
+const editPhotoPreview = ref('');
 
 const roleOptions = ref([]);
 
@@ -514,6 +588,17 @@ const formatDate = (value) => {
   return date.toLocaleString();
 };
 
+const userInitials = (name) => {
+  const raw = String(name ?? '').trim();
+  if (!raw) return 'U';
+  const parts = raw.split(/\s+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length === 0) return 'U';
+  const first = Array.from(parts[0])[0] ?? '';
+  const last = parts.length > 1 ? Array.from(parts[parts.length - 1])[0] ?? '' : '';
+  const initials = `${first}${last}`.trim();
+  return (initials || 'U').toLocaleUpperCase('es-ES');
+};
+
 const editUser = async (user) => {
   await loadRoleOptions();
   editingUserId.value = user.id;
@@ -525,6 +610,7 @@ const editUser = async (user) => {
     password: '',
     password_confirmation: '',
   };
+  resetEditPhoto();
   ensureDefaultRole(editForm.value);
   editOpen.value = true;
 };
@@ -533,16 +619,45 @@ const showCreateModal = async () => {
   await loadRoleOptions();
   createError.value = '';
   createForm.value = { name: '', email: '', role: 'employee', password: '', password_confirmation: '' };
+  resetCreatePhoto();
   ensureDefaultRole(createForm.value);
   createOpen.value = true;
 };
 
 const hideCreateModal = () => {
   createOpen.value = false;
+  resetCreatePhoto();
 };
 
 const hideEditModal = () => {
   editOpen.value = false;
+  resetEditPhoto();
+};
+
+const resetCreatePhoto = () => {
+  createPhotoFile.value = null;
+  if (createPhotoPreview.value) URL.revokeObjectURL(createPhotoPreview.value);
+  createPhotoPreview.value = '';
+};
+
+const resetEditPhoto = () => {
+  editPhotoFile.value = null;
+  if (editPhotoPreview.value) URL.revokeObjectURL(editPhotoPreview.value);
+  editPhotoPreview.value = '';
+};
+
+const onCreatePhotoChange = (event) => {
+  const file = event?.target?.files?.[0] ?? null;
+  createPhotoFile.value = file;
+  if (createPhotoPreview.value) URL.revokeObjectURL(createPhotoPreview.value);
+  createPhotoPreview.value = file ? URL.createObjectURL(file) : '';
+};
+
+const onEditPhotoChange = (event) => {
+  const file = event?.target?.files?.[0] ?? null;
+  editPhotoFile.value = file;
+  if (editPhotoPreview.value) URL.revokeObjectURL(editPhotoPreview.value);
+  editPhotoPreview.value = file ? URL.createObjectURL(file) : '';
 };
 
 const firstValidationMessage = (error) => {
@@ -557,7 +672,15 @@ const submitCreate = async () => {
   creating.value = true;
   createError.value = '';
   try {
-    await axios.post('/users', createForm.value);
+    const fd = new FormData();
+    fd.append('name', createForm.value.name ?? '');
+    fd.append('email', createForm.value.email ?? '');
+    fd.append('role', createForm.value.role ?? '');
+    fd.append('password', createForm.value.password ?? '');
+    fd.append('password_confirmation', createForm.value.password_confirmation ?? '');
+    if (createPhotoFile.value) fd.append('photo', createPhotoFile.value);
+
+    await axios.post('/users', fd);
     hideCreateModal();
     await load();
   } catch (error) {
@@ -573,7 +696,18 @@ const submitEdit = async () => {
   updating.value = true;
   editError.value = '';
   try {
-    await axios.put(`/users/${editingUserId.value}`, editForm.value);
+    const fd = new FormData();
+    fd.append('_method', 'PUT');
+    fd.append('name', editForm.value.name ?? '');
+    fd.append('email', editForm.value.email ?? '');
+    fd.append('role', editForm.value.role ?? '');
+    if (editForm.value.password) {
+      fd.append('password', editForm.value.password);
+      fd.append('password_confirmation', editForm.value.password_confirmation ?? '');
+    }
+    if (editPhotoFile.value) fd.append('photo', editPhotoFile.value);
+
+    await axios.post(`/users/${editingUserId.value}`, fd);
     hideEditModal();
     await load();
   } catch (error) {
@@ -643,5 +777,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('keydown', onKeydown);
   document.body.classList.remove('overflow-hidden');
   clearTimeout(searchDebounceTimer);
+  resetCreatePhoto();
+  resetEditPhoto();
 });
 </script>

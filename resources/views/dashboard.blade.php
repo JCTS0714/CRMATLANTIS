@@ -14,6 +14,10 @@
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
+                    'profile_photo_path' => $user->profile_photo_path,
+                    'profile_photo_url' => $user->profile_photo_path
+                        ? '/storage/' . ltrim($user->profile_photo_path, '/')
+                        : null,
                     'roles' => $user->getRoleNames()->values()->all(),
                     'permissions' => $user->hasRole('admin')
                         ? \Spatie\Permission\Models\Permission::query()

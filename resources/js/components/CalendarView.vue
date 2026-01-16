@@ -592,6 +592,29 @@ html.dark .fc {
   --fc-neutral-text-color: rgba(226, 232, 240, 0.9);
   --fc-border-color: rgba(148, 163, 184, 0.2);
   --fc-today-bg-color: rgba(59, 130, 246, 0.10);
+
+  /* Buttons */
+  --fc-button-text-color: rgba(226, 232, 240, 0.95);
+  --fc-button-bg-color: rgba(30, 41, 59, 0.8);
+  --fc-button-border-color: rgba(148, 163, 184, 0.25);
+  --fc-button-hover-bg-color: rgba(51, 65, 85, 0.9);
+  --fc-button-hover-border-color: rgba(148, 163, 184, 0.35);
+  --fc-button-active-bg-color: rgba(59, 130, 246, 0.35);
+  --fc-button-active-border-color: rgba(59, 130, 246, 0.45);
+}
+
+html.dark .fc,
+html.dark .fc a {
+  color: rgba(226, 232, 240, 0.92);
+}
+
+html.dark .fc .fc-toolbar-title {
+  color: rgba(226, 232, 240, 0.95);
+}
+
+html.dark .fc .fc-col-header-cell-cushion,
+html.dark .fc .fc-daygrid-day-number {
+  color: rgba(226, 232, 240, 0.92);
 }
 
 /* Make month-view events look like readable pills */

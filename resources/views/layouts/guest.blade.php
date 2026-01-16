@@ -17,8 +17,10 @@
     <body class="font-sans antialiased text-slate-900 dark:text-slate-100">
         @php($loginBackground = asset('images/fondo_login.jpg'))
 
-        <div class="min-h-screen relative flex flex-col sm:justify-center items-center px-4 py-10 bg-slate-950 bg-cover bg-center" style="background-image: url('{{ $loginBackground }}');">
-            <div class="absolute inset-0 bg-linear-to-br from-slate-950/85 via-slate-900/75 to-slate-950/85"></div>
+        <div id="animated-bg" class="fixed inset-0 z-0"></div>
+
+        <div class="min-h-screen relative z-10 flex flex-col sm:justify-center items-center px-4 py-10">
+            <div class="absolute inset-0 pointer-events-none bg-gradient-to-br from-slate-950/30 via-slate-900/20 to-slate-950/30"></div>
 
             <div class="relative w-full flex flex-col sm:justify-center items-center">
             <a href="/" class="mb-6 flex flex-col items-center gap-3">

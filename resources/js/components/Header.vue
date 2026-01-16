@@ -173,10 +173,18 @@
               data-dropdown-placement="bottom"
             >
               <span class="sr-only">Abrir menú de usuario</span>
+              <img
+                v-if="userPhotoUrl"
+                :src="userPhotoUrl"
+                :alt="userName"
+                class="w-8 h-8 rounded-full object-cover bg-white ring-1 ring-sky-700"
+                loading="lazy"
+              />
               <div
+                v-else
                 class="w-8 h-8 rounded-full bg-white text-sky-700 flex items-center justify-center text-xs font-semibold"
               >
-                JC
+                {{ userInitials }}
               </div>
             </button>
 
@@ -254,6 +262,28 @@ const userName = computed(() => {
 
 const userEmail = computed(() => {
   return authUser.value?.email ?? '';
+});
+
+const userPhotoUrl = computed(() => {
+  return authUser.value?.profile_photo_url ?? '';
+});
+
+const userInitials = computed(() => {
+  const name = String(authUser.value?.name ?? '').trim();
+  if (!name) return 'U';
+
+  const parts = name
+    .split(/\s+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  if (parts.length === 0) return 'U';
+
+  const first = Array.from(parts[0])[0] ?? '';
+  const last = parts.length > 1 ? Array.from(parts[parts.length - 1])[0] ?? '' : '';
+  const initials = `${first}${last}`.trim();
+
+  return (initials || 'U').toLocaleUpperCase('es-ES');
 });
 
 const isDark = ref(false);

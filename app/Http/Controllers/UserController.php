@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
 
@@ -42,7 +43,7 @@ class UserController extends Controller
         $dir = (string) ($validated['dir'] ?? 'desc');
 
         $query = User::query()
-            ->select(['id', 'name', 'email', 'created_at'])
+            ->select(['id', 'name', 'email', 'profile_photo_path', 'created_at'])
             ->with(['roles:id,name']);
 
         if ($search !== '') {
@@ -61,10 +62,15 @@ class UserController extends Controller
         $paginator = $query->paginate($perPage)->appends($request->query());
 
         $data = collect($paginator->items())->map(function (User $user) {
+            $photoUrl = $user->profile_photo_path
+                ? '/storage/' . ltrim($user->profile_photo_path, '/')
+                : null;
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'profile_photo_url' => $photoUrl,
                 'created_at' => $user->created_at,
                 'role' => $user->roles->pluck('name')->first(),
             ];
@@ -97,12 +103,19 @@ class UserController extends Controller
                 Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', $guard)),
             ],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
+
+        $photoPath = null;
+        if ($request->hasFile('photo')) {
+            $photoPath = $request->file('photo')->store('profile-photos', 'public');
+        }
 
         $user = User::create([
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
+            'profile_photo_path' => $photoPath,
         ]);
 
         $role = $validated['role'] ?? 'employee';
@@ -137,6 +150,7 @@ class UserController extends Controller
                 Rule::exists('roles', 'name')->where(fn ($q) => $q->where('guard_name', $guard)),
             ],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
+            'photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ]);
 
         $user->name = $validated['name'];
@@ -144,6 +158,14 @@ class UserController extends Controller
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
+        }
+
+        if ($request->hasFile('photo')) {
+            $newPath = $request->file('photo')->store('profile-photos', 'public');
+            if ($user->profile_photo_path) {
+                Storage::disk('public')->delete($user->profile_photo_path);
+            }
+            $user->profile_photo_path = $newPath;
         }
 
         $user->save();
@@ -168,6 +190,10 @@ class UserController extends Controller
             return response()->json([
                 'message' => 'No puedes eliminar tu propio usuario mientras estás autenticado.',
             ], 422);
+        }
+
+        if ($user->profile_photo_path) {
+            Storage::disk('public')->delete($user->profile_photo_path);
         }
 
         $user->delete();

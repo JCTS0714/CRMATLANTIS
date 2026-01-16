@@ -7,7 +7,10 @@
       <div class="mb-4 flex items-center gap-3">
         <div class="flex items-center gap-2">
           <label class="text-xs text-gray-600 dark:text-slate-300">Limite:</label>
-          <select v-model.number="limit" class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm dark:bg-slate-900">
+          <select
+            v-model.number="limit"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+          >
             <option :value="20">20</option>
             <option :value="50">50</option>
             <option :value="100">100</option>
@@ -17,17 +20,30 @@
 
         <div class="flex items-center gap-2">
           <label class="text-xs text-gray-600 dark:text-slate-300">Desde:</label>
-          <input v-model="dateFrom" type="date" class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm dark:bg-slate-900" />
+          <input
+            v-model="dateFrom"
+            type="date"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
         </div>
 
         <div class="flex items-center gap-2">
           <label class="text-xs text-gray-600 dark:text-slate-300">Hasta:</label>
-          <input v-model="dateTo" type="date" class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm dark:bg-slate-900" />
+          <input
+            v-model="dateTo"
+            type="date"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
         </div>
 
         <div class="flex items-center gap-2 ms-auto">
           <button @click="applyFilters" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1 text-sm text-white">Aplicar</button>
-          <button @click="clearFilters" class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm dark:bg-slate-900">Limpiar</button>
+          <button
+            @click="clearFilters"
+            class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          >
+            Limpiar
+          </button>
         </div>
       </div>
 

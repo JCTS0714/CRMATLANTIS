@@ -12,6 +12,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatedLookupController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\WhatsAppCampaignController;
+use App\Http\Controllers\EmailCampaignController;
+use App\Http\Controllers\EmailUnsubscribeController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -24,6 +27,9 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     return view('dashboard');
 })->middleware(['auth'])->name('dashboard');
+
+// Public unsubscribe endpoint for email campaigns
+Route::get('/email/unsubscribe', [EmailUnsubscribeController::class, 'unsubscribe'])->name('email.unsubscribe');
 
 Route::middleware('auth')->group(function () {
     Route::get('/dashboard/summary', [DashboardController::class, 'summary'])->name('dashboard.summary');
@@ -71,6 +77,34 @@ Route::middleware('auth')->group(function () {
         Route::get('/leads/data', [LeadController::class, 'tableData'])->name('leads.data');
 
         Route::get('/leads/board-data', [LeadController::class, 'boardData'])->name('leads.boardData');
+
+        Route::get('/leads/whatsapp', function () {
+            return view('dashboard');
+        })->name('leads.whatsapp');
+
+        Route::get('/leads/email', function () {
+            return view('dashboard');
+        })->name('leads.email');
+
+        Route::get('/leads/whatsapp/recipients', [WhatsAppCampaignController::class, 'recipients'])
+            ->name('leads.whatsapp.recipients');
+
+        Route::get('/leads/email/recipients', [EmailCampaignController::class, 'recipients'])
+            ->name('leads.email.recipients');
+
+        Route::get('/leads/whatsapp-campaigns', [WhatsAppCampaignController::class, 'index'])
+            ->name('leads.whatsapp.campaigns.index');
+
+        Route::get('/leads/email-campaigns', [EmailCampaignController::class, 'index'])
+            ->name('leads.email.campaigns.index');
+
+        Route::get('/leads/whatsapp-campaigns/{campaign}', [WhatsAppCampaignController::class, 'show'])
+            ->whereNumber('campaign')
+            ->name('leads.whatsapp.campaigns.show');
+
+        Route::get('/leads/email-campaigns/{campaign}', [EmailCampaignController::class, 'show'])
+            ->whereNumber('campaign')
+            ->name('leads.email.campaigns.show');
         
             Route::get('/desistidos', function () { return view('dashboard'); })->name('desistidos.index');
             Route::get('/desistidos/data', [\App\Http\Controllers\LostLeadController::class, 'index'])->name('desistidos.data');
@@ -228,6 +262,24 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:leads.update')
         ->name('leads.update');
 
+    Route::post('/leads/whatsapp-campaigns', [WhatsAppCampaignController::class, 'store'])
+        ->middleware('permission:leads.update')
+        ->name('leads.whatsapp.campaigns.store');
+
+    Route::post('/leads/email-campaigns', [EmailCampaignController::class, 'store'])
+        ->middleware('permission:leads.update')
+        ->name('leads.email.campaigns.store');
+
+    Route::post('/leads/email-campaigns/{campaign}/send', [EmailCampaignController::class, 'send'])
+        ->whereNumber('campaign')
+        ->middleware('permission:leads.update')
+        ->name('leads.email.campaigns.send');
+
+    Route::patch('/leads/whatsapp-campaign-recipients/{recipient}', [WhatsAppCampaignController::class, 'updateRecipient'])
+        ->whereNumber('recipient')
+        ->middleware('permission:leads.update')
+        ->name('leads.whatsapp.recipients.update');
+
     Route::post('/leads/import/prospectos', [LeadController::class, 'importProspectos'])
         ->middleware('permission:leads.create')
         ->name('leads.import.prospectos');
@@ -282,6 +334,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
