@@ -182,7 +182,7 @@
                   <span class="whitespace-nowrap">WhatsApp masivo</span>
                 </a>
               </li>
-              <li>
+              <li v-if="canSeeEmail">
                 <a
                   href="/leads/email"
                   class="flex items-center gap-3 p-2 rounded-lg group"
@@ -541,20 +541,6 @@ const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission(
 const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
-              <li v-if="canSeeEmail">
-                <a
-                  href="/leads/email"
-                  class="flex items-center gap-3 p-2 rounded-lg group"
-                  :class="[
-                    'text-slate-200 hover:bg-slate-800',
-                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
-                  ]"
-                >
-                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                  <span class="whitespace-nowrap">Email masivo</span>
-                </a>
-              </li>
-
   const rect = postventaAnchor.value?.getBoundingClientRect?.();
   if (rect) {
     postventaFlyoutStyle.value = {
