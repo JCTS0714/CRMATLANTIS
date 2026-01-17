@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             LeadStagesSeeder::class,
             IncidenceStagesSeeder::class,
             InternalUserSeeder::class,
+            EmailMenuPermissionSeeder::class,
         ]);
     }
 }

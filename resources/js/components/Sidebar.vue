@@ -537,22 +537,23 @@ const hasPermission = (permission) => {
 const canSeeUsers = computed(() => hasPermission('menu.users'));
 const canSeeRoles = computed(() => hasPermission('menu.roles'));
 const canSeeLeads = computed(() => hasPermission('menu.leads'));
+const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission('menu.leads'));
 const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
-
-const postventaOpen = ref(isActive('/incidencias') || isActive('/backlog') || isActive('/postventa'));
-const postventaHoverOpen = ref(false);
-const postventaAnchor = ref(null);
-const postventaFlyoutStyle = ref({ left: '0px', top: '0px' });
-
-let postventaHoverCloseTimer = null;
-const onPostventaMouseEnter = () => {
-  if (!collapsed.value) return;
-  if (postventaHoverCloseTimer) {
-    clearTimeout(postventaHoverCloseTimer);
-    postventaHoverCloseTimer = null;
-  }
+              <li v-if="canSeeEmail">
+                <a
+                  href="/leads/email"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">Email masivo</span>
+                </a>
+              </li>
 
   const rect = postventaAnchor.value?.getBoundingClientRect?.();
   if (rect) {
