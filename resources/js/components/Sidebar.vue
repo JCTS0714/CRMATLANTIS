@@ -120,7 +120,7 @@
               class="w-full flex items-center p-2 rounded-lg group"
               :class="[
                 collapsed ? 'justify-center' : '',
-                isActive('/leads') || isActive('/desistidos') || isActive('/espera')
+                isExact('/leads') || isActive('/desistidos') || isActive('/espera')
                   ? 'text-white bg-slate-800 border border-slate-700'
                   : 'text-slate-200 hover:bg-slate-800'
               ]"
@@ -128,7 +128,7 @@
             >
               <svg
                 class="w-5 h-5"
-                :class="(isActive('/leads') || isActive('/desistidos') || isActive('/espera'))
+                :class="(isExact('/leads') || isActive('/desistidos') || isActive('/espera'))
                   ? 'text-white/90'
                   : 'text-slate-300 group-hover:text-white'"
                 aria-hidden="true"
@@ -604,6 +604,8 @@ const isActive = (prefix) => {
   return path.startsWith(prefix);
 };
 
+const isExact = (route) => path === route;
+
 const props = defineProps({
   collapsed: {
     type: Boolean,
@@ -671,7 +673,7 @@ const onTogglePostventa = () => {
 };
 
 // Pipeline submenu state & handlers
-const pipelineOpen = ref(isActive('/leads') || isActive('/desistidos') || isActive('/espera'));
+const pipelineOpen = ref(isExact('/leads') || isActive('/desistidos') || isActive('/espera'));
 const pipelineHoverOpen = ref(false);
 const pipelineAnchor = ref(null);
 const pipelineFlyoutStyle = ref({ left: '0px', top: '0px' });
