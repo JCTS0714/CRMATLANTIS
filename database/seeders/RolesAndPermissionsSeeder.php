@@ -60,6 +60,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'menu.users',
             'menu.roles',
             'menu.leads',
+            'menu.email',
             'menu.customers',
             'menu.calendar',
             'menu.postventa',

@@ -312,7 +312,9 @@ const menuModules = [
   { permission: 'menu.users', label: 'Usuarios' },
   { permission: 'menu.roles', label: 'Roles' },
   { permission: 'menu.leads', label: 'Leads' },
+  { permission: 'menu.email', label: 'Email masivo' },
   { permission: 'menu.customers', label: 'Clientes' },
+  { permission: 'menu.calendar', label: 'Calendario' },
   { permission: 'menu.postventa', label: 'Postventa' },
 ];
 
