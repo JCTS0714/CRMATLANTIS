@@ -484,6 +484,12 @@
                 <span class="whitespace-nowrap">WhatsApp masivo</span>
               </a>
             </li>
+            <li v-if="canSeeEmail">
+              <a href="/leads/email" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                <span class="whitespace-nowrap">Email masivo</span>
+              </a>
+            </li>
             <li>
               <a href="/espera" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
