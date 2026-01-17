@@ -541,6 +541,20 @@ const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission(
 const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
+
+const postventaOpen = ref(isActive('/incidencias') || isActive('/backlog') || isActive('/postventa'));
+const postventaHoverOpen = ref(false);
+const postventaAnchor = ref(null);
+const postventaFlyoutStyle = ref({ left: '0px', top: '0px' });
+
+let postventaHoverCloseTimer = null;
+const onPostventaMouseEnter = () => {
+  if (!collapsed.value) return;
+  if (postventaHoverCloseTimer) {
+    clearTimeout(postventaHoverCloseTimer);
+    postventaHoverCloseTimer = null;
+  }
+
   const rect = postventaAnchor.value?.getBoundingClientRect?.();
   if (rect) {
     postventaFlyoutStyle.value = {
