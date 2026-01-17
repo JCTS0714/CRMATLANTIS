@@ -126,7 +126,8 @@
 
                 <div>
                   <label class="block mb-2 text-sm font-medium text-gray-900">Módulos del menú</label>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando módulos...</div>
+                  <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <label
                       v-for="m in menuModules"
                       :key="m.permission"
@@ -241,7 +242,8 @@
 
                 <div>
                   <label class="block mb-2 text-sm font-medium text-gray-900">Módulos del menú</label>
-                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando módulos...</div>
+                  <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
                     <label
                       v-for="m in menuModules"
                       :key="m.permission"
@@ -308,15 +310,49 @@ const deletingId = ref(null);
 const permissions = ref([]);
 const permissionsLoading = ref(true);
 
-const menuModules = [
-  { permission: 'menu.users', label: 'Usuarios' },
-  { permission: 'menu.roles', label: 'Roles' },
-  { permission: 'menu.leads', label: 'Leads' },
-  { permission: 'menu.email', label: 'Email masivo' },
-  { permission: 'menu.customers', label: 'Clientes' },
-  { permission: 'menu.calendar', label: 'Calendario' },
-  { permission: 'menu.postventa', label: 'Postventa' },
-];
+const menuLabelMap = {
+  'menu.users': 'Usuarios',
+  'menu.roles': 'Roles',
+  'menu.leads': 'Leads',
+  'menu.email': 'Email masivo',
+  'menu.customers': 'Clientes',
+  'menu.calendar': 'Calendario',
+  'menu.postventa': 'Postventa',
+};
+
+const menuOrder = Object.keys(menuLabelMap);
+
+function menuLabel(permission) {
+  if (menuLabelMap[permission]) return menuLabelMap[permission];
+
+  const raw = String(permission || '')
+    .replace(/^menu\./, '')
+    .replace(/[._-]+/g, ' ')
+    .trim();
+
+  if (!raw) return permission;
+  return raw.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
+}
+
+const menuModules = computed(() => {
+  const menuPermissions = (permissions.value || []).filter((p) => String(p).startsWith('menu.'));
+  const unique = Array.from(new Set(menuPermissions));
+
+  unique.sort((a, b) => {
+    const aIndex = menuOrder.indexOf(a);
+    const bIndex = menuOrder.indexOf(b);
+
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return String(a).localeCompare(String(b));
+  });
+
+  return unique.map((permission) => ({
+    permission,
+    label: menuLabel(permission),
+  }));
+});
 
 const createOpen = ref(false);
 const editOpen = ref(false);
