@@ -120,7 +120,7 @@
               class="w-full flex items-center p-2 rounded-lg group"
               :class="[
                 collapsed ? 'justify-center' : '',
-                isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera')
+                isActive('/leads') || isActive('/desistidos') || isActive('/espera')
                   ? 'text-white bg-slate-800 border border-slate-700'
                   : 'text-slate-200 hover:bg-slate-800'
               ]"
@@ -128,7 +128,7 @@
             >
               <svg
                 class="w-5 h-5"
-                :class="(isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera'))
+                :class="(isActive('/leads') || isActive('/desistidos') || isActive('/espera'))
                   ? 'text-white/90'
                   : 'text-slate-300 group-hover:text-white'"
                 aria-hidden="true"
@@ -171,32 +171,6 @@
               </li>
               <li>
                 <a
-                  href="/leads/whatsapp"
-                  class="flex items-center gap-3 p-2 rounded-lg group"
-                  :class="[
-                    'text-slate-200 hover:bg-slate-800',
-                    path === '/leads/whatsapp' ? 'bg-slate-800 border border-slate-700' : ''
-                  ]"
-                >
-                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                  <span class="whitespace-nowrap">WhatsApp masivo</span>
-                </a>
-              </li>
-              <li v-if="canSeeEmail">
-                <a
-                  href="/leads/email"
-                  class="flex items-center gap-3 p-2 rounded-lg group"
-                  :class="[
-                    'text-slate-200 hover:bg-slate-800',
-                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
-                  ]"
-                >
-                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                  <span class="whitespace-nowrap">Email masivo</span>
-                </a>
-              </li>
-              <li>
-                <a
                   href="/espera"
                   class="flex items-center gap-3 p-2 rounded-lg group"
                   :class="[
@@ -219,6 +193,84 @@
                 >
                   <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                   <span class="whitespace-nowrap">Desistidos</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </li>
+
+        <li v-if="canSeeInbox">
+          <div
+            class="relative"
+            ref="inboxAnchor"
+            @mouseenter="onInboxMouseEnter"
+            @mouseleave="onInboxMouseLeave"
+          >
+            <button
+              type="button"
+              class="w-full flex items-center p-2 rounded-lg group"
+              :class="[
+                collapsed ? 'justify-center' : '',
+                isActive('/leads/whatsapp') || isActive('/leads/email')
+                  ? 'text-white bg-slate-800 border border-slate-700'
+                  : 'text-slate-200 hover:bg-slate-800'
+              ]"
+              @click="onToggleInbox"
+            >
+              <svg
+                class="w-5 h-5"
+                :class="(isActive('/leads/whatsapp') || isActive('/leads/email'))
+                  ? 'text-white/90'
+                  : 'text-slate-300 group-hover:text-white'"
+                aria-hidden="true"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4zm2 0 6 4 6-4H4zm14 2.2-8 5.3-8-5.3V16h16V6.2z"></path>
+              </svg>
+
+              <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">Bandeja de entrada</span>
+
+              <svg
+                v-show="!collapsed"
+                class="w-4 h-4"
+                :class="inboxOpen ? 'rotate-180' : ''"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <ul v-show="!collapsed && inboxOpen" class="mt-2 space-y-1 pl-2">
+              <li v-if="canSeeLeads">
+                <a
+                  href="/leads/whatsapp"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    path === '/leads/whatsapp' ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">WhatsApp masivo</span>
+                </a>
+              </li>
+              <li v-if="canSeeEmail">
+                <a
+                  href="/leads/email"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">Email masivo</span>
                 </a>
               </li>
             </ul>
@@ -479,18 +531,6 @@
               </a>
             </li>
             <li>
-              <a href="/leads/whatsapp" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                <span class="whitespace-nowrap">WhatsApp masivo</span>
-              </a>
-            </li>
-            <li v-if="canSeeEmail">
-              <a href="/leads/email" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                <span class="whitespace-nowrap">Email masivo</span>
-              </a>
-            </li>
-            <li>
               <a href="/espera" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Zona de espera</span>
@@ -500,6 +540,48 @@
               <a href="/desistidos" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Desistidos</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </teleport>
+
+    <teleport to="body">
+      <div
+        v-if="collapsed"
+        v-show="inboxHoverOpen"
+        class="fixed z-[9999]"
+        :style="inboxFlyoutStyle"
+        @mouseenter="onInboxMouseEnter"
+        @mouseleave="onInboxMouseLeave"
+      >
+        <div class="min-w-56 bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden">
+          <div class="px-4 py-3 flex items-center justify-between border-b border-slate-800">
+            <div class="text-sm font-semibold text-slate-100">Bandeja de entrada</div>
+            <svg
+              class="w-4 h-4 text-slate-300"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+
+          <ul class="py-2">
+            <li v-if="canSeeLeads">
+              <a href="/leads/whatsapp" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                <span class="whitespace-nowrap">WhatsApp masivo</span>
+              </a>
+            </li>
+            <li v-if="canSeeEmail">
+              <a href="/leads/email" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                <span class="whitespace-nowrap">Email masivo</span>
               </a>
             </li>
           </ul>
@@ -544,6 +626,7 @@ const canSeeUsers = computed(() => hasPermission('menu.users'));
 const canSeeRoles = computed(() => hasPermission('menu.roles'));
 const canSeeLeads = computed(() => hasPermission('menu.leads'));
 const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission('menu.leads'));
+const canSeeInbox = computed(() => canSeeLeads.value || canSeeEmail.value);
 const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
@@ -588,7 +671,7 @@ const onTogglePostventa = () => {
 };
 
 // Pipeline submenu state & handlers
-const pipelineOpen = ref(isActive('/leads') || isActive('/leads/whatsapp') || isActive('/leads/email') || isActive('/desistidos') || isActive('/espera'));
+const pipelineOpen = ref(isActive('/leads') || isActive('/desistidos') || isActive('/espera'));
 const pipelineHoverOpen = ref(false);
 const pipelineAnchor = ref(null);
 const pipelineFlyoutStyle = ref({ left: '0px', top: '0px' });
@@ -625,5 +708,45 @@ const onTogglePipeline = () => {
     return;
   }
   pipelineOpen.value = !pipelineOpen.value;
+};
+
+// Inbox submenu state & handlers
+const inboxOpen = ref(isActive('/leads/whatsapp') || isActive('/leads/email'));
+const inboxHoverOpen = ref(false);
+const inboxAnchor = ref(null);
+const inboxFlyoutStyle = ref({ left: '0px', top: '0px' });
+
+let inboxHoverCloseTimer = null;
+const onInboxMouseEnter = () => {
+  if (!collapsed.value) return;
+  if (inboxHoverCloseTimer) {
+    clearTimeout(inboxHoverCloseTimer);
+    inboxHoverCloseTimer = null;
+  }
+
+  const rect = inboxAnchor.value?.getBoundingClientRect?.();
+  if (rect) {
+    inboxFlyoutStyle.value = {
+      left: `${Math.round(rect.right + 8)}px`,
+      top: `${Math.round(rect.top)}px`,
+    };
+  }
+
+  inboxHoverOpen.value = true;
+};
+const onInboxMouseLeave = () => {
+  if (!collapsed.value) return;
+  if (inboxHoverCloseTimer) clearTimeout(inboxHoverCloseTimer);
+  inboxHoverCloseTimer = setTimeout(() => {
+    inboxHoverOpen.value = false;
+  }, 120);
+};
+
+const onToggleInbox = () => {
+  if (collapsed.value) {
+    window.location.assign('/leads/whatsapp');
+    return;
+  }
+  inboxOpen.value = !inboxOpen.value;
 };
 </script>
