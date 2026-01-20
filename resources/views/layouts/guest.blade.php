@@ -24,9 +24,7 @@
 
             <div class="relative w-full flex flex-col sm:justify-center items-center">
             <a href="/" class="mb-6 flex flex-col items-center gap-3">
-                <div class="w-14 h-14 rounded-xl bg-sky-600 flex items-center justify-center shadow-sm">
-                    <span class="text-white font-semibold text-lg">CA</span>
-                </div>
+                <img src="{{ asset('images/logo_alta_calidad.png') }}" alt="{{ config('app.name') }}" class="w-14 h-14 rounded-xl object-contain shadow-sm" />
                 <div class="text-center">
                     <div class="text-white text-xl font-semibold leading-tight">CRM ATLANTIS</div>
                     <div class="text-slate-300 text-sm">Acceso al sistema interno</div>

@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
@@ -42,8 +43,13 @@ class UserController extends Controller
         $sort = (string) ($validated['sort'] ?? 'id');
         $dir = (string) ($validated['dir'] ?? 'desc');
 
+        $columns = ['id', 'name', 'email', 'created_at'];
+        if (Schema::hasColumn('users', 'profile_photo_path')) {
+            $columns[] = 'profile_photo_path';
+        }
+
         $query = User::query()
-            ->select(['id', 'name', 'email', 'profile_photo_path', 'created_at'])
+            ->select($columns)
             ->with(['roles:id,name']);
 
         if ($search !== '') {
@@ -93,6 +99,8 @@ class UserController extends Controller
     {
         $guard = config('auth.defaults.guard', 'web');
 
+        $canStorePhotoPath = Schema::hasColumn('users', 'profile_photo_path');
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
@@ -107,16 +115,21 @@ class UserController extends Controller
         ]);
 
         $photoPath = null;
-        if ($request->hasFile('photo')) {
+        if ($canStorePhotoPath && $request->hasFile('photo')) {
             $photoPath = $request->file('photo')->store('profile-photos', 'public');
         }
 
-        $user = User::create([
+        $attributes = [
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'profile_photo_path' => $photoPath,
-        ]);
+        ];
+
+        if ($canStorePhotoPath) {
+            $attributes['profile_photo_path'] = $photoPath;
+        }
+
+        $user = User::create($attributes);
 
         $role = $validated['role'] ?? 'employee';
         Role::findOrCreate('employee', $guard);
@@ -133,6 +146,8 @@ class UserController extends Controller
     public function update(Request $request, User $user): JsonResponse
     {
         $guard = config('auth.defaults.guard', 'web');
+
+        $canStorePhotoPath = Schema::hasColumn('users', 'profile_photo_path');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -160,7 +175,7 @@ class UserController extends Controller
             $user->password = Hash::make($validated['password']);
         }
 
-        if ($request->hasFile('photo')) {
+        if ($canStorePhotoPath && $request->hasFile('photo')) {
             $newPath = $request->file('photo')->store('profile-photos', 'public');
             if ($user->profile_photo_path) {
                 Storage::disk('public')->delete($user->profile_photo_path);

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Incidence;
 use App\Models\IncidenceStage;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
@@ -213,28 +214,40 @@ class IncidenceController extends Controller
 
         $stageId = $validated['stage_id'] ?? null;
         if (!$stageId) {
-            $stageId = (int) IncidenceStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
+                $stageId = IncidenceStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
         }
 
-        $incidence = DB::transaction(function () use ($request, $validated, $stageId) {
-            $created = Incidence::create([
-                'correlative' => null,
-                'stage_id' => $stageId,
-                'customer_id' => $validated['customer_id'] ?? null,
-                'created_by' => $request->user()?->id,
-                'title' => $validated['title'],
-                'date' => $validated['date'] ?? null,
-                'priority' => $validated['priority'] ?? 'media',
-                'notes' => $validated['notes'] ?? null,
-                'archived_at' => null,
-            ]);
+            if (!$stageId) {
+                return response()->json([
+                    'message' => 'No hay etapas de incidencias configuradas. Ejecuta las migraciones/seeders (IncidenceStagesSeeder) y vuelve a intentar.',
+                ], 422);
+            }
 
-            // Generate a correlativo similar to the legacy system if not provided.
-            $created->correlative = 'INC-'.str_pad((string) $created->id, 6, '0', STR_PAD_LEFT);
-            $created->save();
+            try {
+                $incidence = DB::transaction(function () use ($request, $validated, $stageId) {
+                    $created = Incidence::create([
+                        'correlative' => null,
+                        'stage_id' => (int) $stageId,
+                        'customer_id' => $validated['customer_id'] ?? null,
+                        'created_by' => $request->user()?->id,
+                        'title' => $validated['title'],
+                        'date' => $validated['date'] ?? null,
+                        'priority' => $validated['priority'] ?? 'media',
+                        'notes' => $validated['notes'] ?? null,
+                        'archived_at' => null,
+                    ]);
 
-            return $created->fresh(['customer:id,name,company_name']);
-        });
+                    // Generate a correlativo similar to the legacy system if not provided.
+                    $created->correlative = 'INC-'.str_pad((string) $created->id, 6, '0', STR_PAD_LEFT);
+                    $created->save();
+
+                    return $created->fresh(['customer:id,name,company_name']);
+                });
+            } catch (QueryException $e) {
+                return response()->json([
+                    'message' => 'No se pudo crear la incidencia. Revisa la configuración de la base de datos (migraciones/seeders y permisos de INSERT).',
+                ], 422);
+            }
 
         return response()->json([
             'message' => 'Incidencia creada.',

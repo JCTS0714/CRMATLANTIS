@@ -8,6 +8,7 @@ use App\Models\LeadStage;
 use App\Services\ProspectosCsvImporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -307,23 +308,35 @@ class LeadController extends Controller
 
         $stageId = $validated['stage_id'] ?? null;
         if (!$stageId) {
-            $stageId = (int) LeadStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
+            $stageId = LeadStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
         }
 
-        $lead = Lead::create([
-            'stage_id' => $stageId,
-            'created_by' => $request->user()?->id,
-            'name' => $validated['name'],
-            'amount' => $validated['amount'] ?? null,
-            'currency' => $validated['currency'] ?? 'PEN',
-            'contact_name' => $validated['contact_name'] ?? null,
-            'contact_phone' => $validated['contact_phone'] ?? null,
-            'contact_email' => $validated['contact_email'] ?? null,
-            'company_name' => $validated['company_name'] ?? null,
-            'company_address' => $validated['company_address'] ?? null,
-            'document_type' => $validated['document_type'] ?? null,
-            'document_number' => $validated['document_number'] ?? null,
-        ]);
+        if (!$stageId) {
+            return response()->json([
+                'message' => 'No hay etapas de leads configuradas. Ejecuta las migraciones/seeders (LeadStagesSeeder) y vuelve a intentar.',
+            ], 422);
+        }
+
+        try {
+            $lead = Lead::create([
+                'stage_id' => (int) $stageId,
+                'created_by' => $request->user()?->id,
+                'name' => $validated['name'],
+                'amount' => $validated['amount'] ?? null,
+                'currency' => $validated['currency'] ?? 'PEN',
+                'contact_name' => $validated['contact_name'] ?? null,
+                'contact_phone' => $validated['contact_phone'] ?? null,
+                'contact_email' => $validated['contact_email'] ?? null,
+                'company_name' => $validated['company_name'] ?? null,
+                'company_address' => $validated['company_address'] ?? null,
+                'document_type' => $validated['document_type'] ?? null,
+                'document_number' => $validated['document_number'] ?? null,
+            ]);
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'No se pudo crear el lead. Revisa la configuración de la base de datos (migraciones/seeders y permisos de INSERT).',
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Lead creado.',
