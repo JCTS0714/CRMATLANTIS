@@ -126,6 +126,8 @@
 
           <WaitingLeadsList v-else-if="isWaitingLeads" />
 
+          <SettingsView v-else-if="isSettings" />
+
           <CalendarView v-else-if="isCalendar" />
 
           <template v-else>
@@ -138,6 +140,7 @@
     </main>
 
     <IncidenceQuickModal />
+    <IncidenceEditModal />
   </div>
 </template>
 
@@ -164,8 +167,10 @@ import ContadoresTable from './ContadoresTable.vue';
 import CertificadosTable from './CertificadosTable.vue';
 import DashboardView from './DashboardView.vue';
 import IncidenceQuickModal from './IncidenceQuickModal.vue';
+import IncidenceEditModal from './IncidenceEditModal.vue';
 import LostLeadsList from './LostLeadsList.vue';
 import WaitingLeadsList from './WaitingLeadsList.vue';
+import SettingsView from './SettingsView.vue';
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const isUsers = computed(() => normalizedPath.startsWith('/users'));
@@ -182,6 +187,7 @@ const isBacklog = computed(() => normalizedPath.startsWith('/backlog'));
 const isPostventaCustomers = computed(() => normalizedPath === '/postventa/clientes');
 const isPostventaContadores = computed(() => normalizedPath === '/postventa/contadores');
 const isPostventaCertificados = computed(() => normalizedPath === '/postventa/certificados');
+const isSettings = computed(() => normalizedPath.startsWith('/configuracion'));
 
 const isPostventaIncidences = computed(() => isIncidencias.value || isBacklog.value);
 
@@ -190,6 +196,8 @@ const pageTitle = computed(() =>
     ? 'Usuarios'
     : isRoles.value
       ? 'Roles'
+      : isSettings.value
+        ? 'Configuración'
       : isLeadsWhatsApp.value
         ? 'WhatsApp'
       : isLeadsEmail.value
@@ -219,6 +227,8 @@ const pageSubtitle = computed(() =>
     ? 'Gestión de usuarios del sistema'
     : isRoles.value
       ? 'Crea roles y asigna permisos'
+      : isSettings.value
+        ? 'Personalización del sistema'
       : isLeadsWhatsApp.value
         ? 'Campañas manuales asistidas (sin API)'
       : isLeadsEmail.value

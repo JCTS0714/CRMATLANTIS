@@ -39,6 +39,7 @@
               : 'cursor-grab active:cursor-grabbing hover:bg-blue-50/50 dark:hover:bg-slate-800/80'"
             :draggable="!isLocked(it, stage)"
             @dragstart="onDragStart(it, stage)"
+            @click="openEdit(it)"
           >
             <div class="flex items-start justify-between gap-3">
               <div>
@@ -58,7 +59,17 @@
               {{ formatDate(it.date) }}
             </div>
 
-            <div v-if="stage.is_done" class="mt-3 flex justify-end">
+            <div v-if="stage.is_done" class="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="isLocked(it)"
+                @mousedown.stop
+                @click.stop.prevent="openEdit(it)"
+              >
+                Editar
+              </button>
+
               <button
                 type="button"
                 class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -66,6 +77,18 @@
                 @click.stop.prevent="archive(it, stage)"
               >
                 {{ archivingIds.has(it.id) ? 'Archivando…' : 'Archivar' }}
+              </button>
+            </div>
+
+            <div v-else class="mt-3 flex justify-end">
+              <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                :disabled="isLocked(it)"
+                @mousedown.stop
+                @click.stop.prevent="openEdit(it)"
+              >
+                Editar
               </button>
             </div>
           </article>
@@ -139,6 +162,23 @@ const addToStage = (stageId, item) => {
 };
 
 const isLocked = (it) => !!it?.archived_at;
+
+const openEdit = (it) => {
+  if (!it?.id) return;
+  window.dispatchEvent(new CustomEvent('incidencias:edit', { detail: { incidence: it } }));
+};
+
+const onUpdated = (e) => {
+  const updated = e?.detail?.incidence;
+  if (!updated?.id) return;
+  for (const stage of stages.value) {
+    const idx = stage?.incidences?.findIndex?.((x) => x.id === updated.id) ?? -1;
+    if (idx !== -1) {
+      stage.incidences.splice(idx, 1, { ...stage.incidences[idx], ...updated });
+      break;
+    }
+  }
+};
 
 const onDragStart = (it, stage) => {
   if (isLocked(it)) return;
@@ -218,11 +258,13 @@ const onCreated = () => load({ showLoading: false });
 onMounted(async () => {
   window.addEventListener('incidencias:created', onCreated);
   window.addEventListener('incidencias:archived', onCreated);
+  window.addEventListener('incidencias:updated', onUpdated);
   await load();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('incidencias:created', onCreated);
   window.removeEventListener('incidencias:archived', onCreated);
+  window.removeEventListener('incidencias:updated', onUpdated);
 });
 </script>

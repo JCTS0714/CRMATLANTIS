@@ -12,6 +12,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\RelatedLookupController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\WhatsAppCampaignController;
 use App\Http\Controllers\EmailCampaignController;
 use App\Http\Controllers\EmailUnsubscribeController;
@@ -296,6 +297,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:incidencias.create')
         ->name('incidencias.store');
 
+    Route::put('/incidencias/{incidence}', [IncidenceController::class, 'update'])
+        ->middleware('permission:incidencias.update')
+        ->name('incidencias.update');
+
     Route::patch('/leads/{lead}/move-stage', [LeadController::class, 'moveStage'])
         ->middleware('permission:leads.update')
         ->name('leads.moveStage');
@@ -336,6 +341,26 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::post('/profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Configuracion - UI SPA (mismo wrapper que el resto de modulos)
+    Route::get('/configuracion', function () {
+        return view('dashboard');
+    })->name('settings.index');
+
+    Route::post('/configuracion/logo', [SettingsController::class, 'uploadLogo'])
+        ->name('settings.logo.upload');
+
+    Route::get('/configuracion/logo-path', [SettingsController::class, 'logoPath'])
+        ->name('settings.logo.path');
+
+    Route::post('/configuracion/logo-mark', [SettingsController::class, 'uploadLogoMark'])
+        ->name('settings.logo.mark.upload');
+
+    Route::post('/configuracion/logo-full', [SettingsController::class, 'uploadLogoFull'])
+        ->name('settings.logo.full.upload');
+
+    Route::get('/configuracion/logo-paths', [SettingsController::class, 'logoPaths'])
+        ->name('settings.logo.paths');
 });
 
 require __DIR__.'/auth.php';

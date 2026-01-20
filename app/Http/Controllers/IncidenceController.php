@@ -255,6 +255,42 @@ class IncidenceController extends Controller
         ], 201);
     }
 
+    public function update(Request $request, Incidence $incidence): JsonResponse
+    {
+        if ($incidence->archived_at) {
+            return response()->json([
+                'message' => 'No se puede editar una incidencia archivada.',
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'customer_id' => ['nullable', 'integer', Rule::exists('customers', 'id')],
+            'title' => ['required', 'string', 'max:255'],
+            'date' => ['nullable', 'date'],
+            'priority' => ['nullable', 'string', Rule::in(['alta', 'media', 'baja'])],
+            'notes' => ['nullable', 'string'],
+        ]);
+
+        $incidence->customer_id = $validated['customer_id'] ?? null;
+        $incidence->title = $validated['title'];
+        $incidence->date = $validated['date'] ?? null;
+        $incidence->priority = $validated['priority'] ?? 'media';
+        $incidence->notes = $validated['notes'] ?? null;
+
+        try {
+            $incidence->save();
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'No se pudo actualizar la incidencia. Revisa la configuración de la base de datos.',
+            ], 422);
+        }
+
+        return response()->json([
+            'message' => 'Incidencia actualizada.',
+            'data' => $incidence->fresh(['customer:id,name,company_name']),
+        ]);
+    }
+
     public function moveStage(Request $request, Incidence $incidence): JsonResponse
     {
         $validated = $request->validate([

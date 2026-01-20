@@ -120,16 +120,26 @@
               </td>
 
               <td class="px-4 py-3">
-                <button
-                  v-if="canArchive(it)"
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  :disabled="archivingIds.has(it.id)"
-                  @click="archive(it)"
-                >
-                  {{ archivingIds.has(it.id) ? 'Archivando…' : 'Archivar' }}
-                </button>
-                <span v-else class="text-xs text-gray-500 dark:text-slate-400">—</span>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    :disabled="isLocked(it)"
+                    @click="openEdit(it)"
+                  >
+                    Editar
+                  </button>
+
+                  <button
+                    v-if="canArchive(it)"
+                    type="button"
+                    class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                    :disabled="archivingIds.has(it.id)"
+                    @click="archive(it)"
+                  >
+                    {{ archivingIds.has(it.id) ? 'Archivando…' : 'Archivar' }}
+                  </button>
+                </div>
               </td>
 
               <td class="px-4 py-3">{{ it.title ?? '' }}</td>
@@ -292,6 +302,11 @@ const stageById = computed(() => {
 
 const isLocked = (it) => !!it?.archived_at;
 
+const openEdit = (it) => {
+  if (!it?.id) return;
+  window.dispatchEvent(new CustomEvent('incidencias:edit', { detail: { incidence: it } }));
+};
+
 const canArchive = (it) => {
   if (!it || isLocked(it)) return false;
   const stage = stageById.value.get(it.stage_id);
@@ -383,16 +398,27 @@ const onCreated = () => {
   load();
 };
 
+const onUpdated = (e) => {
+  const updated = e?.detail?.incidence;
+  if (!updated?.id) return;
+  const idx = incidences.value.findIndex((x) => x.id === updated.id);
+  if (idx !== -1) {
+    incidences.value.splice(idx, 1, { ...incidences.value[idx], ...updated });
+  }
+};
+
 onMounted(async () => {
   readInitialFilters();
   window.addEventListener('incidencias:created', onCreated);
   window.addEventListener('incidencias:archived', onCreated);
+  window.addEventListener('incidencias:updated', onUpdated);
   await load();
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('incidencias:created', onCreated);
   window.removeEventListener('incidencias:archived', onCreated);
+  window.removeEventListener('incidencias:updated', onUpdated);
   if (searchTimer) window.clearTimeout(searchTimer);
 });
 
