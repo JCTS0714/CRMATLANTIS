@@ -807,6 +807,7 @@ const submitEdit = async () => {
     name: editForm.value.name,
     amount: editForm.value.amount,
     currency: editForm.value.currency,
+    observacion: editForm.value.observacion || null,
     contact_name: editForm.value.contact_name || null,
     contact_phone: editForm.value.contact_phone || null,
     contact_email: editForm.value.contact_email || null,

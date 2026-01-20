@@ -250,6 +250,9 @@ class LeadController extends Controller
             'amount' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['nullable', 'string', Rule::in(['PEN', 'USD'])],
 
+            'observacion' => ['nullable', 'string', 'max:2000'],
+            'migracion' => ['nullable', 'date'],
+
             'contact_name' => ['nullable', 'string', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'string', 'email', 'max:255'],
@@ -324,6 +327,8 @@ class LeadController extends Controller
                 'name' => $validated['name'],
                 'amount' => $validated['amount'] ?? null,
                 'currency' => $validated['currency'] ?? 'PEN',
+                'observacion' => $validated['observacion'] ?? null,
+                'migracion' => $validated['migracion'] ?? null,
                 'contact_name' => $validated['contact_name'] ?? null,
                 'contact_phone' => $validated['contact_phone'] ?? null,
                 'contact_email' => $validated['contact_email'] ?? null,
@@ -391,6 +396,9 @@ class LeadController extends Controller
             'amount' => ['nullable', 'numeric', 'min:0'],
             'currency' => ['nullable', 'string', Rule::in(['PEN', 'USD'])],
 
+            'observacion' => ['nullable', 'string', 'max:2000'],
+            'migracion' => ['nullable', 'date'],
+
             'contact_name' => ['nullable', 'string', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'string', 'email', 'max:255'],
@@ -457,6 +465,15 @@ class LeadController extends Controller
         $lead->name = $validated['name'];
         $lead->amount = $validated['amount'] ?? null;
         $lead->currency = $validated['currency'] ?? $lead->currency;
+
+        if (array_key_exists('observacion', $validated)) {
+            $lead->observacion = $validated['observacion'] ?? null;
+        }
+
+        if (array_key_exists('migracion', $validated)) {
+            $lead->migracion = $validated['migracion'] ?? null;
+        }
+
         $lead->contact_name = $validated['contact_name'] ?? null;
         $lead->contact_phone = $validated['contact_phone'] ?? null;
         $lead->contact_email = $validated['contact_email'] ?? null;
