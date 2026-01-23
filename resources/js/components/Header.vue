@@ -207,7 +207,7 @@
                 </li>
                 <li>
                   <a
-                    href="#"
+                    href="/configuracion"
                     class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-slate-200 dark:hover:bg-slate-800"
                   >
                     Configuración
@@ -250,6 +250,8 @@ defineEmits(['toggle-sidebar']);
 
 const csrfToken =
   document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') ?? '';
+
+const appLogoMark = window.__APP_LOGO_MARK__ ?? '';
 
 const authUser = computed(() => {
   // Injected by the Blade wrapper (dashboard)

@@ -1,0 +1,2 @@
+* * * * * cd /home/u652153415/domains/grupoatlantiscrm.eu/public_html/new && /usr/bin/php artisan schedule:run >> /home/u652153415/domains/grupoatlantiscrm.eu/public_html/new/storage/logs/schedule.log 2>&1
+* * * * * cd /home/u652153415/domains/grupoatlantiscrm.eu/public_html/new && /usr/bin/php artisan queue:work --once --timeout=60 --tries=3 >> /home/u652153415/domains/grupoatlantiscrm.eu/public_html/new/storage/logs/queue.log 2>&1

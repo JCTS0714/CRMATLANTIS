@@ -11,8 +11,16 @@
         :class="collapsed ? 'justify-center' : 'justify-start'"
       >
         <a href="/dashboard" class="flex items-center w-full">
-          <img v-if="collapsed" :src="logoMark" alt="Atlantis" class="h-9 w-9 object-contain" />
-          <img v-else :src="logoText" alt="Atlantis" class="h-9 w-44 object-cover object-left" />
+          <!-- Collapsed: fixed 40x40 box -->
+          <img v-if="collapsed" :src="logoMarkSrc" alt="Atlantis" class="h-10 w-10 object-contain" />
+
+          <!-- Expanded: fixed height, max width; contain to avoid cropping or stretching -->
+          <img
+            v-else
+            :src="logoTextSrc"
+            alt="Atlantis"
+            class="h-10 w-44 max-w-[11rem] object-contain object-left"
+          />
         </a>
       </div>
 
@@ -596,6 +604,11 @@ import { computed, ref, toRefs } from 'vue';
 
 import logoMark from '../../images/LOGO.png';
 import logoText from '../../images/LOGO_TEXTO.png';
+
+const appLogoMark = window.__APP_LOGO_MARK__ ?? '';
+const appLogoFull = window.__APP_LOGO_FULL__ ?? '';
+const logoMarkSrc = computed(() => appLogoMark || logoMark);
+const logoTextSrc = computed(() => appLogoFull || logoText);
 
 const path = window.location.pathname;
 

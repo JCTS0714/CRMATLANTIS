@@ -9,6 +9,13 @@
         @php
             $user = auth()->user();
             $guard = config('auth.defaults.guard', 'web');
+            $appLogoMark = file_exists(public_path('storage/settings/logo_mark.png'))
+                ? '/storage/settings/logo_mark.png'
+                : '/images/logo_alta_calidad.png';
+
+            $appLogoFull = file_exists(public_path('storage/settings/logo_full.png'))
+                ? '/storage/settings/logo_full.png'
+                : '';
             $authPayload = $user
                 ? [
                     'id' => $user->id,
@@ -32,6 +39,8 @@
 
         <script>
             window.__AUTH_USER__ = @json($authPayload);
+            window.__APP_LOGO_MARK__ = @json($appLogoMark);
+            window.__APP_LOGO_FULL__ = @json($appLogoFull);
         </script>
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
