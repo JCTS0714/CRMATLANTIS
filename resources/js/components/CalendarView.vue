@@ -50,6 +50,24 @@ const refetchEvents = () => {
   }
 };
 
+const moveCalendar = (direction) => {
+  const api = calendarRef.value?.getApi?.();
+  if (!api) return;
+  const viewType = api.view?.type;
+
+  if (viewType === 'dayGridMonth') {
+    api.incrementDate({ months: direction });
+    return;
+  }
+
+  if (viewType === 'timeGridWeek') {
+    api.incrementDate({ weeks: direction });
+    return;
+  }
+
+  api.incrementDate({ days: direction });
+};
+
 const toLocalInput = (dt) => {
   if (!dt) return '';
   const d = new Date(dt);
@@ -328,8 +346,18 @@ const promptEvent = async ({
 const calendarOptions = computed(() => ({
   plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin],
   initialView: 'dayGridMonth',
+  customButtons: {
+    prevCustom: {
+      text: '‹',
+      click: () => moveCalendar(-1),
+    },
+    nextCustom: {
+      text: '›',
+      click: () => moveCalendar(1),
+    },
+  },
   headerToolbar: {
-    left: 'prev,next today',
+    left: 'prevCustom,nextCustom today',
     center: 'title',
     right: 'dayGridMonth,timeGridWeek,timeGridDay',
   },

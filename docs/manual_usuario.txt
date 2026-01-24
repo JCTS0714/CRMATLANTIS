@@ -1,0 +1,115 @@
+MANUAL DE USUARIO — CRM ATLANTIS
+Fecha: 2026-01-23
+
+Objetivo
+Este manual explica de forma simple las funciones del sistema y cómo usar cada sección.
+
+1) Acceso y navegación
+- Iniciar sesión con tu usuario y contraseña.
+- Usa el menú lateral para ir a cada módulo.
+- El título superior muestra la sección actual.
+
+2) Dashboard (Inicio)
+Qué ves:
+- KPIs y métricas resumidas según tus permisos.
+- Listas rápidas de trabajo: próximos eventos, certificados por vencer, últimos leads e incidencias.
+Para qué sirve:
+- Tener un panorama rápido del trabajo pendiente.
+
+3) Leads (Pipeline)
+3.1 Pipeline (Vista Kanban)
+- Muestra oportunidades por etapas.
+- Arrastra tarjetas entre etapas para actualizar el estado.
+- Ideal para seguimiento diario del embudo.
+
+3.2 Leads (Vista Lista)
+- Lista completa con filtros y búsqueda.
+- Permite editar, actualizar estado y datos del lead.
+
+3.3 Desistidos
+- Lista de leads marcados como desistidos.
+- Sirve para mantener histórico y reportes.
+
+3.4 Zona de espera
+- Leads en pausa temporal.
+- Útil para reactivar en el futuro.
+
+4) Clientes
+- Listado general de clientes.
+- Acceso a datos principales y seguimiento.
+
+5) Agenda y recordatorios (Calendario)
+- Crea eventos y recordatorios.
+- Visualiza próximos compromisos.
+- Recibes notificaciones de eventos asignados.
+
+6) Incidencias (Postventa)
+6.1 Incidencias (Vista Lista)
+- Registro y seguimiento de incidencias.
+- Estado, responsable y fechas.
+
+6.2 Backlog (Vista tablero)
+- Vista tipo tablero para priorizar y mover incidencias por etapas.
+
+7) Postventa
+7.1 Clientes (Postventa)
+- Clientes en fase postventa.
+
+7.2 Contadores
+- Gestión de contadores relacionados a clientes.
+
+7.3 Certificados
+- Gestión de certificados y fechas importantes.
+- Alertas/recordatorios por vencimiento.
+
+8) Bandeja de entrada (Comunicaciones)
+8.1 WhatsApp masivo (manual asistido)
+Qué hace:
+- El sistema NO envía mensajes.
+- Genera mensajes personalizados y abre WhatsApp con el texto listo.
+
+Cómo usarlo:
+1) Selecciona origen: Leads o Clientes.
+2) Filtra por etapa (solo leads), busca por nombre o limita cantidad.
+3) Opcional: “Solo con teléfono”.
+4) Escribe el mensaje y usa variables:
+   - {{first_name}}  (nombre)
+   - {{company_name}} (empresa)
+5) Selecciona destinatarios y crea la campaña.
+6) Abre WhatsApp y marca el estado (abierto/enviado).
+
+8.2 Email masivo (informativo, con envío automático)
+Qué hace:
+- El sistema SÍ envía correos (cola de envío).
+- Incluye enlace de baja automática (unsubscribe).
+
+Cómo usarlo:
+1) Selecciona origen: Leads o Clientes.
+2) Define asunto y cuerpo con variables (si están disponibles).
+3) Selecciona destinatarios y crea la campaña.
+4) Ejecuta el envío. El sistema procesa en segundo plano.
+5) Revisa el historial y estados (enviado, fallido, omitido).
+
+9) Usuarios
+- Gestión de usuarios del sistema.
+- Crear, editar o desactivar usuarios.
+
+10) Roles y permisos
+- Crear roles y asignar permisos.
+- Los permisos controlan qué módulos se ven en el menú.
+
+11) Configuración
+- Personalización general del sistema.
+- Ajustes visibles solo para perfiles con permiso.
+
+12) Buenas prácticas
+- Mantén datos actualizados en Leads y Clientes.
+- Usa el Pipeline para el trabajo diario.
+- Registra incidencias apenas ocurran.
+- En campañas, revisa primero los destinatarios antes de enviar.
+- Si faltan opciones de menú, consulta a un administrador de permisos.
+
+13) Soporte rápido
+- Si no ves una sección, es probable que te falte permiso.
+- Para errores de envío de email, valida que el correo del sistema esté configurado.
+- Para WhatsApp, recuerda que el envío es manual asistido.
