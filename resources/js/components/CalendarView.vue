@@ -616,6 +616,10 @@ onMounted(() => {
   window.addEventListener('calendar:refetch', onCalendarRefetchEvent);
   // allow calendar to mount first
   setTimeout(() => {
+    const api = calendarRef.value?.getApi?.();
+    if (api) {
+      api.gotoDate(new Date());
+    }
     maybePrefillFromUrl();
     updateTitle();
   }, 0);
