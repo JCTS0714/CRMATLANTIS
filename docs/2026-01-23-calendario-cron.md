@@ -32,6 +32,10 @@ Nota: en el panel, si ya agrega `/usr/bin/php /home/u652153415/`, entonces solo 
 3. Verificar notificación en la app.
 4. Verificar resultado en “Cron Jobs” (Hostinger).
 
+## Nota de despliegue (UI calendario)
+- Los cambios visuales del calendario requieren **build** y subir los assets en `public/build/`.
+- Si el título del mes no se actualiza, ejecutar `npm run build` y desplegar los cambios.
+
 ## Recomendaciones de mejora a futuro
 1. **Colas + Worker persistente**
    - Mover el envío a cola para mayor escalabilidad.
