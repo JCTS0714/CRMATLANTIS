@@ -72,15 +72,19 @@ const moveCalendar = (direction) => {
   api.incrementDate({ days: direction });
 };
 
-const updateTitle = () => {
+const updateTitle = (view = null) => {
   const api = calendarRef.value?.getApi?.();
-  if (!api) return;
-  const date = api.getDate();
-  if (!date || Number.isNaN(date.getTime())) return;
-  currentTitle.value = new Intl.DateTimeFormat('en-US', {
+  const sourceView = view ?? api?.view;
+  const start = sourceView?.currentStart;
+  if (!start) return;
+
+  const mid = new Date(start);
+  mid.setDate(mid.getDate() + 15);
+
+  currentTitle.value = new Intl.DateTimeFormat('es-PE', {
     year: 'numeric',
     month: 'long',
-  }).format(date);
+  }).format(mid);
 };
 
 const toLocalInput = (dt) => {
@@ -394,7 +398,7 @@ const calendarOptions = computed(() => ({
   selectable: true,
   editable: true,
   eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
-  datesSet: () => updateTitle(),
+  datesSet: (arg) => updateTitle(arg.view),
   events: async (info, successCallback, failureCallback) => {
     try {
       const res = await axios.get('/calendar/events', {
