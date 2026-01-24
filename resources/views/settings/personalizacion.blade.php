@@ -16,7 +16,21 @@
                         <p class="text-sm text-slate-500">Sube una imagen que se mostrará en la pantalla de login y en el header del menú.</p>
 
                         <div class="mt-4">
-                            @php($current = file_exists(public_path('storage/settings/logo.png')) ? asset('storage/settings/logo.png') : asset('images/logo_alta_calidad.png'))
+                            @php
+                                $manifestPath = storage_path('app/public/settings/logo_mark.json');
+                                $manifestLogo = null;
+                                if (file_exists($manifestPath)) {
+                                    $payload = json_decode(file_get_contents($manifestPath), true);
+                                    if (is_array($payload) && !empty($payload['path']) && file_exists(public_path($payload['path']))) {
+                                        $manifestLogo = asset($payload['path']);
+                                    }
+                                }
+
+                                $current = $manifestLogo
+                                    ?: (file_exists(public_path('storage/settings/logo.png'))
+                                        ? asset('storage/settings/logo.png')
+                                        : asset('images/logo_alta_calidad.png'));
+                            @endphp
                             <img src="{{ $current }}" alt="Logo actual" class="w-24 h-24 object-contain rounded-md border" />
                         </div>
 

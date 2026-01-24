@@ -9,13 +9,34 @@
         @php
             $user = auth()->user();
             $guard = config('auth.defaults.guard', 'web');
-            $appLogoMark = file_exists(public_path('storage/settings/logo_mark.png'))
-                ? '/storage/settings/logo_mark.png'
-                : '/images/logo_alta_calidad.png';
+            $logoMarkManifest = storage_path('app/public/settings/logo_mark.json');
+            $logoFullManifest = storage_path('app/public/settings/logo_full.json');
 
-            $appLogoFull = file_exists(public_path('storage/settings/logo_full.png'))
-                ? '/storage/settings/logo_full.png'
-                : '';
+            $appLogoMark = null;
+            if (file_exists($logoMarkManifest)) {
+                $payload = json_decode(file_get_contents($logoMarkManifest), true);
+                if (is_array($payload) && !empty($payload['path']) && file_exists(public_path($payload['path']))) {
+                    $appLogoMark = '/' . ltrim($payload['path'], '/');
+                }
+            }
+
+            $appLogoFull = null;
+            if (file_exists($logoFullManifest)) {
+                $payload = json_decode(file_get_contents($logoFullManifest), true);
+                if (is_array($payload) && !empty($payload['path']) && file_exists(public_path($payload['path']))) {
+                    $appLogoFull = '/' . ltrim($payload['path'], '/');
+                }
+            }
+
+            $appLogoMark = $appLogoMark
+                ?: (file_exists(public_path('storage/settings/logo_mark.png'))
+                    ? '/storage/settings/logo_mark.png'
+                    : '/images/logo_alta_calidad.png');
+
+            $appLogoFull = $appLogoFull
+                ?: (file_exists(public_path('storage/settings/logo_full.png'))
+                    ? '/storage/settings/logo_full.png'
+                    : '');
             $authPayload = $user
                 ? [
                     'id' => $user->id,

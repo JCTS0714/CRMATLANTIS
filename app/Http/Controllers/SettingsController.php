@@ -9,6 +9,11 @@ class SettingsController extends Controller
 {
     private function logoMarkPublicUrl(): string
     {
+        $manifestPath = $this->readLogoManifest('logo_mark');
+        if ($manifestPath) {
+            return asset($manifestPath);
+        }
+
         return file_exists(public_path('storage/settings/logo_mark.png'))
             ? asset('storage/settings/logo_mark.png')
             : asset('images/logo_alta_calidad.png');
@@ -16,6 +21,11 @@ class SettingsController extends Controller
 
     private function logoFullPublicUrl(): string
     {
+        $manifestPath = $this->readLogoManifest('logo_full');
+        if ($manifestPath) {
+            return asset($manifestPath);
+        }
+
         return file_exists(public_path('storage/settings/logo_full.png'))
             ? asset('storage/settings/logo_full.png')
             : '';
@@ -41,21 +51,27 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: produce a 40x40 PNG (centered, maintain aspect ratio)
         $file = $request->file('logo');
+        $filename = 'logo_mark_' . now()->format('Ymd_His') . '.png';
+        $destPath = storage_path('app/public/settings/' . $filename);
+        $publicPath = 'storage/settings/' . $filename;
         try {
-            $processed = $this->processLogoMark($file->getRealPath(), storage_path('app/public/settings/logo_mark.png'));
+            $processed = $this->processLogoMark($file->getRealPath(), $destPath);
         } catch (\Throwable $e) {
             $processed = false;
             \Log::warning('Logo mark processing failed: ' . $e->getMessage());
         }
         if (!$processed) {
-            $file->storeAs('settings', 'logo_mark.png', 'public');
+            $file->storeAs('settings', $filename, 'public');
         }
+
+        $this->writeLogoManifest('logo_mark', $publicPath);
+        $this->cleanupOldLogos('logo_mark_*.png', $destPath);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
                 'message' => 'Ícono actualizado correctamente.',
-                'path' => asset('storage/settings/logo_mark.png') . '?v=' . time(),
+                'path' => asset($publicPath),
             ]);
         }
 
@@ -71,21 +87,27 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: height 40px, max width 176px, maintain aspect ratio, save as PNG
         $file = $request->file('logo');
+        $filename = 'logo_full_' . now()->format('Ymd_His') . '.png';
+        $destPath = storage_path('app/public/settings/' . $filename);
+        $publicPath = 'storage/settings/' . $filename;
         try {
-            $processed = $this->processLogoFull($file->getRealPath(), storage_path('app/public/settings/logo_full.png'));
+            $processed = $this->processLogoFull($file->getRealPath(), $destPath);
         } catch (\Throwable $e) {
             $processed = false;
             \Log::warning('Logo full processing failed: ' . $e->getMessage());
         }
         if (!$processed) {
-            $file->storeAs('settings', 'logo_full.png', 'public');
+            $file->storeAs('settings', $filename, 'public');
         }
+
+        $this->writeLogoManifest('logo_full', $publicPath);
+        $this->cleanupOldLogos('logo_full_*.png', $destPath);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
                 'message' => 'Logo grande actualizado correctamente.',
-                'path' => asset('storage/settings/logo_full.png') . '?v=' . time(),
+                'path' => asset($publicPath),
             ]);
         }
 
@@ -104,6 +126,73 @@ class SettingsController extends Controller
             'mark' => $this->logoMarkPublicUrl(),
             'full' => $this->logoFullPublicUrl(),
         ]);
+    }
+
+    private function logoManifestPath(string $key): string
+    {
+        return storage_path('app/public/settings/' . $key . '.json');
+    }
+
+    private function readLogoManifest(string $key): ?string
+    {
+        $manifestPath = $this->logoManifestPath($key);
+        if (!file_exists($manifestPath)) {
+            return null;
+        }
+
+        $raw = @file_get_contents($manifestPath);
+        if (!$raw) {
+            return null;
+        }
+
+        $data = json_decode($raw, true);
+        if (!is_array($data) || empty($data['path'])) {
+            return null;
+        }
+
+        $publicPath = public_path($data['path']);
+        if (!file_exists($publicPath)) {
+            return null;
+        }
+
+        return $data['path'];
+    }
+
+    private function writeLogoManifest(string $key, string $relativePath): void
+    {
+        $payload = json_encode([
+            'path' => $relativePath,
+            'updated_at' => now()->toIso8601String(),
+        ], JSON_UNESCAPED_SLASHES);
+
+        @file_put_contents($this->logoManifestPath($key), $payload);
+    }
+
+    private function cleanupOldLogos(string $pattern, string $keepPath, int $keep = 3): void
+    {
+        $files = glob(storage_path('app/public/settings/' . $pattern)) ?: [];
+        if (empty($files)) {
+            return;
+        }
+
+        usort($files, static function ($a, $b) {
+            return filemtime($b) <=> filemtime($a);
+        });
+
+        $kept = 0;
+        foreach ($files as $file) {
+            if ($file === $keepPath) {
+                $kept++;
+                continue;
+            }
+
+            if ($kept < $keep) {
+                $kept++;
+                continue;
+            }
+
+            @unlink($file);
+        }
     }
 
     private function processLogoMark(string $sourcePath, string $destPath): bool
