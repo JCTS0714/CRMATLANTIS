@@ -17,6 +17,9 @@
     </div>
 
     <div class="rounded-lg border border-gray-200 bg-white p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div class="px-3 py-2 text-center text-base font-semibold text-gray-800 dark:text-slate-100">
+        {{ currentTitle }}
+      </div>
       <FullCalendar ref="calendarRef" :options="calendarOptions" />
     </div>
   </div>
@@ -41,6 +44,7 @@ const canDeleteEvents = computed(() => {
 
 const saving = ref(false);
 const calendarRef = ref(null);
+const currentTitle = ref('');
 
 const refetchEvents = () => {
   try {
@@ -66,6 +70,17 @@ const moveCalendar = (direction) => {
   }
 
   api.incrementDate({ days: direction });
+};
+
+const updateTitle = () => {
+  const api = calendarRef.value?.getApi?.();
+  if (!api) return;
+  const date = api.getDate();
+  if (!date || Number.isNaN(date.getTime())) return;
+  currentTitle.value = new Intl.DateTimeFormat('en-US', {
+    year: 'numeric',
+    month: 'long',
+  }).format(date);
 };
 
 const toLocalInput = (dt) => {
@@ -358,7 +373,7 @@ const calendarOptions = computed(() => ({
   },
   headerToolbar: {
     left: 'prevCustom,nextCustom today',
-    center: 'title',
+    center: '',
     right: 'dayGridMonth,timeGridWeek,timeGridDay',
   },
   eventDisplay: 'block',
@@ -379,6 +394,7 @@ const calendarOptions = computed(() => ({
   selectable: true,
   editable: true,
   eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
+  datesSet: () => updateTitle(),
   events: async (info, successCallback, failureCallback) => {
     try {
       const res = await axios.get('/calendar/events', {
@@ -601,6 +617,7 @@ onMounted(() => {
   // allow calendar to mount first
   setTimeout(() => {
     maybePrefillFromUrl();
+    updateTitle();
   }, 0);
 });
 
@@ -638,6 +655,10 @@ html.dark .fc a {
 
 html.dark .fc .fc-toolbar-title {
   color: rgba(226, 232, 240, 0.95);
+}
+
+.fc .fc-toolbar-title {
+  display: none;
 }
 
 html.dark .fc .fc-col-header-cell-cushion,
