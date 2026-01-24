@@ -41,7 +41,15 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: produce a 40x40 PNG (centered, maintain aspect ratio)
         $file = $request->file('logo');
-        $this->processLogoMark($file->getRealPath(), storage_path('app/public/settings/logo_mark.png'));
+        try {
+            $processed = $this->processLogoMark($file->getRealPath(), storage_path('app/public/settings/logo_mark.png'));
+        } catch (\Throwable $e) {
+            $processed = false;
+            \Log::warning('Logo mark processing failed: ' . $e->getMessage());
+        }
+        if (!$processed) {
+            $file->storeAs('settings', 'logo_mark.png', 'public');
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -63,7 +71,15 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: height 40px, max width 176px, maintain aspect ratio, save as PNG
         $file = $request->file('logo');
-        $this->processLogoFull($file->getRealPath(), storage_path('app/public/settings/logo_full.png'));
+        try {
+            $processed = $this->processLogoFull($file->getRealPath(), storage_path('app/public/settings/logo_full.png'));
+        } catch (\Throwable $e) {
+            $processed = false;
+            \Log::warning('Logo full processing failed: ' . $e->getMessage());
+        }
+        if (!$processed) {
+            $file->storeAs('settings', 'logo_full.png', 'public');
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -90,18 +106,19 @@ class SettingsController extends Controller
         ]);
     }
 
-    private function processLogoMark(string $sourcePath, string $destPath): void
+    private function processLogoMark(string $sourcePath, string $destPath): bool
     {
+        if (!\function_exists('imagecreatefromstring') || !\function_exists('imagepng')) {
+            return false;
+        }
         $data = @file_get_contents($sourcePath);
         if ($data === false) {
-            @copy($sourcePath, $destPath);
-            return;
+            return false;
         }
 
         $src = @imagecreatefromstring($data);
         if (!$src) {
-            @copy($sourcePath, $destPath);
-            return;
+            return false;
         }
 
         $srcW = imagesx($src);
@@ -125,24 +142,27 @@ class SettingsController extends Controller
         imagecopyresampled($target, $src, $dstX, $dstY, 0, 0, $newW, $newH, $srcW, $srcH);
 
         @mkdir(dirname($destPath), 0755, true);
-        imagepng($target, $destPath);
+        $saved = imagepng($target, $destPath);
 
         imagedestroy($src);
         imagedestroy($target);
+
+        return (bool) $saved;
     }
 
-    private function processLogoFull(string $sourcePath, string $destPath): void
+    private function processLogoFull(string $sourcePath, string $destPath): bool
     {
+        if (!\function_exists('imagecreatefromstring') || !\function_exists('imagepng')) {
+            return false;
+        }
         $data = @file_get_contents($sourcePath);
         if ($data === false) {
-            @copy($sourcePath, $destPath);
-            return;
+            return false;
         }
 
         $src = @imagecreatefromstring($data);
         if (!$src) {
-            @copy($sourcePath, $destPath);
-            return;
+            return false;
         }
 
         $srcW = imagesx($src);
@@ -163,9 +183,11 @@ class SettingsController extends Controller
         imagecopyresampled($target, $src, 0, 0, 0, 0, $newW, $newH, $srcW, $srcH);
 
         @mkdir(dirname($destPath), 0755, true);
-        imagepng($target, $destPath);
+        $saved = imagepng($target, $destPath);
 
         imagedestroy($src);
         imagedestroy($target);
+
+        return (bool) $saved;
     }
 }
