@@ -17,12 +17,12 @@
     "src": "resources/images/LOGO_TEXTO.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-BTdrfUgB.js",
+    "file": "assets/app-BseMxe9b.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
     "css": [
-      "assets/app-DsWxYXkb.css"
+      "assets/app-BDMTU9SP.css"
     ],
     "assets": [
       "assets/LOGO-cdeU89Pk.png",
