@@ -49,7 +49,7 @@ class SettingsController extends Controller
         ]);
 
         Storage::disk('public')->makeDirectory('settings');
-        // Process image: produce a 40x40 PNG (centered, maintain aspect ratio)
+        // Process image: produce a 96x96 PNG (centered, maintain aspect ratio)
         $file = $request->file('logo');
         $filename = 'logo_mark_' . now()->format('Ymd_His') . '.png';
         $destPath = storage_path('app/public/settings/' . $filename);
@@ -85,7 +85,7 @@ class SettingsController extends Controller
         ]);
 
         Storage::disk('public')->makeDirectory('settings');
-        // Process image: height 40px, max width 176px, maintain aspect ratio, save as PNG
+        // Process image: height 96px, max width 352px, maintain aspect ratio, save as PNG
         $file = $request->file('logo');
         $filename = 'logo_full_' . now()->format('Ymd_His') . '.png';
         $destPath = storage_path('app/public/settings/' . $filename);
@@ -212,7 +212,7 @@ class SettingsController extends Controller
 
         $srcW = imagesx($src);
         $srcH = imagesy($src);
-        $targetSize = 40;
+        $targetSize = 96;
 
         $target = imagecreatetruecolor($targetSize, $targetSize);
         imagesavealpha($target, true);
@@ -256,8 +256,8 @@ class SettingsController extends Controller
 
         $srcW = imagesx($src);
         $srcH = imagesy($src);
-        $targetH = 40;
-        $maxW = 176;
+        $targetH = 96;
+        $maxW = 352;
 
         // scale down but don't upscale
         $scale = min($targetH / $srcH, $maxW / $srcW, 1);

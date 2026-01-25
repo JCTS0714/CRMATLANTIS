@@ -10,7 +10,7 @@
           <h3 class="font-medium">Ícono (logo puro)</h3>
           <p class="text-sm text-slate-500">Se usa en el login y en el menú contraído.</p>
           <p class="mt-1 text-xs text-slate-500">
-            Recomendado: PNG con fondo transparente, 256×256 (mín. 128×128). Se mostrará aprox. a 40×40 en el menú y 56×56 en login.
+            Recomendado: PNG con fondo transparente, 256×256 (mín. 128×128). Se mostrará aprox. a 48×48 en el menú y 56×56 en login.
           </p>
 
           <div class="mt-4">
@@ -49,7 +49,7 @@
           <h3 class="font-medium">Logo grande (ícono + nombre)</h3>
           <p class="text-sm text-slate-500">Se usa en el menú expandido.</p>
           <p class="mt-1 text-xs text-slate-500">
-            Recomendado: PNG transparente, proporción 4:1 (ej. 640×160 o 800×200). Se mostrará aprox. a 176×40 en el menú.
+            Recomendado: PNG transparente, proporción 4:1 (ej. 640×160 o 800×200). Se mostrará aprox. a 208×48 en el menú.
           </p>
 
           <div class="mt-4">

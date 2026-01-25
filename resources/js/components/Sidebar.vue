@@ -12,14 +12,14 @@
       >
         <a href="/dashboard" class="flex items-center w-full">
           <!-- Collapsed: fixed 40x40 box -->
-          <img v-if="collapsed" :src="logoMarkSrc" alt="Atlantis" class="h-10 w-10 object-contain" />
+          <img v-if="collapsed" :src="logoMarkSrc" alt="Atlantis" class="h-12 w-12 object-contain" />
 
           <!-- Expanded: fixed height, max width; contain to avoid cropping or stretching -->
           <img
             v-else
             :src="logoTextSrc"
             alt="Atlantis"
-            class="h-10 w-44 max-w-[11rem] object-contain object-left"
+            class="h-12 w-52 max-w-[13rem] object-contain object-left"
           />
         </a>
       </div>
