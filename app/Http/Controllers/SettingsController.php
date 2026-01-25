@@ -210,6 +210,12 @@ class SettingsController extends Controller
             return false;
         }
 
+        $trimmed = $this->trimTransparent($src);
+        if ($trimmed !== $src) {
+            imagedestroy($src);
+            $src = $trimmed;
+        }
+
         $srcW = imagesx($src);
         $srcH = imagesy($src);
         $targetSize = 112;
@@ -254,6 +260,12 @@ class SettingsController extends Controller
             return false;
         }
 
+        $trimmed = $this->trimTransparent($src);
+        if ($trimmed !== $src) {
+            imagedestroy($src);
+            $src = $trimmed;
+        }
+
         $srcW = imagesx($src);
         $srcH = imagesy($src);
         $targetH = 112;
@@ -278,5 +290,49 @@ class SettingsController extends Controller
         imagedestroy($target);
 
         return (bool) $saved;
+    }
+
+    private function trimTransparent($src)
+    {
+        $width = imagesx($src);
+        $height = imagesy($src);
+
+        $minX = $width;
+        $minY = $height;
+        $maxX = -1;
+        $maxY = -1;
+
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $rgba = imagecolorat($src, $x, $y);
+                $alpha = ($rgba >> 24) & 0x7F;
+                if ($alpha < 127) {
+                    if ($x < $minX) $minX = $x;
+                    if ($y < $minY) $minY = $y;
+                    if ($x > $maxX) $maxX = $x;
+                    if ($y > $maxY) $maxY = $y;
+                }
+            }
+        }
+
+        if ($maxX < $minX || $maxY < $minY) {
+            return $src;
+        }
+
+        $newW = $maxX - $minX + 1;
+        $newH = $maxY - $minY + 1;
+
+        if ($newW === $width && $newH === $height) {
+            return $src;
+        }
+
+        $cropped = imagecreatetruecolor($newW, $newH);
+        imagesavealpha($cropped, true);
+        $trans = imagecolorallocatealpha($cropped, 0, 0, 0, 127);
+        imagefill($cropped, 0, 0, $trans);
+
+        imagecopy($cropped, $src, 0, 0, $minX, $minY, $newW, $newH);
+
+        return $cropped;
     }
 }
