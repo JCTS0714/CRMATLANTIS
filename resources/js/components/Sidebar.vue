@@ -10,7 +10,7 @@
         class="h-16 px-2 flex items-center bg-sky-600 border-b border-sky-700 overflow-hidden"
         :class="collapsed ? 'justify-center' : 'justify-start'"
       >
-        <a href="/dashboard" class="flex items-center w-full">
+        <a href="/dashboard" class="flex items-center w-full gap-2">
           <!-- Collapsed: fixed 40x40 box -->
           <img v-if="collapsed" :src="logoMarkSrc" alt="Atlantis" class="h-14 w-14 object-contain" />
 
@@ -19,7 +19,7 @@
             v-else
             :src="logoTextSrc"
             alt="Atlantis"
-            class="h-14 w-56 max-w-[14rem] object-contain object-left"
+            class="h-14 w-full max-w-full flex-1 object-contain object-left"
           />
         </a>
       </div>
