@@ -39,7 +39,7 @@
                             ? asset('storage/settings/logo_mark.png')
                             : asset('images/logo_alta_calidad.png'));
                 @endphp
-                <img src="{{ $loginLogo }}" alt="{{ config('app.name') }}" class="w-14 h-14 rounded-xl object-contain shadow-sm" />
+                <img src="{{ $loginLogo ?? asset('images/logo_alta_calidad.png') }}" alt="{{ config('app.name') }}" class="w-14 h-14 rounded-xl object-contain shadow-sm" />
                 <div class="text-center">
                     <div class="text-white text-xl font-semibold leading-tight">CRM ATLANTIS</div>
                     <div class="text-slate-300 text-sm">Acceso al sistema interno</div>
