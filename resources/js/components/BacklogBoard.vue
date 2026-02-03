@@ -71,6 +71,7 @@
         :key="stage.id"
         :data-stage-id="stage.id"
         class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800"
+        @dragover.prevent
         @drop.prevent="onDrop(stage)"
       >
         <div class="p-4 border-b border-gray-200 dark:border-slate-800">
@@ -80,10 +81,7 @@
           </div>
         </div>
 
-        <div 
-          class="p-3 space-y-3 min-h-[140px]"
-          @dragover.prevent="onDragOverThrottled(null, stage, $event)"
-        >
+        <div class="p-3 space-y-3 min-h-[140px]">
           <div
             v-if="(stage.incidences?.length ?? 0) === 0"
             class="text-sm text-gray-500 dark:text-slate-400 px-1"
@@ -104,6 +102,8 @@
               :draggable="!isLocked(incidence, stage)"
               @dragstart="onDragStart(incidence, stage)"
               @dragend="onDragEnd"
+              @dragover.prevent="onDragOverThrottled(incidence, stage, $event)"
+              @drop.prevent="onDrop(stage, incidence, $event)"
             >
               <div 
                 class="flex items-start justify-between gap-3 cursor-pointer"
@@ -389,12 +389,10 @@ const onDragOverThrottled = (targetIncidence, stage, event) => {
 const onDragOver = (targetIncidence, stage, event) => {
   if (!draggedIncidence.value) return;
 
-  // El currentTarget ahora es el div .p-3
-  const container = event.currentTarget;
-  if (!container) return;
-  
-  const sectionEl = container.closest('section[data-stage-id]');
+  const sectionEl = event.currentTarget.closest('section[data-stage-id]');
   if (!sectionEl) return;
+  const container = sectionEl.querySelector('.p-3');
+  if (!container) return;
 
   const articles = container.querySelectorAll('article[data-incidence-id]');
   const childElements = Array.from(articles).filter(el => {
