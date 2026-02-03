@@ -262,14 +262,6 @@ const saveUser = async () => {
   }
 };
 
-    Swal.fire({
-      title: '¡Éxito!',
-      text: `Usuario ${editingUser.value ? 'actualizado' : 'creado'} correctamente`,
-      icon: 'success',
-      timer: 2000,
-      showConfirmButton: false
-    });
-
 const closeUserModal = () => {
   editingUser.value = null;
   showCreateModal.value = false;
