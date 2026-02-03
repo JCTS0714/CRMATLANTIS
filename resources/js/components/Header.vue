@@ -68,14 +68,13 @@
         </div>
 
         <div class="flex items-center gap-2">
-          <div class="relative">
+          <div class="relative" data-notifications-container>
             <button
               type="button"
               class="inline-flex items-center justify-center w-9 h-9 text-sm text-white/90 rounded-lg hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-white/40"
               aria-expanded="false"
-              data-dropdown-toggle="notifications-dropdown"
-              data-dropdown-placement="bottom-end"
               aria-label="Notificaciones"
+              @click="toggleNotifications"
             >
               <svg
                 class="w-5 h-5"
@@ -97,9 +96,11 @@
               </span>
             </button>
 
+            <!-- Dropdown de notificaciones -->
             <div
-              id="notifications-dropdown"
-              class="z-50 hidden my-4 w-80 max-w-[90vw] text-sm bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-slate-900 dark:divide-slate-800"
+              v-show="showNotifications"
+              class="absolute right-0 z-50 mt-2 w-80 max-w-[90vw] text-sm bg-white divide-y divide-gray-100 rounded-lg shadow-lg border border-gray-200 dark:bg-slate-900 dark:divide-slate-800 dark:border-slate-700"
+              @click.stop
             >
               <div class="px-4 py-3">
                 <p class="text-sm font-semibold text-gray-900 dark:text-slate-100">Notificaciones</p>
@@ -128,6 +129,16 @@
                   </button>
                 </li>
               </ul>
+              
+              <div v-if="notifications.length > 0" class="px-4 py-2 border-t border-gray-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  class="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  @click="markAllAsRead"
+                >
+                  Marcar todas como leídas
+                </button>
+              </div>
             </div>
           </div>
 
@@ -237,7 +248,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { toggleTheme } from '../theme';
 import axios from 'axios';
-import { toastInfo } from '../ui/alerts';
+import { toastInfo, toastSuccess } from '../ui/alerts';
 
 defineProps({
   sidebarCollapsed: {
@@ -289,6 +300,7 @@ const userInitials = computed(() => {
 });
 
 const isDark = ref(false);
+const showNotifications = ref(false);
 
 const notifications = ref([]);
 const unreadCount = ref(0);
@@ -322,6 +334,7 @@ const openNotification = async (n) => {
   if (!n?.id) return;
   try {
     await axios.post(`/notifications/${n.id}/read`);
+    showNotifications.value = false;
   } catch {
     // ignore
   }
@@ -335,6 +348,21 @@ const formatNotifTime = (createdAt) => {
   const d = new Date(createdAt);
   if (Number.isNaN(d.getTime())) return String(createdAt);
   return d.toLocaleString();
+};
+
+const toggleNotifications = () => {
+  showNotifications.value = !showNotifications.value;
+};
+
+const markAllAsRead = async () => {
+  try {
+    await axios.post('/notifications/mark-all-read');
+    await loadNotifications({ toastNew: false });
+    showNotifications.value = false;
+    toastSuccess('Notificaciones marcadas como leídas');
+  } catch (error) {
+    console.error('Error marking notifications as read:', error);
+  }
 };
 
 const syncTheme = () => {
@@ -352,6 +380,13 @@ onMounted(() => {
 
   loadNotifications({ toastNew: false });
   notifTimer = setInterval(() => loadNotifications({ toastNew: true }), 30000);
+  
+  // Close notifications dropdown when clicking outside
+  document.addEventListener('click', (event) => {
+    if (showNotifications.value && !event.target.closest('[data-notifications-container]')) {
+      showNotifications.value = false;
+    }
+  });
 });
 
 onBeforeUnmount(() => {
