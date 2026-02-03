@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Services\Config\ConfigService;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
@@ -13,7 +14,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Register ConfigService as singleton
+        $this->app->singleton(ConfigService::class, function ($app) {
+            return new ConfigService();
+        });
     }
 
     /**
