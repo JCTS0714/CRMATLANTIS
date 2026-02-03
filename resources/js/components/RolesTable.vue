@@ -128,6 +128,14 @@
                   <label class="block mb-2 text-sm font-medium text-gray-900">Módulos del menú</label>
                   <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando módulos...</div>
                   <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex items-center justify-between col-span-full">
+                      <div class="text-sm text-gray-700 dark:text-slate-200">Módulos disponibles</div>
+                      <label class="inline-flex items-center text-sm text-gray-600 dark:text-slate-300">
+                        <input type="checkbox" class="rounded border-gray-300 text-blue-600 mr-2" @change="selectAllModules(createForm.permissions, $event.target.checked)" />
+                        Seleccionar todos
+                      </label>
+                    </div>
+
                     <label
                       v-for="m in menuModules"
                       :key="m.permission"
@@ -148,18 +156,37 @@
                   <label class="block mb-2 text-sm font-medium text-gray-900">Permisos</label>
                   <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700">
                     <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando permisos...</div>
-                    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div v-for="group in permissionGroups" :key="group.key" class="rounded-lg border border-gray-200 p-3 bg-white dark:bg-slate-900 dark:border-slate-700">
-                        <div class="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-2">{{ group.label }}</div>
-                        <label v-for="perm in group.items" :key="perm" class="flex items-center gap-2 py-1 text-sm text-gray-700 dark:text-slate-200">
-                          <input
-                            type="checkbox"
-                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                            :value="perm"
-                            v-model="createForm.permissions"
-                          />
-                          <span>{{ permissionLabel(perm) }}</span>
-                        </label>
+                    <div v-else>
+                      <div class="mb-3 flex items-center gap-3">
+                        <input v-model="permissionSearch" type="search" placeholder="Buscar permisos..." class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 rounded px-3 py-2 text-sm dark:border-slate-700 dark:text-slate-200" />
+                        <button type="button" class="text-sm text-gray-600 dark:text-slate-300" @click="selectAllPermissions(createForm.permissions)">Seleccionar todos</button>
+                      </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div v-for="group in filteredPermissionGroups" :key="group.key" class="rounded-lg border border-gray-200 p-3 bg-white dark:bg-slate-900 dark:border-slate-700">
+                          <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ group.label }}</div>
+                            <div class="flex items-center gap-2">
+                              <label class="inline-flex items-center text-sm text-gray-600 dark:text-slate-300">
+                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 mr-2" :checked="isGroupAllSelected(createForm.permissions, group.items)" @change="toggleGroupSelect(createForm.permissions, group.items, $event.target.checked)" />
+                                Todos
+                              </label>
+                              <button type="button" class="text-xs text-gray-500 dark:text-slate-400" @click="toggleGroupCollapse(group.key)">{{ isCollapsed(group.key) ? 'Abrir' : 'Ocultar' }}</button>
+                            </div>
+                          </div>
+
+                          <div v-show="!isCollapsed(group.key)">
+                            <label v-for="perm in group.items" :key="perm" class="flex items-center gap-2 py-1 text-sm text-gray-700 dark:text-slate-200">
+                              <input
+                                type="checkbox"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                                :value="perm"
+                                v-model="createForm.permissions"
+                              />
+                              <span>{{ permissionLabel(perm) }}</span>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -244,6 +271,14 @@
                   <label class="block mb-2 text-sm font-medium text-gray-900">Módulos del menú</label>
                   <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando módulos...</div>
                   <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="flex items-center justify-between col-span-full">
+                      <div class="text-sm text-gray-700 dark:text-slate-200">Módulos disponibles</div>
+                      <label class="inline-flex items-center text-sm text-gray-600 dark:text-slate-300">
+                        <input type="checkbox" class="rounded border-gray-300 text-blue-600 mr-2" @change="selectAllModules(editForm.permissions, $event.target.checked)" />
+                        Seleccionar todos
+                      </label>
+                    </div>
+
                     <label
                       v-for="m in menuModules"
                       :key="m.permission"
@@ -264,18 +299,37 @@
                   <label class="block mb-2 text-sm font-medium text-gray-900">Permisos</label>
                   <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700">
                     <div v-if="permissionsLoading" class="text-sm text-gray-500 dark:text-slate-300">Cargando permisos...</div>
-                    <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div v-for="group in permissionGroups" :key="group.key" class="rounded-lg border border-gray-200 p-3 bg-white dark:bg-slate-900 dark:border-slate-700">
-                        <div class="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-2">{{ group.label }}</div>
-                        <label v-for="perm in group.items" :key="perm" class="flex items-center gap-2 py-1 text-sm text-gray-700 dark:text-slate-200">
-                          <input
-                            type="checkbox"
-                            class="rounded border-gray-300 text-blue-600 focus:ring-blue-600"
-                            :value="perm"
-                            v-model="editForm.permissions"
-                          />
-                          <span>{{ permissionLabel(perm) }}</span>
-                        </label>
+                    <div v-else>
+                      <div class="mb-3 flex items-center gap-3">
+                        <input v-model="permissionSearch" type="search" placeholder="Buscar permisos..." class="flex-1 bg-white dark:bg-slate-900 border border-gray-200 rounded px-3 py-2 text-sm dark:border-slate-700 dark:text-slate-200" />
+                        <button type="button" class="text-sm text-gray-600 dark:text-slate-300" @click="selectAllPermissions(editForm.permissions)">Seleccionar todos</button>
+                      </div>
+
+                      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div v-for="group in filteredPermissionGroups" :key="group.key" class="rounded-lg border border-gray-200 p-3 bg-white dark:bg-slate-900 dark:border-slate-700">
+                          <div class="flex items-center justify-between mb-2">
+                            <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ group.label }}</div>
+                            <div class="flex items-center gap-2">
+                              <label class="inline-flex items-center text-sm text-gray-600 dark:text-slate-300">
+                                <input type="checkbox" class="rounded border-gray-300 text-blue-600 mr-2" :checked="isGroupAllSelected(editForm.permissions, group.items)" @change="toggleGroupSelect(editForm.permissions, group.items, $event.target.checked)" />
+                                Todos
+                              </label>
+                              <button type="button" class="text-xs text-gray-500 dark:text-slate-400" @click="toggleGroupCollapse(group.key)">{{ isCollapsed(group.key) ? 'Abrir' : 'Ocultar' }}</button>
+                            </div>
+                          </div>
+
+                          <div v-show="!isCollapsed(group.key)">
+                            <label v-for="perm in group.items" :key="perm" class="flex items-center gap-2 py-1 text-sm text-gray-700 dark:text-slate-200">
+                              <input
+                                type="checkbox"
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                                :value="perm"
+                                v-model="editForm.permissions"
+                              />
+                              <span>{{ permissionLabel(perm) }}</span>
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -432,6 +486,64 @@ const permissionGroups = computed(() => {
     }))
     .sort((a, b) => a.label.localeCompare(b.label));
 });
+
+// Search/filter state for permissions and collapsible groups
+const permissionSearch = ref('');
+const collapsedGroups = ref({});
+
+const filteredPermissionGroups = computed(() => {
+  const q = String(permissionSearch.value || '').trim().toLowerCase();
+  if (!q) return permissionGroups.value;
+  return permissionGroups.value
+    .map((g) => ({ ...g, items: g.items.filter((p) => String(p).toLowerCase().includes(q) || permissionLabel(p).toLowerCase().includes(q)) }))
+    .filter((g) => Array.isArray(g.items) && g.items.length > 0);
+});
+
+const selectAllModules = (permissionsArray, checked) => {
+  if (!Array.isArray(permissionsArray)) return;
+  for (const m of menuModules.value) {
+    const has = permissionsArray.indexOf(m.permission) !== -1;
+    if (checked && !has) permissionsArray.push(m.permission);
+    if (!checked && has) {
+      const idx = permissionsArray.indexOf(m.permission);
+      if (idx !== -1) permissionsArray.splice(idx, 1);
+    }
+  }
+};
+
+const selectAllPermissions = (permissionsArray) => {
+  if (!Array.isArray(permissionsArray)) return;
+  const all = [];
+  for (const g of permissionGroups.value) {
+    for (const p of g.items) {
+      if (!all.includes(p)) all.push(p);
+    }
+  }
+  for (const p of all) if (!permissionsArray.includes(p)) permissionsArray.push(p);
+};
+
+const isGroupAllSelected = (permissionsArray, items) => {
+  if (!Array.isArray(permissionsArray)) return false;
+  return items.every((it) => permissionsArray.includes(it));
+};
+
+const toggleGroupSelect = (permissionsArray, items, checked) => {
+  if (!Array.isArray(permissionsArray)) return;
+  if (checked) {
+    for (const it of items) if (!permissionsArray.includes(it)) permissionsArray.push(it);
+  } else {
+    for (const it of items) {
+      const idx = permissionsArray.indexOf(it);
+      if (idx !== -1) permissionsArray.splice(idx, 1);
+    }
+  }
+};
+
+const toggleGroupCollapse = (key) => {
+  collapsedGroups.value[key] = !collapsedGroups.value[key];
+};
+
+const isCollapsed = (key) => Boolean(collapsedGroups.value[key]);
 
 const toggleMenuPermission = (permissionsArray, permission, checked) => {
   if (!Array.isArray(permissionsArray)) return;

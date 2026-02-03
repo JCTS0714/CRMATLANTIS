@@ -18,6 +18,20 @@ class LeadStage extends Model
         'is_won' => 'boolean',
     ];
 
+    /**
+     * Boot method to invalidate cache on model changes
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            app(\App\Services\Config\ConfigService::class)->invalidateLeadStagesCache();
+        });
+
+        static::deleted(function () {
+            app(\App\Services\Config\ConfigService::class)->invalidateLeadStagesCache();
+        });
+    }
+
     public function leads(): HasMany
     {
         return $this->hasMany(Lead::class, 'stage_id');

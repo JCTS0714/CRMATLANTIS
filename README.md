@@ -53,24 +53,31 @@ Esto ejecuta (por `DatabaseSeeder`):
 ### RBAC (roles, permisos y menú)
 
 **Middleware Spatie (Laravel 12)**
-- En Laravel 12 se registran aliases en `bootstrap/app.php`:
 	- `permission`, `role`, `role_or_permission`
 
 **Permisos base**
-- `users.view|create|update|delete`
-- `roles.view|create|update|delete`
-- `leads.view|create|update|delete`
 
 **Permisos de menú (visibilidad Sidebar)**
-- `menu.users`, `menu.roles`, `menu.leads`
 
 **Roles base**
-- `admin`: todos los permisos
-- `dev`: todos los permisos
-- `employee`: sin permisos (rol “base” para empezar y asignar granularmente)
+
+**Sincronización automática**
 
 > Nota: la visibilidad en el sidebar depende de `menu.*`, además de que las rutas están protegidas por `leads.view`, `users.view`, etc.
 
+
+**Integración CI (recomendado)**
+- Añade un paso en tu pipeline que ejecute `php artisan permissions:sync` antes de correr `php artisan migrate` en el entorno de despliegue. Esto garantiza que los permisos necesarios existan antes de aplicar migraciones o exponer rutas en producción.
+- Ejemplo (GitHub Actions): se añadió `.github/workflows/permissions-sync.yml` que crea una base SQLite temporal, ejecuta `php artisan migrate` y luego `php artisan permissions:sync` en PRs y pushes a `main`.
+
+Comandos útiles:
+```bash
+# Crear permisos localmente desde las rutas
+php artisan permissions:sync
+
+# Ejecutar el seeder de roles/permisos (instalación inicial)
+php artisan db:seed --class=RolesAndPermissionsSeeder
+```
 ### Módulos
 
 #### Usuarios

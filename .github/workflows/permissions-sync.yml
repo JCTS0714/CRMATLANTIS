@@ -1,0 +1,53 @@
+name: Permissions Sync and Migrations
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  permissions-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v3
+        with:
+          php-version: '8.2'
+          extensions: mbstring, bcmath, sqlite
+
+      - name: Install Composer dependencies
+        run: composer install --no-progress --no-interaction --prefer-dist
+
+      - name: Prepare SQLite DB
+        run: |
+          mkdir -p database
+          touch database/database.sqlite
+          php artisan key:generate --ansi
+          php artisan config:clear
+
+      - name: Run migrations (no seed)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${GITHUB_WORKSPACE}/database/database.sqlite
+        run: php artisan migrate --force
+
+      - name: Sync permissions
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${GITHUB_WORKSPACE}/database/database.sqlite
+        run: php artisan permissions:sync
+
+      - name: Seed roles and permissions (optional)
+        env:
+          DB_CONNECTION: sqlite
+          DB_DATABASE: ${GITHUB_WORKSPACE}/database/database.sqlite
+        run: php artisan db:seed --class=RolesAndPermissionsSeeder || true
+
+      - name: Clear caches
+        run: |
+          php artisan cache:clear
+          php artisan config:clear

@@ -1,20 +1,24 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\LeadController;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\CalendarEventController;
-use App\Http\Controllers\NotificationController;
-use App\Http\Controllers\IncidenceController;
-use App\Http\Controllers\ContadorController;
-use App\Http\Controllers\CertificadoController;
-use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Lead\LeadController;
+use App\Http\Controllers\Lead\LeadDataController;
+use App\Http\Controllers\Lead\LeadImportController;
+use App\Http\Controllers\Lead\LostLeadController;
+use App\Http\Controllers\Lead\WaitingLeadController;
+use App\Http\Controllers\Customer\CustomerController;
+use App\Http\Controllers\Calendar\CalendarEventController;
+use App\Http\Controllers\Notification\NotificationController;
+use App\Http\Controllers\Incidence\IncidenceController;
+use App\Http\Controllers\PostVenta\ContadorController;
+use App\Http\Controllers\PostVenta\CertificadoController;
+use App\Http\Controllers\Dashboard\DashboardController;
 use App\Http\Controllers\RelatedLookupController;
-use App\Http\Controllers\RoleController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\WhatsAppCampaignController;
-use App\Http\Controllers\EmailCampaignController;
+use App\Http\Controllers\Role\RoleController;
+use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Settings\SettingsController;
+use App\Http\Controllers\Campaign\WhatsAppCampaignController;
+use App\Http\Controllers\Campaign\EmailCampaignController;
 use App\Http\Controllers\EmailUnsubscribeController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -75,9 +79,9 @@ Route::middleware('auth')->group(function () {
             return view('dashboard');
         })->name('leads.list');
 
-        Route::get('/leads/data', [LeadController::class, 'tableData'])->name('leads.data');
-
-        Route::get('/leads/board-data', [LeadController::class, 'boardData'])->name('leads.boardData');
+        // Refactored: Data queries moved to LeadDataController
+        Route::get('/leads/data', [LeadDataController::class, 'tableData'])->name('leads.data');
+        Route::get('/leads/board-data', [LeadDataController::class, 'boardData'])->name('leads.boardData');
 
         Route::get('/leads/whatsapp', function () {
             return view('dashboard');
@@ -108,24 +112,24 @@ Route::middleware('auth')->group(function () {
             ->name('leads.email.campaigns.show');
         
             Route::get('/desistidos', function () { return view('dashboard'); })->name('desistidos.index');
-            Route::get('/desistidos/data', [\App\Http\Controllers\LostLeadController::class, 'index'])->name('desistidos.data');
-            Route::get('/desistidos/{lostLead}', [\App\Http\Controllers\LostLeadController::class, 'show'])
+            Route::get('/desistidos/data', [LostLeadController::class, 'index'])->name('desistidos.data');
+            Route::get('/desistidos/{lostLead}', [LostLeadController::class, 'show'])
                 ->whereNumber('lostLead')
                 ->name('desistidos.show');
 
             Route::get('/espera', function () { return view('dashboard'); })->name('espera.index');
-            Route::get('/espera/data', [\App\Http\Controllers\WaitingLeadController::class, 'index'])->name('espera.data');
-            Route::get('/espera/{waitingLead}', [\App\Http\Controllers\WaitingLeadController::class, 'show'])
+            Route::get('/espera/data', [WaitingLeadController::class, 'index'])->name('espera.data');
+            Route::get('/espera/{waitingLead}', [WaitingLeadController::class, 'show'])
                 ->whereNumber('waitingLead')
                 ->name('espera.show');
     });
 
-    Route::patch('/desistidos/{lostLead}', [\App\Http\Controllers\LostLeadController::class, 'update'])
+    Route::patch('/desistidos/{lostLead}', [LostLeadController::class, 'update'])
         ->whereNumber('lostLead')
         ->middleware('permission:leads.update')
         ->name('desistidos.update');
 
-    Route::patch('/espera/{waitingLead}', [\App\Http\Controllers\WaitingLeadController::class, 'update'])
+    Route::patch('/espera/{waitingLead}', [WaitingLeadController::class, 'update'])
         ->whereNumber('waitingLead')
         ->middleware('permission:leads.update')
         ->name('espera.update');
@@ -256,24 +260,24 @@ Route::middleware('auth')->group(function () {
         ->name('customers.destroy');
 
     Route::post('/leads', [LeadController::class, 'store'])
-        ->middleware('permission:leads.create')
+        ->middleware(['permission:leads.create', 'check.lead.permissions:leads.create'])
         ->name('leads.store');
 
     Route::put('/leads/{lead}', [LeadController::class, 'update'])
-        ->middleware('permission:leads.update')
+        ->middleware(['permission:leads.update', 'check.lead.permissions:leads.update'])
         ->name('leads.update');
 
     Route::post('/leads/whatsapp-campaigns', [WhatsAppCampaignController::class, 'store'])
-        ->middleware('permission:leads.update')
+        ->middleware(['permission:leads.update', 'check.campaign.permissions:campaigns.create'])
         ->name('leads.whatsapp.campaigns.store');
 
     Route::post('/leads/email-campaigns', [EmailCampaignController::class, 'store'])
-        ->middleware('permission:leads.update')
+        ->middleware(['permission:leads.update', 'check.campaign.permissions:campaigns.create'])
         ->name('leads.email.campaigns.store');
 
     Route::post('/leads/email-campaigns/{campaign}/send', [EmailCampaignController::class, 'send'])
         ->whereNumber('campaign')
-        ->middleware('permission:leads.update')
+        ->middleware(['permission:leads.update', 'check.campaign.permissions:campaigns.send'])
         ->name('leads.email.campaigns.send');
 
     Route::patch('/leads/whatsapp-campaign-recipients/{recipient}', [WhatsAppCampaignController::class, 'updateRecipient'])
@@ -281,15 +285,16 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:leads.update')
         ->name('leads.whatsapp.recipients.update');
 
-    Route::post('/leads/import/prospectos', [LeadController::class, 'importProspectos'])
+    // Refactored: Import moved to LeadImportController
+    Route::post('/leads/import/prospectos', [LeadImportController::class, 'import'])
         ->middleware('permission:leads.create')
         ->name('leads.import.prospectos');
 
-    Route::post('/desistidos/import', [\App\Http\Controllers\LostLeadController::class, 'importCsv'])
+    Route::post('/desistidos/import', [LostLeadController::class, 'importCsv'])
         ->middleware('permission:leads.create')
         ->name('desistidos.import');
 
-    Route::post('/espera/import', [\App\Http\Controllers\WaitingLeadController::class, 'importCsv'])
+    Route::post('/espera/import', [WaitingLeadController::class, 'importCsv'])
         ->middleware('permission:leads.create')
         ->name('espera.import');
 
@@ -305,6 +310,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:leads.update')
         ->name('leads.moveStage');
 
+    // Refactored: Reorder moved to LeadDataController
+    Route::patch('/leads/reorder', [LeadDataController::class, 'reorder'])
+        ->middleware('permission:leads.update')
+        ->name('leads.reorder');
+
     Route::patch('/incidencias/{incidence}/move-stage', [IncidenceController::class, 'moveStage'])
         ->middleware('permission:incidencias.update')
         ->name('incidencias.moveStage');
@@ -313,11 +323,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:leads.update')
         ->name('leads.archive');
 
-    Route::post('/leads/{lead}/desist', [\App\Http\Controllers\LostLeadController::class, 'createFromLead'])
+    Route::post('/leads/{lead}/desist', [LostLeadController::class, 'createFromLead'])
         ->middleware('permission:leads.update')
         ->name('leads.desist');
 
-    Route::post('/leads/{lead}/wait', [\App\Http\Controllers\WaitingLeadController::class, 'createFromLead'])
+    Route::post('/leads/{lead}/wait', [WaitingLeadController::class, 'createFromLead'])
         ->middleware('permission:leads.update')
         ->name('leads.wait');
 
@@ -358,9 +368,22 @@ Route::middleware('auth')->group(function () {
 
     Route::post('/configuracion/logo-full', [SettingsController::class, 'uploadLogoFull'])
         ->name('settings.logo.full.upload');
+    Route::post('/api/chatbot/query', [\App\Http\Controllers\ChatbotController::class, 'query']);
+
+    // Simple UI for user help chat
+    Route::get('/chat', function () {
+        return view('chat');
+    })->middleware('auth')->name('chat');
+
+    // Embeddable fragment used by floating widget
+    Route::get('/chat/widget', function () {
+        return view('chat-embed');
+    })->middleware('auth')->name('chat.widget');
 
     Route::get('/configuracion/logo-paths', [SettingsController::class, 'logoPaths'])
         ->name('settings.logo.paths');
 });
+
+require __DIR__.'/modules/demos.php';
 
 require __DIR__.'/auth.php';

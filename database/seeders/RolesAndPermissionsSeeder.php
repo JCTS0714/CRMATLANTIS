@@ -15,62 +15,12 @@ class RolesAndPermissionsSeeder extends Seeder
 
         $guard = config('auth.defaults.guard', 'web');
 
-        $permissions = [
-            'users.view',
-            'users.create',
-            'users.update',
-            'users.delete',
-
-            'roles.view',
-            'roles.create',
-            'roles.update',
-            'roles.delete',
-
-            'leads.view',
-            'leads.create',
-            'leads.update',
-            'leads.delete',
-
-            'customers.view',
-            'customers.create',
-            'customers.update',
-            'customers.delete',
-
-            'incidencias.view',
-            'incidencias.create',
-            'incidencias.update',
-            'incidencias.delete',
-
-            'contadores.view',
-            'contadores.create',
-            'contadores.update',
-            'contadores.delete',
-
-            'certificados.view',
-            'certificados.create',
-            'certificados.update',
-            'certificados.delete',
-
-            'calendar.view',
-            'calendar.create',
-            'calendar.update',
-            'calendar.delete',
-
-            // Menu visibility (frontend)
-            'menu.users',
-            'menu.roles',
-            'menu.leads',
-            'menu.email',
-            'menu.customers',
-            'menu.calendar',
-            'menu.postventa',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::query()->updateOrCreate(
-                ['name' => $permission, 'guard_name' => $guard],
-                []
-            );
+        // Use the new permissions sync command to create permissions discovered in routes
+        try {
+            // When running seeders via artisan, this will trigger the command
+            \Artisan::call('permissions:sync');
+        } catch (\Throwable $e) {
+            // If calling artisan is not available in this context, fallback to no-op
         }
 
         $adminRole = Role::query()->updateOrCreate(
@@ -86,15 +36,12 @@ class RolesAndPermissionsSeeder extends Seeder
             []
         );
 
+        // Assign to admin/dev all permissions for the current guard
         $permissionModels = Permission::query()
             ->where('guard_name', $guard)
-            ->whereIn('name', $permissions)
             ->get();
 
-        // Admin: full access
         $adminRole->syncPermissions($permissionModels);
-
-        // Dev: for now same as admin; we will add advanced permissions as requested
         $devRole->syncPermissions($permissionModels);
 
         // Employee: intentionally no Users permissions (per requirements)

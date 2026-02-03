@@ -68,5 +68,6 @@
     </head>
     <body>
         <div id="app"></div>
+        @include('partials.chat-widget')
     </body>
 </html>

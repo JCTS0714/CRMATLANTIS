@@ -54,6 +54,7 @@
       <section
         v-for="stage in stages"
         :key="stage.id"
+        :data-stage-id="stage.id"
         class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800"
         @dragover.prevent
         @drop.prevent="onDrop(stage)"
@@ -66,24 +67,29 @@
         </div>
 
         <div class="p-3 space-y-3 min-h-[140px]">
-          <div
-            v-if="(stage.leads?.length ?? 0) === 0"
-            class="text-sm text-gray-500 dark:text-slate-400 px-1"
-          >
+          <div v-if="(stage.leads?.length ?? 0) === 0" class="text-sm text-gray-500 dark:text-slate-400 px-1">
             Sin leads.
           </div>
 
-          <article
-            v-for="lead in stage.leads"
-            :key="lead.id"
-            class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 transition-colors dark:bg-slate-800 dark:border-slate-700"
-            :class="isLeadLocked(lead, stage)
-              ? 'cursor-not-allowed opacity-80'
-              : 'cursor-grab active:cursor-grabbing hover:bg-blue-50/50 dark:hover:bg-slate-800/80'"
-            :draggable="!isLeadLocked(lead, stage)"
-            @dragstart="onDragStart(lead, stage)"
-            @click="openEditModal(lead)"
-          >
+          <div v-for="lead in stage.leads" :key="lead.id" :data-lead-id="lead.id">
+            <!-- preview handled in-memory; remove visual dashed placeholder -->
+
+            <article
+              :data-lead-id="lead.id"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 transition-all duration-150 dark:bg-slate-800 dark:border-slate-700"
+              :class="{
+                'scale-105 shadow-2xl opacity-95 z-50 -rotate-1 transform': draggingId === lead.id,
+                'opacity-40': draggingId && draggingId !== lead.id,
+                'cursor-not-allowed opacity-80': isLeadLocked(lead, stage),
+                'cursor-grab active:cursor-grabbing hover:bg-blue-50/50 dark:hover:bg-slate-800/80': !isLeadLocked(lead, stage)
+              }"
+              :draggable="!isLeadLocked(lead, stage)"
+              @dragstart="onDragStart(lead, stage)"
+              @dragend="onDragEnd"
+              @dragover.prevent="onDragOver(lead, stage, $event)"
+              @drop.prevent="onDrop(stage, lead, $event)"
+              @click="openEditModal(lead)"
+            >
             <div class="flex items-start justify-between gap-3">
               <div>
                 <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ lead.name }}</div>
@@ -115,7 +121,8 @@
                 {{ archivingIds.has(lead.id) ? 'Archivando…' : 'Archivar' }}
               </button>
             </div>
-          </article>
+            </article>
+          </div>
         </div>
       </section>
     </div>
@@ -446,6 +453,11 @@ const moveError = ref('');
 
 const draggedLead = ref(null);
 const draggedFromStageId = ref(null);
+const dragOverTarget = ref({ leadId: null, position: 'after', stageId: null });
+const draggingId = ref(null);
+const previewApplied = ref(false);
+const originalPosition = ref(null);
+const dropPerformed = ref(false);
 
 const gridColsClass = computed(() => {
   const n = stages.value.length || 1;
@@ -509,6 +521,126 @@ const onDragStart = (lead, stage) => {
   if (isLeadLocked(lead, stage)) return;
   draggedLead.value = lead;
   draggedFromStageId.value = lead?.stage_id ?? null;
+  draggingId.value = lead.id;
+  dropPerformed.value = false;
+
+  // remember original index to allow revert
+  const stageObj = stages.value.find((s) => s.id === (lead?.stage_id ?? null));
+  if (stageObj && Array.isArray(stageObj.leads)) {
+    const idx = stageObj.leads.findIndex((l) => l.id === lead.id);
+    originalPosition.value = { stageId: stageObj.id, index: idx };
+  } else {
+    originalPosition.value = null;
+  }
+  previewApplied.value = false;
+};
+
+const clearPreview = (revert = false) => {
+  if (!previewApplied.value) return;
+  const movingId = draggedLead.value?.id ?? null;
+  if (movingId == null) return;
+
+  // remove any instance of movingId from stages
+  for (const s of stages.value) {
+    if (!Array.isArray(s.leads)) continue;
+    const idx = s.leads.findIndex((l) => l.id === movingId);
+    if (idx !== -1) s.leads.splice(idx, 1);
+  }
+
+  if (revert && originalPosition.value) {
+    const s = stages.value.find((x) => x.id === originalPosition.value.stageId);
+    if (s) {
+      if (!Array.isArray(s.leads)) s.leads = [];
+      const insertIdx = Math.max(0, Math.min(originalPosition.value.index ?? s.leads.length, s.leads.length));
+      s.leads.splice(insertIdx, 0, draggedLead.value);
+    }
+  }
+
+  previewApplied.value = false;
+  dragOverTarget.value = { leadId: null, position: 'after', stageId: null };
+};
+
+const onDragEnd = () => {
+  // if drop did not happen, revert preview
+  if (!dropPerformed.value && previewApplied.value) {
+    clearPreview(true);
+  }
+
+  draggedLead.value = null;
+  draggedFromStageId.value = null;
+  draggingId.value = null;
+  previewApplied.value = false;
+  dropPerformed.value = false;
+  dragOverTarget.value = { leadId: null, position: 'after', stageId: null };
+  originalPosition.value = null;
+};
+
+const onDragOver = (targetLead, stage, event) => {
+  if (!draggedLead.value) return;
+
+  // locate the section container for this stage
+  const sectionEl = event.currentTarget.closest('section[data-stage-id]');
+  if (!sectionEl) return;
+  const container = sectionEl.querySelector('.p-3');
+  if (!container) return;
+
+  const children = Array.from(container.querySelectorAll(':scope > div'));
+
+  // Build a list of child lead ids excluding the dragged one
+  const childLeadIds = children.map((child) => {
+    const idAttr = child.querySelector('article')?.getAttribute('data-lead-id') || child.dataset.leadId || null;
+    return idAttr ? Number(idAttr) : null;
+  }).filter((id) => id !== null && id !== draggedLead.value.id);
+
+  if (childLeadIds.length === 0) {
+    // empty column or only dragged element: preview at top
+    applyPreview(stage.id, 0);
+    dragOverTarget.value = { leadId: null, position: 'top', stageId: stage.id };
+    return;
+  }
+
+  // find insertion index by midpoint of visible children (skip dragged element)
+  const y = event.clientY;
+  let insertIdx = childLeadIds.length; // default append
+  for (let i = 0, ci = 0; i < children.length; i++) {
+    const child = children[i];
+    const idAttr = child.querySelector('article')?.getAttribute('data-lead-id') || child.dataset.leadId || null;
+    const idNum = idAttr ? Number(idAttr) : null;
+    if (idNum === draggedLead.value.id) continue; // skip dragged element
+    const rect = child.getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    if (y < mid) {
+      insertIdx = ci;
+      break;
+    }
+    ci++;
+  }
+
+  // apply optimistic preview insertion
+  applyPreview(stage.id, insertIdx);
+  dragOverTarget.value = { leadId: childLeadIds[Math.max(0, Math.min(insertIdx - 1, childLeadIds.length - 1))] ?? null, position: insertIdx === 0 ? 'before' : 'after', stageId: stage.id };
+};
+
+const applyPreview = (stageId, insertIdx) => {
+  if (!draggedLead.value) return;
+  const moving = draggedLead.value;
+
+  // remove existing instances of moving id
+  for (const s of stages.value) {
+    if (!Array.isArray(s.leads)) continue;
+    const idx = s.leads.findIndex((l) => l.id === moving.id);
+    if (idx !== -1) s.leads.splice(idx, 1);
+  }
+
+  const stageObj = stages.value.find((s) => s.id === stageId);
+  if (!stageObj) return;
+  if (!Array.isArray(stageObj.leads)) stageObj.leads = [];
+
+  const idx = Math.max(0, Math.min(insertIdx, stageObj.leads.length));
+  stageObj.leads.splice(idx, 0, moving);
+  stageObj.count = stageObj.leads.length;
+  applyLeadPatch(moving, { stage_id: stageId });
+  previewApplied.value = true;
 };
 
 const removeLeadFromStage = (stageId, leadId) => {
@@ -543,9 +675,67 @@ const applyLeadPatch = (lead, patch) => {
   }
 };
 
-const onDrop = async (stage) => {
+const onDrop = async (stage, targetLead = null) => {
   if (!draggedLead.value?.id) return;
   if (!stage?.id) return;
+
+  // If we have an applied preview, use the current in-memory order as final
+  if (previewApplied.value) {
+    dropPerformed.value = true;
+    const leadId = draggedLead.value.id;
+    const originalStageId = originalPosition.value?.stageId ?? null;
+    const targetStageObj = stages.value.find((s) => s.id === stage.id);
+    if (!targetStageObj) return;
+
+    // validation checks
+    const fromStage = stages.value.find((s) => s.id === originalStageId);
+    if (fromStage?.is_won || draggedLead.value?.won_at) {
+      moveError.value = 'Este lead ya está GANADO: no se puede mover de columna. Solo se puede archivar.';
+      clearPreview(true);
+      return;
+    }
+
+    if (stage?.is_won && !draggedLead.value?.customer_id) {
+      const ok = await confirmDialog({
+        title: 'Confirmar GANADO',
+        text: '¿Marcar este lead como GANADO? Esto lo convertirá en cliente automáticamente.',
+        confirmText: 'Sí, marcar como ganado',
+        cancelText: 'Cancelar',
+        icon: 'warning',
+      });
+      if (!ok) {
+        clearPreview(true);
+        return;
+      }
+    }
+
+    try {
+      // if moved across stages, call move-stage first
+      if (originalStageId && originalStageId !== stage.id) {
+        await axios.patch(`/leads/${leadId}/move-stage`, { stage_id: stage.id });
+      }
+
+      // persist ordering for the target stage
+      const orderedIds = targetStageObj.leads.map((l) => l.id);
+      await axios.patch('/leads/reorder', { stage_id: stage.id, ordered_ids: orderedIds });
+
+      // keep the optimistic preview (already applied)
+      previewApplied.value = false;
+      dragOverTarget.value = { leadId: null, position: 'after', stageId: null };
+      draggedLead.value = null;
+      draggedFromStageId.value = null;
+      draggingId.value = null;
+      originalPosition.value = null;
+      dropPerformed.value = false;
+    } catch (error) {
+      // on failure, resync entire board
+      await load({ showLoading: false });
+    }
+
+    return;
+  }
+
+  // fallback: no preview applied — keep previous behaviour (move between columns to top)
   if (draggedLead.value.stage_id === stage.id) return;
 
   const fromStage = stages.value.find((s) => s.id === (draggedFromStageId.value ?? draggedLead.value.stage_id));
@@ -591,6 +781,17 @@ const onDrop = async (stage) => {
     if (updated && typeof updated === 'object') {
       // Keep UI in sync with backend changes (won_at/customer_id/etc.)
       applyLeadPatch(movingLead, updated);
+    }
+
+    // After cross-stage move, assign persistent position at top of target stage
+    const targetStageObj = stages.value.find((s) => s.id === stage.id);
+    if (targetStageObj && Array.isArray(targetStageObj.leads)) {
+      const orderedIds = targetStageObj.leads.map((l) => l.id);
+      try {
+        await axios.patch('/leads/reorder', { stage_id: stage.id, ordered_ids: orderedIds });
+      } catch (e) {
+        // ignore - server resync below will correct
+      }
     }
   } catch (error) {
     moveError.value = error?.response?.data?.message ?? 'No se pudo mover el lead.';
