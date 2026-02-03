@@ -360,6 +360,12 @@ const clearPreview = (revert = false) => {
 };
 
 const onDragEnd = () => {
+  // Clean up any pending timeouts
+  if (dragOverTimeout) {
+    clearTimeout(dragOverTimeout);
+    dragOverTimeout = null;
+  }
+  
   if (!dropPerformed.value && previewApplied.value) {
     clearPreview(true);
   }
@@ -428,7 +434,7 @@ const onDragOver = (targetIncidence, stage, event) => {
 };
 
 const applyPreviewOptimized = (stageId, insertIdx) => {
-  if (!draggedIncidence.value) return;
+  if (!draggedIncidence.value || previewApplied.value) return;
   
   const moving = draggedIncidence.value;
   const stageObj = stages.value.find(s => s.id === stageId);
