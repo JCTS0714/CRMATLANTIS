@@ -192,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 
@@ -297,19 +297,32 @@ const saveUser = async () => {
 
 const closeUserModal = () => {
   editingUser.value = null;
-  showCreateModal.value = false;
   userForm.value = {
     name: '',
     email: '',
     password: ''
   };
   userModal.value?.close();
+  // Reset create modal state after a brief delay
+  nextTick(() => {
+    showCreateModal.value = false;
+  });
 };
 
 // Watch for create modal
 watch(() => showCreateModal.value, (newValue) => {
   if (newValue) {
-    userModal.value?.open();
+    // Reset form when opening modal
+    userForm.value = {
+      name: '',
+      email: '',
+      password: ''
+    };
+    editingUser.value = null;
+    // Use nextTick to ensure DOM is ready
+    nextTick(() => {
+      userModal.value?.open();
+    });
   }
 });
 

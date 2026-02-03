@@ -18,16 +18,7 @@
             </div>
 
             <button
-              v-if="isUsers"
-              type="button"
-              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
-              @click="createUser"
-            >
-              Crear usuario
-            </button>
-
-            <button
-              v-else-if="isRoles"
+              v-if="isRoles"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createRole"
@@ -276,10 +267,6 @@ const toggleLeadsView = () => {
 const togglePostventaView = () => {
   if (!isPostventaIncidences.value) return;
   window.location.assign(isBacklog.value ? '/incidencias' : '/backlog');
-};
-
-const createUser = () => {
-  window.dispatchEvent(new CustomEvent('users:create'));
 };
 
 const createRole = () => {
