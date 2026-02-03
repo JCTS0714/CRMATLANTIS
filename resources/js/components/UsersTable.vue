@@ -178,10 +178,12 @@
             :disabled="!userForm.name || !userForm.email || (!editingUser && !userForm.password)"
             @click="saveUser"
           >
-            <svg v-if="!saving" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            {{ editingUser ? 'Actualizar' : 'Crear' }}
+            <div class="flex items-center justify-center">
+              <svg v-if="!saving" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+              <span>{{ editingUser ? 'Actualizar' : 'Crear' }}</span>
+            </div>
           </BaseButton>
         </div>
       </div>

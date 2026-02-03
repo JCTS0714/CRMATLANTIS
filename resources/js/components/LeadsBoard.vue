@@ -76,17 +76,17 @@
 
             <article
               :data-lead-id="lead.id"
-              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 transition-all duration-150 dark:bg-slate-800 dark:border-slate-700"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700"
               :class="{
-                'scale-105 shadow-2xl opacity-95 z-50 -rotate-1 transform': draggingId === lead.id,
-                'opacity-40': draggingId && draggingId !== lead.id,
+                'scale-105 shadow-lg opacity-90 z-50 transform': draggingId === lead.id,
+                'opacity-50': draggingId && draggingId !== lead.id,
                 'cursor-not-allowed opacity-80': isLeadLocked(lead, stage),
-                'cursor-grab active:cursor-grabbing hover:bg-blue-50/50 dark:hover:bg-slate-800/80': !isLeadLocked(lead, stage)
+                'cursor-grab active:cursor-grabbing hover:bg-blue-50/30 dark:hover:bg-slate-800/50': !isLeadLocked(lead, stage)
               }"
               :draggable="!isLeadLocked(lead, stage)"
               @dragstart="onDragStart(lead, stage)"
               @dragend="onDragEnd"
-              @dragover.prevent="onDragOver(lead, stage, $event)"
+              @dragover.prevent="onDragOverThrottled(lead, stage, $event)"
               @drop.prevent="onDrop(stage, lead, $event)"
               @click="openEditModal(lead)"
             >
@@ -399,31 +399,40 @@
                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300"
                   :disabled="editSaving"
                 >
+                  <svg v-if="!editSaving" class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
                   {{ editSaving ? 'Guardando...' : 'Guardar' }}
                 </button>
 
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-2">
                   <button
                     type="button"
-                    class="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
                     :disabled="editSaving"
                     @click.prevent="sendToEspera"
                   >
-                    Enviar a zona de espera
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    En Espera
                   </button>
 
                   <button
                     type="button"
-                    class="text-sm font-medium text-red-600 hover:text-red-800"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-red-700 bg-red-50 border border-red-200 rounded-lg hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
                     :disabled="editSaving"
                     @click.prevent="markDesistido"
                   >
-                    Marcar como desistido
+                    <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    Desistir
                   </button>
 
                   <button
                     type="button"
-                    class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-slate-100"
+                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
                     @click="closeEditModal"
                   >
                     Cancelar
@@ -561,6 +570,12 @@ const clearPreview = (revert = false) => {
 };
 
 const onDragEnd = () => {
+  // Clean up any pending timeouts
+  if (dragOverTimeout) {
+    clearTimeout(dragOverTimeout);
+    dragOverTimeout = null;
+  }
+  
   // if drop did not happen, revert preview
   if (!dropPerformed.value && previewApplied.value) {
     clearPreview(true);
@@ -575,50 +590,92 @@ const onDragEnd = () => {
   originalPosition.value = null;
 };
 
+// Throttled version of onDragOver to improve performance
+let dragOverTimeout = null;
+const onDragOverThrottled = (targetLead, stage, event) => {
+  if (!draggedLead.value) return;
+  
+  // Clear previous timeout to debounce rapid fire events
+  if (dragOverTimeout) {
+    clearTimeout(dragOverTimeout);
+  }
+  
+  // Debounce to 16ms (60fps) for smoother performance
+  dragOverTimeout = setTimeout(() => {
+    onDragOver(targetLead, stage, event);
+  }, 16);
+};
+
 const onDragOver = (targetLead, stage, event) => {
   if (!draggedLead.value) return;
 
-  // locate the section container for this stage
+  // Cache DOM queries for better performance
   const sectionEl = event.currentTarget.closest('section[data-stage-id]');
   if (!sectionEl) return;
   const container = sectionEl.querySelector('.p-3');
   if (!container) return;
 
-  const children = Array.from(container.querySelectorAll(':scope > div'));
+  // More efficient DOM traversal
+  const articles = container.querySelectorAll('article[data-lead-id]');
+  const childElements = Array.from(articles).filter(el => {
+    const leadId = Number(el.getAttribute('data-lead-id'));
+    return leadId !== draggedLead.value.id;
+  });
 
-  // Build a list of child lead ids excluding the dragged one
-  const childLeadIds = children.map((child) => {
-    const idAttr = child.querySelector('article')?.getAttribute('data-lead-id') || child.dataset.leadId || null;
-    return idAttr ? Number(idAttr) : null;
-  }).filter((id) => id !== null && id !== draggedLead.value.id);
-
-  if (childLeadIds.length === 0) {
-    // empty column or only dragged element: preview at top
-    applyPreview(stage.id, 0);
+  if (childElements.length === 0) {
+    // Empty column: preview at top
+    applyPreviewOptimized(stage.id, 0);
     dragOverTarget.value = { leadId: null, position: 'top', stageId: stage.id };
     return;
   }
 
-  // find insertion index by midpoint of visible children (skip dragged element)
+  // Simplified insertion logic - only check mouse Y position
   const y = event.clientY;
-  let insertIdx = childLeadIds.length; // default append
-  for (let i = 0, ci = 0; i < children.length; i++) {
-    const child = children[i];
-    const idAttr = child.querySelector('article')?.getAttribute('data-lead-id') || child.dataset.leadId || null;
-    const idNum = idAttr ? Number(idAttr) : null;
-    if (idNum === draggedLead.value.id) continue; // skip dragged element
-    const rect = child.getBoundingClientRect();
+  let insertIdx = childElements.length; // default append
+  
+  for (let i = 0; i < childElements.length; i++) {
+    const rect = childElements[i].getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     if (y < mid) {
-      insertIdx = ci;
+      insertIdx = i;
       break;
     }
-    ci++;
   }
 
-  // apply optimistic preview insertion
-  applyPreview(stage.id, insertIdx);
-  dragOverTarget.value = { leadId: childLeadIds[Math.max(0, Math.min(insertIdx - 1, childLeadIds.length - 1))] ?? null, position: insertIdx === 0 ? 'before' : 'after', stageId: stage.id };
+  // Apply preview with optimized method
+  applyPreviewOptimized(stage.id, insertIdx);
+  const targetLeadId = insertIdx > 0 ? Number(childElements[insertIdx - 1]?.getAttribute('data-lead-id')) : null;
+  dragOverTarget.value = { 
+    leadId: targetLeadId, 
+    position: insertIdx === 0 ? 'before' : 'after', 
+    stageId: stage.id 
+  };
+};
+
+const applyPreviewOptimized = (stageId, insertIdx) => {
+  if (!draggedLead.value || previewApplied.value) return;
+  
+  const moving = draggedLead.value;
+  const stageObj = stages.value.find(s => s.id === stageId);
+  if (!stageObj) return;
+  
+  // Only apply preview if it's actually changing position
+  const currentIdx = stageObj.leads?.findIndex(l => l.id === moving.id) ?? -1;
+  if (currentIdx === insertIdx) return;
+  
+  // Remove from current position
+  stages.value.forEach(s => {
+    if (!Array.isArray(s.leads)) return;
+    const idx = s.leads.findIndex(l => l.id === moving.id);
+    if (idx !== -1) s.leads.splice(idx, 1);
+  });
+
+  // Insert at new position
+  if (!Array.isArray(stageObj.leads)) stageObj.leads = [];
+  const idx = Math.max(0, Math.min(insertIdx, stageObj.leads.length));
+  stageObj.leads.splice(idx, 0, moving);
+  
+  previewApplied.value = true;
 };
 
 const applyPreview = (stageId, insertIdx) => {
