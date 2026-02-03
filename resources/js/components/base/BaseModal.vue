@@ -14,9 +14,9 @@
     ></div>
 
     <!-- Modal -->
-    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+    <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-6">
       <div
-        class="relative transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all dark:bg-slate-900"
+        class="relative w-full transform overflow-hidden rounded-lg bg-white text-left shadow-xl transition-all dark:bg-slate-900"
         :class="[
           maxWidthClass,
           { 
@@ -26,14 +26,14 @@
         ]"
       >
         <!-- Header -->
-        <div v-if="$slots.header || title" class="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div v-if="$slots.header || title" class="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
           <div class="flex items-center justify-between">
-            <div>
+            <div class="flex-1">
               <slot name="header">
-                <h3 class="text-lg font-medium leading-6 text-gray-900 dark:text-slate-100" id="modal-title">
+                <h3 class="text-xl font-semibold leading-6 text-gray-900 dark:text-slate-100" id="modal-title">
                   {{ title }}
                 </h3>
-                <p v-if="subtitle" class="mt-1 text-sm text-gray-500 dark:text-slate-400">
+                <p v-if="subtitle" class="mt-2 text-sm text-gray-600 dark:text-slate-400">
                   {{ subtitle }}
                 </p>
               </slot>
@@ -42,7 +42,7 @@
             <button
               v-if="showCloseButton"
               type="button"
-              class="rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-slate-900 dark:hover:text-slate-300"
+              class="ml-4 rounded-md bg-white text-gray-400 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:bg-slate-900 dark:hover:text-slate-300 p-2"
               @click="handleClose"
             >
               <span class="sr-only">Cerrar</span>
@@ -54,12 +54,12 @@
         </div>
 
         <!-- Content -->
-        <div class="px-6 py-4 bg-white dark:bg-slate-900">
+        <div class="px-6 py-6 bg-white dark:bg-slate-900 max-h-[70vh] overflow-y-auto">
           <slot />
         </div>
 
         <!-- Footer -->
-        <div v-if="$slots.footer" class="px-6 py-4 bg-gray-50 border-t border-gray-200 dark:bg-slate-800 dark:border-slate-700">
+        <div v-if="$slots.footer" class="px-6 py-5 bg-gray-50 border-t border-gray-200 dark:bg-slate-800 dark:border-slate-700">
           <slot name="footer" />
         </div>
       </div>

@@ -89,60 +89,101 @@
   <BaseModal 
     ref="userModal"
     :title="editingUser ? 'Editar Usuario' : 'Crear Usuario'"
-    max-width="lg"
+    :subtitle="editingUser ? `Modificar datos de ${editingUser.name}` : 'Agregar nuevo usuario al sistema'"
+    max-width="xl"
+    close-on-backdrop
   >
-    <form @submit.prevent="saveUser">
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">
-            Nombre
-          </label>
-          <input
-            v-model="userForm.name"
-            type="text"
-            required
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-          />
-        </div>
+    <div class="py-4">
+      <form @submit.prevent="saveUser">
+        <div class="grid grid-cols-1 gap-6">
+          <!-- Información Personal -->
+          <div class="space-y-6">
+            <div class="border-b border-gray-200 dark:border-slate-700 pb-4">
+              <h4 class="text-base font-semibold text-gray-900 dark:text-slate-100">Información Personal</h4>
+              <p class="text-sm text-gray-600 dark:text-slate-400">Datos básicos del usuario</p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Nombre completo *
+                </label>
+                <input
+                  v-model="userForm.name"
+                  type="text"
+                  required
+                  placeholder="Ej: Juan Carlos Pérez"
+                  class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                />
+              </div>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">
-            Email
-          </label>
-          <input
-            v-model="userForm.email"
-            type="email"
-            required
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-          />
-        </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Correo electrónico *
+                </label>
+                <input
+                  v-model="userForm.email"
+                  type="email"
+                  required
+                  placeholder="usuario@empresa.com"
+                  class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                />
+              </div>
+            </div>
 
-        <div v-if="!editingUser">
-          <label class="block text-sm font-medium text-gray-700 dark:text-slate-300">
-            Contraseña
-          </label>
-          <input
-            v-model="userForm.password"
-            type="password"
-            required
-            class="mt-1 block w-full rounded-lg border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
-          />
+            <div v-if="!editingUser" class="space-y-4">
+              <div class="border-b border-gray-200 dark:border-slate-700 pb-4">
+                <h4 class="text-base font-semibold text-gray-900 dark:text-slate-100">Configuración de Acceso</h4>
+                <p class="text-sm text-gray-600 dark:text-slate-400">Contraseña para el nuevo usuario</p>
+              </div>
+              
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Contraseña *
+                </label>
+                <input
+                  v-model="userForm.password"
+                  type="password"
+                  required
+                  placeholder="Mínimo 8 caracteres"
+                  class="block w-full rounded-lg border border-gray-300 px-4 py-3 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                />
+                <p class="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                  La contraseña debe tener al menos 8 caracteres
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
 
     <template #footer>
-      <div class="flex justify-end gap-3">
-        <BaseButton variant="secondary" @click="closeUserModal">
-          Cancelar
-        </BaseButton>
-        <BaseButton 
-          variant="primary" 
-          :loading="saving"
-          @click="saveUser"
-        >
-          {{ editingUser ? 'Actualizar' : 'Crear' }}
-        </BaseButton>
+      <div class="flex items-center justify-between pt-4">
+        <div class="text-xs text-gray-500 dark:text-slate-400">
+          * Campos obligatorios
+        </div>
+        <div class="flex items-center gap-3">
+          <BaseButton 
+            variant="secondary" 
+            size="md"
+            @click="closeUserModal"
+          >
+            Cancelar
+          </BaseButton>
+          <BaseButton 
+            variant="primary" 
+            size="md"
+            :loading="saving"
+            :disabled="!userForm.name || !userForm.email || (!editingUser && !userForm.password)"
+            @click="saveUser"
+          >
+            <svg v-if="!saving" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            {{ editingUser ? 'Actualizar Usuario' : 'Crear Usuario' }}
+          </BaseButton>
+        </div>
       </div>
     </template>
   </BaseModal>
