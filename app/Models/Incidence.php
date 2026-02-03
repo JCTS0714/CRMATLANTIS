@@ -10,6 +10,7 @@ class Incidence extends Model
     protected $fillable = [
         'correlative',
         'stage_id',
+        'sort_order',
         'customer_id',
         'created_by',
         'title',

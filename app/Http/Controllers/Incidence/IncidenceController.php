@@ -130,6 +130,16 @@ class IncidenceController extends Controller
 
     public function boardData(Request $request): JsonResponse
     {
+        $validated = $request->validate([
+            'limit' => ['nullable', 'integer', 'min:0'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
+            'priority' => ['nullable', 'in:alta,media,baja'],
+        ]);
+
+        // Default: 50 incidences per column
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : 50;
+
         $stages = IncidenceStage::query()
             ->orderBy('sort_order')
             ->orderBy('id')
@@ -137,15 +147,32 @@ class IncidenceController extends Controller
 
         $stageIds = $stages->pluck('id')->values();
 
-        $items = Incidence::query()
+        $query = Incidence::query()
             ->with(['customer:id,name,company_name'])
             ->whereIn('stage_id', $stageIds)
-            ->whereNull('archived_at')
+            ->whereNull('archived_at');
+
+        // Apply date filters
+        if (!empty($validated['date_from'])) {
+            $query->whereDate('date', '>=', $validated['date_from']);
+        }
+        if (!empty($validated['date_to'])) {
+            $query->whereDate('date', '<=', $validated['date_to']);
+        }
+
+        // Apply priority filter
+        if (!empty($validated['priority'])) {
+            $query->where('priority', $validated['priority']);
+        }
+
+        $items = $query
+            ->orderBy('sort_order')
             ->orderByDesc('updated_at')
             ->get([
                 'id',
                 'correlative',
                 'stage_id',
+                'sort_order',
                 'customer_id',
                 'created_by',
                 'title',
@@ -160,14 +187,20 @@ class IncidenceController extends Controller
 
         return response()->json([
             'data' => [
-                'stages' => $stages->map(function (IncidenceStage $stage) use ($items) {
+                'stages' => $stages->map(function (IncidenceStage $stage) use ($items, $limit) {
                     $list = $items->get($stage->id, collect())->values();
+
+                    // Apply limit per column
+                    if ($limit > 0) {
+                        $list = $list->take($limit);
+                    }
 
                     $mapped = $list->map(function (Incidence $incidence) {
                         $data = $incidence->only([
                             'id',
                             'correlative',
                             'stage_id',
+                            'sort_order',
                             'customer_id',
                             'created_by',
                             'title',
@@ -186,13 +219,16 @@ class IncidenceController extends Controller
                         return $data;
                     })->values();
 
+                    // Get total count (before limit)
+                    $totalCount = $items->get($stage->id, collect())->count();
+
                     return [
                         'id' => $stage->id,
                         'key' => $stage->key,
                         'name' => $stage->name,
                         'sort_order' => $stage->sort_order,
                         'is_done' => (bool) $stage->is_done,
-                        'count' => $mapped->count(),
+                        'count' => $totalCount,
                         'incidences' => $mapped,
                     ];
                 })->values(),
@@ -340,6 +376,42 @@ class IncidenceController extends Controller
         return response()->json([
             'message' => 'Incidencia archivada.',
             'data' => $incidence->fresh(['customer:id,name,company_name']),
+        ]);
+    }
+
+    public function reorder(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'stage_id' => ['required', 'integer', 'exists:incidence_stages,id'],
+            'ordered_ids' => ['required', 'array'],
+            'ordered_ids.*' => ['integer', 'exists:incidences,id'],
+        ]);
+
+        $stageId = $validated['stage_id'];
+        $orderedIds = array_values($validated['ordered_ids']);
+
+        // Validate that all incidences belong to the specified stage
+        $incidences = Incidence::whereIn('id', $orderedIds)
+            ->where('stage_id', $stageId)
+            ->get(['id', 'stage_id']);
+
+        if ($incidences->count() !== count($orderedIds)) {
+            return response()->json([
+                'message' => 'Una o más incidencias no pertenecen a la etapa especificada.',
+            ], 422);
+        }
+
+        // Update sort_order for each incidence
+        DB::transaction(function () use ($orderedIds, $stageId) {
+            foreach ($orderedIds as $index => $incidenceId) {
+                Incidence::where('id', $incidenceId)
+                    ->where('stage_id', $stageId)
+                    ->update(['sort_order' => $index + 1]);
+            }
+        });
+
+        return response()->json([
+            'message' => 'Orden de incidencias actualizado.',
         ]);
     }
 

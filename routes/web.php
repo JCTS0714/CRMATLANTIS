@@ -319,6 +319,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:incidencias.update')
         ->name('incidencias.moveStage');
 
+    Route::patch('/incidencias/reorder', [IncidenceController::class, 'reorder'])
+        ->middleware('permission:incidencias.update')
+        ->name('incidencias.reorder');
+
     Route::patch('/leads/{lead}/archive', [LeadController::class, 'archive'])
         ->middleware('permission:leads.update')
         ->name('leads.archive');
