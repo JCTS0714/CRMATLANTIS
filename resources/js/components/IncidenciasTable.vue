@@ -139,6 +139,22 @@
                   >
                     {{ archivingIds.has(it.id) ? 'Archivando…' : 'Archivar' }}
                   </button>
+
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
+                    :disabled="deletingIds.has(it.id)"
+                    @click="confirmDelete(it)"
+                  >
+                    <svg v-if="!deletingIds.has(it.id)" class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    <svg v-else class="w-3 h-3 mr-1 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {{ deletingIds.has(it.id) ? 'Eliminando…' : 'Eliminar' }}
+                  </button>
                 </div>
               </td>
 
@@ -203,6 +219,7 @@ const error = ref('');
 
 const savingStageIds = ref(new Set());
 const archivingIds = ref(new Set());
+const deletingIds = ref(new Set());
 
 const importInput = ref(null);
 const importing = ref(false);
@@ -368,6 +385,53 @@ const archive = async (it) => {
     toastError(msg);
   } finally {
     archivingIds.value.delete(it.id);
+  }
+};
+
+const confirmDelete = async (incidence) => {
+  const confirmed = await confirmDialog({
+    title: '¿Eliminar incidencia?',
+    text: `Se eliminará permanentemente "${incidence.title || `#${incidence.correlative}`}"`,
+    confirmText: 'Sí, eliminar',
+    cancelText: 'Cancelar',
+    icon: 'warning',
+    confirmButtonColor: '#ef4444'
+  });
+
+  if (confirmed) {
+    await deleteIncidence(incidence);
+  }
+};
+
+const deleteIncidence = async (incidence) => {
+  deletingIds.value.add(incidence.id);
+  error.value = '';
+
+  try {
+    await axios.delete(`/incidencias/${incidence.id}`);
+    
+    // Remove from local state
+    const index = incidences.value.findIndex(i => i.id === incidence.id);
+    if (index !== -1) {
+      incidences.value.splice(index, 1);
+      totalCount.value = Math.max(0, totalCount.value - 1);
+      
+      // Update pagination if needed
+      if (incidences.value.length === 0 && pagination.value.current_page > 1) {
+        pagination.value.current_page--;
+        load();
+        return;
+      }
+    }
+    
+    toastSuccess('Incidencia eliminada exitosamente');
+    window.dispatchEvent(new CustomEvent('incidencias:deleted'));
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo eliminar la incidencia.';
+    error.value = msg;
+    toastError(msg);
+  } finally {
+    deletingIds.value.delete(incidence.id);
   }
 };
 

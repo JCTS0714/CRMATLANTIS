@@ -101,7 +101,9 @@
 
           <LeadsEmailCampaign v-else-if="isLeadsEmail" />
 
-          <IncidenciasTable v-else-if="isIncidencias" />
+          <IncidenciasTable v-if="isIncidencias && currentView === 'table'" />
+
+          <IncidenciasBoard v-else-if="isIncidencias && currentView === 'board'" />
 
           <BacklogBoard v-else-if="isBacklog" />
 
@@ -152,6 +154,7 @@ const LeadsEmailCampaign = defineAsyncComponent(() => import('./LeadsEmailCampai
 const CustomersTable = defineAsyncComponent(() => import('./CustomersTable.vue'));
 const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
 const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
+const IncidenciasBoard = defineAsyncComponent(() => import('./IncidenciasBoard.vue'));
 const BacklogBoard = defineAsyncComponent(() => import('./BacklogBoard.vue'));
 const PostventaCustomersTable = defineAsyncComponent(() => import('./PostventaCustomersTable.vue'));
 const ContadoresTable = defineAsyncComponent(() => import('./ContadoresTable.vue'));
@@ -176,6 +179,12 @@ const isLeads = computed(() => normalizedPath.startsWith('/leads'));
 const isCustomers = computed(() => normalizedPath.startsWith('/customers'));
 const isCalendar = computed(() => normalizedPath.startsWith('/calendar'));
 const isIncidencias = computed(() => normalizedPath.startsWith('/incidencias'));
+const currentView = computed(() => {
+  if (isIncidencias.value) {
+    return normalizedPath === '/incidencias/board' ? 'board' : 'table';
+  }
+  return 'table';
+});
 const isBacklog = computed(() => normalizedPath.startsWith('/backlog'));
 const isPostventaCustomers = computed(() => normalizedPath === '/postventa/clientes');
 const isPostventaContadores = computed(() => normalizedPath === '/postventa/contadores');
@@ -239,7 +248,7 @@ const pageSubtitle = computed(() =>
               : isCalendar.value
                 ? 'Agenda y recordatorios'
                   : isIncidencias.value
-                    ? 'Registro y seguimiento de incidencias (vista lista)'
+                    ? `Registro y seguimiento de incidencias (vista ${currentView.value === 'board' ? 'kanban' : 'lista'})`
                     : isBacklog.value
                       ? 'Registro y seguimiento de incidencias (vista backlog)'
                     : isPostventaCustomers.value
@@ -265,8 +274,15 @@ const toggleLeadsView = () => {
 };
 
 const togglePostventaView = () => {
-  if (!isPostventaIncidences.value) return;
-  window.location.assign(isBacklog.value ? '/incidencias' : '/backlog');
+  if (isBacklog.value) {
+    window.location.assign('/incidencias');
+  } else if (isIncidencias.value) {
+    if (currentView.value === 'table') {
+      window.location.assign('/incidencias/board');
+    } else {
+      window.location.assign('/backlog');
+    }
+  }
 };
 
 const createRole = () => {
