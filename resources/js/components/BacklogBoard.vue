@@ -92,7 +92,7 @@
           <div v-for="incidence in stage.incidences" :key="incidence.id" :data-incidence-id="incidence.id">
             <article
               :data-incidence-id="incidence.id"
-              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700 transition-all duration-150"
               :class="{
                 'scale-105 shadow-lg opacity-90 z-50 transform': draggingId === incidence.id,
                 'opacity-50': draggingId && draggingId !== incidence.id,
@@ -104,9 +104,11 @@
               @dragend="onDragEnd"
               @dragover.prevent="onDragOverThrottled(incidence, stage, $event)"
               @drop.prevent="onDrop(stage, incidence, $event)"
-              @click="openEdit(incidence)"
             >
-              <div class="flex items-start justify-between gap-3">
+              <div 
+                class="flex items-start justify-between gap-3 cursor-pointer"
+                @click="openEdit(incidence)"
+              >
                 <div>
                   <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ incidence.title }}</div>
                   <div v-if="incidence.customer" class="text-xs text-gray-600 dark:text-slate-300 mt-1">
@@ -122,7 +124,11 @@
                 </div>
               </div>
 
-              <div v-if="incidence.date" class="mt-2 text-xs text-gray-600 dark:text-slate-300">
+              <div 
+                v-if="incidence.date" 
+                class="mt-2 text-xs text-gray-600 dark:text-slate-300 cursor-pointer"
+                @click="openEdit(incidence)"
+              >
                 {{ formatDate(incidence.date) }}
               </div>
 
@@ -139,6 +145,16 @@
 
                 <button
                   type="button"
+                  class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                  :disabled="isLocked(incidence)"
+                  @mousedown.stop
+                  @click.stop.prevent="deleteIncidence(incidence)"
+                >
+                  Eliminar
+                </button>
+
+                <button
+                  type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="archivingIds.has(incidence.id)"
                   @click.stop.prevent="archive(incidence, stage)"
@@ -147,7 +163,7 @@
                 </button>
               </div>
 
-              <div v-else class="mt-3 flex justify-end">
+              <div v-else class="mt-3 flex justify-end gap-2">
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -156,6 +172,16 @@
                   @click.stop.prevent="openEdit(incidence)"
                 >
                   Editar
+                </button>
+
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                  :disabled="isLocked(incidence)"
+                  @mousedown.stop
+                  @click.stop.prevent="deleteIncidence(incidence)"
+                >
+                  Eliminar
                 </button>
               </div>
             </article>
