@@ -145,32 +145,34 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
-import { onMounted } from 'vue';
-import { initFlowbite } from 'flowbite';
+import { computed, ref, defineAsyncComponent, onMounted } from 'vue';
 
 import Header from './Header.vue';
 import Sidebar from './Sidebar.vue';
 import Footer from './Footer.vue';
-import UsersTable from './UsersTable.vue';
-import RolesTable from './RolesTable.vue';
-import LeadsBoard from './LeadsBoard.vue';
-import LeadsTable from './LeadsTable.vue';
-import LeadsWhatsAppCampaign from './LeadsWhatsAppCampaign.vue';
-import LeadsEmailCampaign from './LeadsEmailCampaign.vue';
-import CustomersTable from './CustomersTable.vue';
-import CalendarView from './CalendarView.vue';
-import IncidenciasTable from './IncidenciasTable.vue';
-import BacklogBoard from './BacklogBoard.vue';
-import PostventaCustomersTable from './PostventaCustomersTable.vue';
-import ContadoresTable from './ContadoresTable.vue';
-import CertificadosTable from './CertificadosTable.vue';
+
+// Lazy load heavy components for better performance
+const UsersTable = defineAsyncComponent(() => import('./UsersTable.vue'));
+const RolesTable = defineAsyncComponent(() => import('./RolesTable.vue'));
+const LeadsBoard = defineAsyncComponent(() => import('./LeadsBoard.vue'));
+const LeadsTable = defineAsyncComponent(() => import('./LeadsTable.vue'));
+const LeadsWhatsAppCampaign = defineAsyncComponent(() => import('./LeadsWhatsAppCampaign.vue'));
+const LeadsEmailCampaign = defineAsyncComponent(() => import('./LeadsEmailCampaign.vue'));
+const CustomersTable = defineAsyncComponent(() => import('./CustomersTable.vue'));
+const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
+const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
+const BacklogBoard = defineAsyncComponent(() => import('./BacklogBoard.vue'));
+const PostventaCustomersTable = defineAsyncComponent(() => import('./PostventaCustomersTable.vue'));
+const ContadoresTable = defineAsyncComponent(() => import('./ContadoresTable.vue'));
+const CertificadosTable = defineAsyncComponent(() => import('./CertificadosTable.vue'));
+const LostLeadsList = defineAsyncComponent(() => import('./LostLeadsList.vue'));
+const WaitingLeadsList = defineAsyncComponent(() => import('./WaitingLeadsList.vue'));
+const SettingsView = defineAsyncComponent(() => import('./SettingsView.vue'));
+
+// Keep lighter components as regular imports
 import DashboardView from './DashboardView.vue';
 import IncidenceQuickModal from './IncidenceQuickModal.vue';
 import IncidenceEditModal from './IncidenceEditModal.vue';
-import LostLeadsList from './LostLeadsList.vue';
-import WaitingLeadsList from './WaitingLeadsList.vue';
-import SettingsView from './SettingsView.vue';
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const isUsers = computed(() => normalizedPath.startsWith('/users'));
@@ -306,6 +308,7 @@ const toggleSidebar = () => {
 };
 
 onMounted(() => {
-  initFlowbite();
+  // Theme initialization and other setup can go here if needed
+  // No longer using Flowbite
 });
 </script>
