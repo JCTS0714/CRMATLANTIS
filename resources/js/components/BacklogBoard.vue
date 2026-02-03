@@ -381,19 +381,25 @@ const onDragEnd = () => {
 
 let dragOverTimeout = null;
 const onDragOverThrottled = (targetIncidence, stage, event) => {
-  if (!draggedIncidence.value) return;
+  if (!draggedIncidence.value || !event || !event.currentTarget) return;
   
   if (dragOverTimeout) {
     clearTimeout(dragOverTimeout);
   }
   
   dragOverTimeout = setTimeout(() => {
-    onDragOver(targetIncidence, stage, event);
+    // Check if component is still mounted and drag is still active
+    if (draggedIncidence.value && event.currentTarget) {
+      onDragOver(targetIncidence, stage, event);
+    }
   }, 16);
 };
 
 const onDragOver = (targetIncidence, stage, event) => {
   if (!draggedIncidence.value) return;
+  
+  // Validate event and currentTarget
+  if (!event || !event.currentTarget) return;
 
   const sectionEl = event.currentTarget.closest('section[data-stage-id]');
   if (!sectionEl) return;
@@ -609,8 +615,17 @@ onBeforeUnmount(() => {
   window.removeEventListener('incidencias:created', onCreated);
   window.removeEventListener('incidencias:archived', onCreated);
   window.removeEventListener('incidencias:updated', onUpdated);
+  
+  // Clean up drag state
   if (dragOverTimeout) {
     clearTimeout(dragOverTimeout);
+    dragOverTimeout = null;
   }
+  
+  // Reset drag state to prevent memory leaks
+  draggedIncidence.value = null;
+  draggedFromStageId.value = null;
+  draggingId.value = null;
+  previewApplied.value = false;
 });
 </script>
