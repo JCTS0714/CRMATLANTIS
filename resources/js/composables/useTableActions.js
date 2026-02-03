@@ -55,9 +55,27 @@ export class TableActions {
     }
   }
 
+  // Helper function to get dark mode styles
+  getSweetAlertTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    
+    return isDark ? {
+      background: '#0f172a', // slate-900
+      color: '#f1f5f9', // slate-100
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#64748b',
+    } : {
+      background: '#ffffff',
+      color: '#1e293b',
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+    };
+  }
+
   // Confirmation dialogs
   async confirmDelete(itemName, customText = null) {
     const text = customText || `Se eliminará permanentemente "${itemName}"`;
+    const theme = this.getSweetAlertTheme();
     
     const result = await Swal.fire({
       title: '¿Eliminar elemento?',
@@ -66,7 +84,10 @@ export class TableActions {
       showCancelButton: true,
       confirmButtonText: 'Sí, eliminar',
       cancelButtonText: 'Cancelar',
-      confirmButtonColor: '#ef4444',
+      confirmButtonColor: theme.confirmButtonColor,
+      cancelButtonColor: theme.cancelButtonColor,
+      background: theme.background,
+      color: theme.color,
       reverseButtons: true
     });
 
@@ -75,6 +96,7 @@ export class TableActions {
 
   async confirmArchive(itemName, customText = null) {
     const text = customText || `Se archivará "${itemName}"`;
+    const theme = this.getSweetAlertTheme();
     
     const result = await Swal.fire({
       title: '¿Archivar elemento?',
@@ -84,6 +106,9 @@ export class TableActions {
       confirmButtonText: 'Sí, archivar',
       cancelButtonText: 'Cancelar',
       confirmButtonColor: '#f59e0b',
+      cancelButtonColor: theme.cancelButtonColor,
+      background: theme.background,
+      color: theme.color,
       reverseButtons: true
     });
 
@@ -91,6 +116,7 @@ export class TableActions {
   }
 
   async confirmBulkAction(action, itemCount) {
+    const theme = this.getSweetAlertTheme();
     const actions = {
       delete: {
         title: '¿Eliminar elementos?',
@@ -117,6 +143,9 @@ export class TableActions {
       confirmButtonText: config.confirmText,
       cancelButtonText: 'Cancelar',
       confirmButtonColor: config.color,
+      cancelButtonColor: theme.cancelButtonColor,
+      background: theme.background,
+      color: theme.color,
       reverseButtons: true
     });
 
@@ -125,20 +154,28 @@ export class TableActions {
 
   // Success notifications
   showSuccess(message, title = '¡Éxito!') {
+    const theme = this.getSweetAlertTheme();
+    
     Swal.fire({
       title,
       text: message,
       icon: 'success',
       timer: 2000,
-      showConfirmButton: false
+      showConfirmButton: false,
+      background: theme.background,
+      color: theme.color
     });
   }
 
   showError(message, title = 'Error') {
+    const theme = this.getSweetAlertTheme();
+    
     Swal.fire({
       title,
       text: message,
-      icon: 'error'
+      icon: 'error',
+      background: theme.background,
+      color: theme.color
     });
   }
 

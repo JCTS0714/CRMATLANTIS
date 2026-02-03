@@ -8,7 +8,7 @@
   >
     <!-- Backdrop -->
     <div
-      class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
+      class="fixed inset-0 bg-gray-500/75 transition-opacity dark:bg-gray-900/80"
       :class="{ 'opacity-100': !isAnimating, 'opacity-0': isAnimating }"
       @click="handleBackdrop"
     ></div>
@@ -54,7 +54,7 @@
         </div>
 
         <!-- Content -->
-        <div class="px-6 py-4">
+        <div class="px-6 py-4 bg-white dark:bg-slate-900">
           <slot />
         </div>
 

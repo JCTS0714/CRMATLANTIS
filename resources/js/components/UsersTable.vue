@@ -58,15 +58,6 @@
             </BaseBadge>
           </div>
         </td>
-        <td class="px-4 py-3">
-          <BaseBadge 
-            :variant="item.email_verified_at ? 'success' : 'warning'"
-            size="xs"
-            rounded
-          >
-            {{ item.email_verified_at ? 'Verificado' : 'Pendiente' }}
-          </BaseBadge>
-        </td>
         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
           {{ formatDateTime(item.created_at) }}
         </td>
@@ -177,7 +168,6 @@ const columns = [
   { key: 'id', label: 'ID', sortable: true },
   { key: 'name', label: 'Usuario', sortable: true },
   { key: 'roles', label: 'Roles' },
-  { key: 'email_verified_at', label: 'Estado' },
   { key: 'created_at', label: 'Creado', sortable: true },
   { key: 'actions', label: 'Acciones' }
 ];
