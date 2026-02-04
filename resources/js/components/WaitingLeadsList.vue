@@ -391,6 +391,7 @@ const reactivateLead = async (item) => {
 };
 
 onMounted(async () => {
+  console.log('WaitingLeadsList mounted - reactivation functionality loaded');
   await load(1);
 
   const params = new URLSearchParams(window.location.search);

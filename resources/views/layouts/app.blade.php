@@ -14,15 +14,11 @@
         <!-- Scripts -->
         @php
             $manifest = json_decode(file_get_contents(public_path('build/manifest.json')), true);
-            $cssFile = '';
-            $jsFile = '';
-            foreach($manifest as $key => $value) {
-                if(str_ends_with($key, 'app.css')) $cssFile = $value['file'];
-                if(str_ends_with($key, 'app.js')) $jsFile = $value['file'];
-            }
+            $appJsEntry = $manifest['resources/js/app.js'];
+            $appCssEntry = $manifest['resources/css/app.css'];
         @endphp
-        <link rel="stylesheet" href="{{ asset('build/assets/' . $cssFile) }}">
-        <script type="module" src="{{ asset('build/assets/' . $jsFile) }}"></script>
+        <link rel="stylesheet" href="{{ asset('build/' . $appCssEntry['file']) }}">
+        <script type="module" src="{{ asset('build/' . $appJsEntry['file']) }}"></script>
     </head>
     <body class="font-sans antialiased bg-gray-100 text-gray-900 dark:bg-slate-950 dark:text-slate-100">
         <div class="min-h-screen bg-gray-100 dark:bg-slate-950">
