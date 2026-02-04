@@ -175,13 +175,12 @@
             </svg>
           </button>
 
-          <div class="flex items-center ms-3">
+          <div class="relative flex items-center ms-3" data-user-dropdown-container>
             <button
               type="button"
               class="flex text-sm rounded-full ring-1 ring-sky-700 hover:ring-white/60 focus:ring-4 focus:ring-white/30"
               aria-expanded="false"
-              data-dropdown-toggle="user-dropdown"
-              data-dropdown-placement="bottom"
+              @click="toggleUserDropdown"
             >
               <span class="sr-only">Abrir menú de usuario</span>
               <img
@@ -200,8 +199,8 @@
             </button>
 
             <div
-              id="user-dropdown"
-              class="z-50 hidden my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-slate-900 dark:divide-slate-800"
+              v-show="showUserDropdown"
+              class="absolute right-0 top-12 z-50 my-4 text-base list-none bg-white divide-y divide-gray-100 rounded-lg shadow dark:bg-slate-900 dark:divide-slate-800"
             >
               <div class="px-4 py-3">
                 <p class="text-sm text-gray-900 dark:text-slate-100">{{ userName }}</p>
@@ -301,6 +300,7 @@ const userInitials = computed(() => {
 
 const isDark = ref(false);
 const showNotifications = ref(false);
+const showUserDropdown = ref(false);
 
 const notifications = ref([]);
 const unreadCount = ref(0);
@@ -354,6 +354,10 @@ const toggleNotifications = () => {
   showNotifications.value = !showNotifications.value;
 };
 
+const toggleUserDropdown = () => {
+  showUserDropdown.value = !showUserDropdown.value;
+};
+
 const markAllAsRead = async () => {
   try {
     await axios.post('/notifications/mark-all-read');
@@ -381,10 +385,13 @@ onMounted(() => {
   loadNotifications({ toastNew: false });
   notifTimer = setInterval(() => loadNotifications({ toastNew: true }), 30000);
   
-  // Close notifications dropdown when clicking outside
+  // Close dropdowns when clicking outside
   document.addEventListener('click', (event) => {
     if (showNotifications.value && !event.target.closest('[data-notifications-container]')) {
       showNotifications.value = false;
+    }
+    if (showUserDropdown.value && !event.target.closest('[data-user-dropdown-container]')) {
+      showUserDropdown.value = false;
     }
   });
 });

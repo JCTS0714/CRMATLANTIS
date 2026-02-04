@@ -71,8 +71,8 @@
         :key="stage.id"
         :data-stage-id="stage.id"
         class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800"
-        @dragover.prevent
-        @drop.prevent="onDrop(stage)"
+        @dragover.prevent='onDragOver'
+        @drop.prevent='onDropOnStage(stage, $event)'
       >
         <div class="p-4 border-b border-gray-200 dark:border-slate-800">
           <div class="flex items-center justify-between gap-3">
@@ -89,21 +89,25 @@
             Sin incidencias.
           </div>
 
-          <div v-for="incidence in stage.incidences" :key="incidence.id" :data-incidence-id="incidence.id">
+          <div v-for="(incidence, index) in stage.incidences" :key="incidence.id" :data-incidence-id="incidence.id">
+            <!-- Preview line when dragging over -->
+            <div 
+              v-if="dragOverStageId === stage.id && dropPreviewPosition === index && draggedIncidence?.id !== incidence.id"
+              class="h-1 bg-blue-500 rounded-full mx-3 mb-2 animate-pulse transition-all duration-300"
+            ></div>
+
             <article
               :data-incidence-id="incidence.id"
-              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 dark:bg-slate-800 dark:border-slate-700 transition-all duration-150"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-slate-800 dark:border-slate-700 transition-all duration-200"
               :class="{
-                'scale-105 shadow-lg opacity-90 z-50 transform': draggingId === incidence.id,
-                'opacity-50': draggingId && draggingId !== incidence.id,
-                'cursor-not-allowed opacity-80': isLocked(incidence, stage),
-                'cursor-grab active:cursor-grabbing hover:bg-blue-50/30 dark:hover:bg-slate-800/50': !isLocked(incidence, stage)
+                'opacity-60 scale-95 shadow-lg': draggedIncidence?.id === incidence.id,
+                'cursor-not-allowed opacity-80': isLocked(incidence),
+                'cursor-grab hover:bg-blue-50/30 dark:hover:bg-slate-800/50 hover:shadow-md': !isLocked(incidence)
               }"
-              :draggable="!isLocked(incidence, stage)"
-              @dragstart="onDragStart(incidence, stage)"
+              :draggable="!isLocked(incidence)"
+              @dragstart="onDragStart(incidence, stage, $event)"
               @dragend="onDragEnd"
-              @dragover.prevent="onDragOverThrottled(incidence, stage, $event)"
-              @drop.prevent="onDrop(stage, incidence, $event)"
+              @click="openEdit(incidence)"
             >
               <div 
                 class="flex items-start justify-between gap-3 cursor-pointer"
@@ -186,6 +190,12 @@
               </div>
             </article>
           </div>
+          
+          <!-- Preview line at the end when dragging -->
+          <div 
+            v-if="dragOverStageId === stage.id && dropPreviewPosition >= (stage.incidences?.length || 0)"
+            class="h-1 bg-blue-500 rounded-full mx-3 mt-2 animate-pulse transition-all duration-300"
+          ></div>
         </div>
       </section>
     </div>
@@ -207,14 +217,21 @@ const dateFrom = ref('');
 const dateTo = ref('');
 const priorityFilter = ref('');
 
-// Drag & Drop avanzado
-const draggingId = ref(null);
+// 🚀 NUEVO DRAG & DROP SIMPLE 
 const draggedIncidence = ref(null);
+const draggedFromStage = ref(null);
 const draggedFromStageId = ref(null);
-const previewApplied = ref(false);
+const dragOverStageId = ref(null);
+const dropPreviewPosition = ref(null);
+
+// Drag & Drop state variables
+const draggingId = ref(null);
 const dropPerformed = ref(false);
-const dragOverTarget = ref({ incidenceId: null, position: 'after', stageId: null });
+const previewApplied = ref(false);
 const originalPosition = ref(null);
+
+// Timeout for drag over throttling
+let dragOverTimeout = null;
 
 const archivingIds = ref(new Set());
 
@@ -279,26 +296,13 @@ const clearFilters = () => {
   load();
 };
 
-const removeFromStage = (stageId, id) => {
-  const s = stages.value.find((x) => x.id === stageId);
-  if (!s?.incidences) return null;
-  const idx = s.incidences.findIndex((x) => x.id === id);
-  if (idx === -1) return null;
-  const [removed] = s.incidences.splice(idx, 1);
-  s.count = Math.max(0, (s.count ?? s.incidences.length) - 1);
-  return removed;
-};
+// ========================================
+// 🛠 FUNCIONES AUXILIARES SIMPLES
+// ========================================
 
-const addToStageAtIndex = (stageId, item, index = 0) => {
-  const s = stages.value.find((x) => x.id === stageId);
-  if (!s) return;
-  if (!Array.isArray(s.incidences)) s.incidences = [];
-  const idx = Math.max(0, Math.min(index, s.incidences.length));
-  s.incidences.splice(idx, 0, item);
-  s.count = (s.count ?? 0) + 1;
+const isLocked = (incidence) => {
+  return !!(incidence?.archived_at);
 };
-
-const isLocked = (it) => !!it?.archived_at;
 
 const openEdit = (it) => {
   if (!it?.id) return;
@@ -318,7 +322,7 @@ const onUpdated = (e) => {
 };
 
 // Drag & Drop avanzado
-const onDragStart = (incidence, stage) => {
+const onDragStart = (incidence, stage, event) => {
   if (isLocked(incidence)) return;
   draggedIncidence.value = incidence;
   draggedFromStageId.value = incidence?.stage_id ?? null;
@@ -356,7 +360,8 @@ const clearPreview = (revert = false) => {
   }
 
   previewApplied.value = false;
-  dragOverTarget.value = { incidenceId: null, position: 'after', stageId: null };
+  dragOverStageId.value = null;
+  dropPreviewPosition.value = null;
 };
 
 const onDragEnd = () => {
@@ -375,170 +380,178 @@ const onDragEnd = () => {
   draggingId.value = null;
   previewApplied.value = false;
   dropPerformed.value = false;
-  dragOverTarget.value = { incidenceId: null, position: 'after', stageId: null };
+  dragOverStageId.value = null;
+  dropPreviewPosition.value = null;
   originalPosition.value = null;
 };
 
-let dragOverTimeout = null;
-const onDragOverThrottled = (targetIncidence, stage, event) => {
-  if (!draggedIncidence.value || !event || !event.currentTarget) return;
+// Function called by template for dropping on stage
+const onDropOnStage = async (targetStage, event) => {
+  event.preventDefault();
   
-  if (dragOverTimeout) {
-    clearTimeout(dragOverTimeout);
-  }
+  if (!draggedIncidence.value || !targetStage) return;
   
-  dragOverTimeout = setTimeout(() => {
-    // Check if component is still mounted and drag is still active
-    if (draggedIncidence.value && event.currentTarget) {
-      onDragOver(targetIncidence, stage, event);
-    }
-  }, 16);
-};
-
-const onDragOver = (targetIncidence, stage, event) => {
-  if (!draggedIncidence.value) return;
-  
-  // Validate event and currentTarget
-  if (!event || !event.currentTarget) return;
-
-  const sectionEl = event.currentTarget.closest('section[data-stage-id]');
-  if (!sectionEl) return;
-  const container = sectionEl.querySelector('.p-3');
-  if (!container) return;
-
-  const articles = container.querySelectorAll('article[data-incidence-id]');
-  const childElements = Array.from(articles).filter(el => {
-    const incidenceId = Number(el.getAttribute('data-incidence-id'));
-    return incidenceId !== draggedIncidence.value.id;
-  });
-
-  if (childElements.length === 0) {
-    applyPreviewOptimized(stage.id, 0);
-    dragOverTarget.value = { incidenceId: null, position: 'top', stageId: stage.id };
-    return;
-  }
-
-  const y = event.clientY;
-  let insertIdx = childElements.length;
-  
-  for (let i = 0; i < childElements.length; i++) {
-    const rect = childElements[i].getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    if (y < mid) {
-      insertIdx = i;
-      break;
-    }
-  }
-
-  applyPreviewOptimized(stage.id, insertIdx);
-  const targetIncidenceId = insertIdx > 0 ? Number(childElements[insertIdx - 1]?.getAttribute('data-incidence-id')) : null;
-  dragOverTarget.value = { 
-    incidenceId: targetIncidenceId, 
-    position: insertIdx === 0 ? 'before' : 'after', 
-    stageId: stage.id 
-  };
-};
-
-const applyPreviewOptimized = (stageId, insertIdx) => {
-  if (!draggedIncidence.value || previewApplied.value) return;
-  
-  const moving = draggedIncidence.value;
-  const stageObj = stages.value.find(s => s.id === stageId);
-  if (!stageObj) return;
-  
-  const currentIdx = stageObj.incidences?.findIndex(i => i.id === moving.id) ?? -1;
-  if (currentIdx === insertIdx) return;
-  
-  stages.value.forEach(s => {
-    if (!Array.isArray(s.incidences)) return;
-    const idx = s.incidences.findIndex(i => i.id === moving.id);
-    if (idx !== -1) s.incidences.splice(idx, 1);
-  });
-
-  if (!Array.isArray(stageObj.incidences)) stageObj.incidences = [];
-  const idx = Math.max(0, Math.min(insertIdx, stageObj.incidences.length));
-  stageObj.incidences.splice(idx, 0, moving);
-  
-  previewApplied.value = true;
-};
-
-const onDrop = async (targetStage, targetIncidence = null, event = null) => {
   const incidence = draggedIncidence.value;
   const fromStageId = draggedFromStageId.value;
-
-  if (!incidence?.id || !fromStageId || !targetStage?.id) {
-    // Reset drag state
-    draggedIncidence.value = null;
-    draggedFromStageId.value = null;
-    draggingId.value = null;
+  
+  // Validations
+  if (isLocked(incidence)) {
+    moveError.value = 'Esta incidencia está bloqueada y no se puede mover.';
     return;
   }
-
-  // Handle in-column reordering and cross-column moves
-  if (previewApplied.value) {
-    dropPerformed.value = true;
-    const incidenceId = incidence.id;
-    const targetStageObj = stages.value.find((s) => s.id === targetStage.id);
-    if (!targetStageObj) return;
-
-    try {
-      // If moved across stages, call move-stage first
-      if (fromStageId !== targetStage.id) {
-        await axios.patch(`/incidencias/${incidenceId}/move-stage`, { stage_id: targetStage.id });
-      }
-
-      // Always call reorder to update positions
-      const orderedIds = targetStageObj.incidences.map((i) => i.id);
-      await axios.patch('/incidencias/reorder', { stage_id: targetStage.id, ordered_ids: orderedIds });
-
-      previewApplied.value = false;
-      dragOverTarget.value = { incidenceId: null, position: 'after', stageId: null };
-      draggedIncidence.value = null;
-      draggedFromStageId.value = null;
-      draggingId.value = null;
-      originalPosition.value = null;
-      dropPerformed.value = false;
-      moveError.value = '';
-      toastSuccess('Incidencia actualizada');
-    } catch (error) {
-      moveError.value = 'Error al mover la incidencia';
-      await load({ showLoading: false });
-    }
-    return;
-  }
-
-  // Fallback for simple cross-column moves
-  if (fromStageId === targetStage.id) return;
 
   moveError.value = '';
-
-  // optimistic UI move
-  const removed = removeFromStage(fromStageId, incidence.id);
-  if (removed) {
-    removed.stage_id = targetStage.id;
-    addToStageAtIndex(targetStage.id, removed, 0);
-  }
-
+  
   try {
-    const res = await axios.patch(`/incidencias/${incidence.id}/move-stage`, { stage_id: targetStage.id });
-    const updated = res?.data?.data;
-    if (updated && typeof updated === 'object') {
-      const target = stages.value
-        .find((s) => s.id === targetStage.id)
-        ?.incidences?.find((x) => x.id === incidence.id);
-      if (target) Object.assign(target, updated);
+    // Calcular nueva posición basada en donde se soltó
+    const dropY = event.clientY;
+    const newPosition = calculateDropPosition(targetStage, dropY, incidence.id);
+    
+    if (fromStageId === targetStage.id) {
+      // Reordenar dentro de la misma etapa
+      await reorderIncidencesInStage(targetStage.id, incidence.id, newPosition);
+      toastSuccess('Incidencia reordenada');
+    } else {
+      // Mover a diferente etapa
+      // Primero actualizar la etapa en el backend
+      const response = await axios.patch(`/incidencias/${incidence.id}/move-stage`, {
+        stage_id: targetStage.id
+      });
+
+      // Remover de etapa original
+      removeIncidenceFromStage(fromStageId, incidence.id);
+      
+      // Actualizar datos de la incidencia con respuesta del servidor
+      const updatedIncidence = response?.data?.data ?? incidence;
+      updatedIncidence.stage_id = targetStage.id;
+      
+      // Agregar a nueva etapa
+      addIncidenceToStageAtIndex(targetStage.id, updatedIncidence, newPosition);
+      
+      // Reordenar la nueva etapa para mantener las posiciones correctas
+      await reorderIncidencesInStage(targetStage.id, incidence.id, newPosition);
+      
+      toastSuccess('Incidencia movida correctamente');
     }
-    toastSuccess('Incidencia actualizada');
-  } catch (e) {
-    const msg = e?.response?.data?.message ?? 'No se pudo mover la incidencia.';
+  } catch (error) {
+    console.error('Error in onDropOnStage:', error);
+    const msg = error?.response?.data?.message ?? 'No se pudo mover la incidencia.';
     moveError.value = msg;
     toastError(msg);
     await load({ showLoading: false });
   } finally {
+    // Reset drag state
     draggedIncidence.value = null;
     draggedFromStageId.value = null;
     draggingId.value = null;
+    dragOverStageId.value = null;
+    dropPreviewPosition.value = null;
   }
+};
+
+const removeIncidenceFromStage = (stageId, incidenceId) => {
+  const stage = stages.value.find(s => s.id === stageId);
+  if (!stage?.incidences) return null;
+  
+  const index = stage.incidences.findIndex(i => i.id === incidenceId);
+  if (index !== -1) {
+    const removed = stage.incidences.splice(index, 1)[0];
+    stage.count = stage.incidences.length;
+    return removed;
+  }
+  return null;
+};
+
+const addIncidenceToStageAtIndex = (stageId, incidence, position = 0) => {
+  const stage = stages.value.find(s => s.id === stageId);
+  if (!stage) return;
+  
+  if (!Array.isArray(stage.incidences)) stage.incidences = [];
+  
+  // Remove if already exists
+  const existingIndex = stage.incidences.findIndex(i => i.id === incidence.id);
+  if (existingIndex !== -1) {
+    stage.incidences.splice(existingIndex, 1);
+  }
+  
+  // Insert at specified position
+  const insertIndex = Math.min(Math.max(0, position), stage.incidences.length);
+  stage.incidences.splice(insertIndex, 0, incidence);
+  stage.count = stage.incidences.length;
+};
+
+// Function called by template for drag over
+const onDragOver = (event) => {
+  if (!draggedIncidence.value) return;
+  event.preventDefault(); // Allow drop
+  
+  // Encontrar la etapa sobre la que se está arrastrando
+  const stageElement = event.currentTarget.closest('section[data-stage-id]');
+  if (!stageElement) return;
+  
+  const stageId = parseInt(stageElement.getAttribute('data-stage-id'));
+  const targetStage = stages.value.find(s => s.id === stageId);
+  if (!targetStage) return;
+  
+  dragOverStageId.value = stageId;
+  
+  // Calcular posición de preview
+  const dropY = event.clientY;
+  dropPreviewPosition.value = calculateDropPosition(targetStage, dropY, draggedIncidence.value.id);
+};
+
+const calculateDropPosition = (stage, dropY, draggedIncidenceId = null) => {
+  const stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
+  if (!stageElement) return 0;
+  
+  const incidenceCards = stageElement.querySelectorAll('article[data-incidence-id]');
+  
+  // Filtrar las tarjetas para excluir la que se está arrastrando
+  const validCards = Array.from(incidenceCards).filter(card => {
+    const incidenceId = parseInt(card.getAttribute('data-incidence-id'));
+    return draggedIncidenceId ? incidenceId !== draggedIncidenceId : true;
+  });
+  
+  for (let i = 0; i < validCards.length; i++) {
+    const rect = validCards[i].getBoundingClientRect();
+    if (dropY < rect.top + rect.height / 2) {
+      return i; // Insert before this card
+    }
+  }
+  
+  return validCards.length; // Insert at end
+};
+
+const reorderIncidencesInStage = async (stageId, incidenceId, position) => {
+  const stage = stages.value.find(s => s.id === stageId);
+  if (!stage || !Array.isArray(stage.incidences)) return;
+  
+  // Encontrar la incidencia actual
+  const currentIndex = stage.incidences.findIndex(i => i.id === incidenceId);
+  if (currentIndex === -1) return;
+  
+  // Si la posición es la misma, no hacer nada
+  if (currentIndex === position) return;
+  
+  // Remover de posición actual
+  const [incidence] = stage.incidences.splice(currentIndex, 1);
+  
+  // Calcular nueva posición ajustada
+  const newIndex = Math.min(Math.max(0, position), stage.incidences.length);
+  
+  // Insertar en nueva posición
+  stage.incidences.splice(newIndex, 0, incidence);
+  
+  // Actualizar conteo
+  stage.count = stage.incidences.length;
+  
+  // Enviar nuevo orden al backend
+  const orderedIds = stage.incidences.map(i => i.id);
+  
+  await axios.patch('/incidencias/reorder', {
+    stage_id: stageId,
+    ordered_ids: orderedIds
+  });
 };
 
 const deleteIncidence = async (incidence) => {
@@ -590,7 +603,7 @@ const archive = async (it, stage) => {
   moveError.value = '';
   try {
     await axios.patch(`/incidencias/${it.id}/archive`);
-    removeFromStage(stage.id, it.id);
+    removeIncidenceFromStage(stage.id, it.id);
     toastSuccess('Incidencia archivada');
     window.dispatchEvent(new CustomEvent('incidencias:archived'));
   } catch (e) {
@@ -617,15 +630,7 @@ onBeforeUnmount(() => {
   window.removeEventListener('incidencias:updated', onUpdated);
   
   // Clean up drag state
-  if (dragOverTimeout) {
-    clearTimeout(dragOverTimeout);
-    dragOverTimeout = null;
-  }
-  
-  // Reset drag state to prevent memory leaks
   draggedIncidence.value = null;
-  draggedFromStageId.value = null;
-  draggingId.value = null;
-  previewApplied.value = false;
+  draggedFromStage.value = null;
 });
 </script>

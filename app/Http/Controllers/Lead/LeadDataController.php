@@ -144,13 +144,13 @@ class LeadDataController extends Controller
     }
 
     /**
-     * Reorder leads within a stage
+     * Simple reorder leads within a stage
      */
     public function reorder(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'stage_id' => ['required', 'integer', Rule::exists('lead_stages', 'id')],
-            'ordered_ids' => ['required', 'array'],
+            'ordered_ids' => ['required', 'array', 'min:1'],
             'ordered_ids.*' => ['integer', Rule::exists('leads', 'id')],
         ]);
 
@@ -168,7 +168,7 @@ class LeadDataController extends Controller
         });
 
         return response()->json([
-            'message' => 'Orden actualizado.',
+            'message' => 'Orden actualizado correctamente.',
         ]);
     }
 }
