@@ -1017,9 +1017,7 @@ const submitEdit = async () => {
     const res = await axios.put(`/leads/${editForm.value.id}`, payload);
     const updated = res?.data?.data;
     if (updated) {
-      // find and update in stages
-      applyLeadPatch(updated, updated);
-      // ensure lead exists in UI: replace where found
+      // Update lead in UI
       for (const s of stages.value) {
         if (!Array.isArray(s.leads)) continue;
         const idx = s.leads.findIndex((l) => l.id === updated.id);
