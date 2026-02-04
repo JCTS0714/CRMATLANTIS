@@ -324,6 +324,7 @@ const saveObservacion = async () => {
       if (idx !== -1) items.value.splice(idx, 1, { ...items.value[idx], ...updated });
     }
     toastSuccess('Observación guardada');
+    closeModal();
   } catch (e) {
     const msg = e?.response?.data?.message ?? 'No se pudo guardar la observación.';
     toastError(msg);

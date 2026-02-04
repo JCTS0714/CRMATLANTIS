@@ -81,8 +81,13 @@ class WaitingLeadController extends Controller
                 $originalLead = $waitingLead->lead_id ? Lead::find($waitingLead->lead_id) : null;
                 
                 if ($originalLead && $originalLead->archived_at) {
-                    // Reactivate the original lead
+                    // Reactivate the original lead and place it at top of its stage
+                    $maxPosition = Lead::query()
+                        ->where('stage_id', $originalLead->stage_id)
+                        ->max('position') ?? 0;
+                    
                     $originalLead->archived_at = null;
+                    $originalLead->position = $maxPosition + 1;
                     $originalLead->save();
                 } else {
                     // Create a new lead from the waiting lead data
@@ -90,6 +95,11 @@ class WaitingLeadController extends Controller
                     if (!$firstStage) {
                         throw new \RuntimeException('No hay etapas de leads configuradas.');
                     }
+                    
+                    // Get highest position in the first stage to place reactivated lead at top
+                    $maxPosition = Lead::query()
+                        ->where('stage_id', $firstStage->id)
+                        ->max('position') ?? 0;
                     
                     Lead::create([
                         'stage_id' => $firstStage->id,
@@ -103,7 +113,7 @@ class WaitingLeadController extends Controller
                         'document_number' => $waitingLead->document_number,
                         'observacion' => $waitingLead->observacion,
                         'created_by' => $waitingLead->created_by,
-                        'position' => 0, // Will be set to highest position
+                        'position' => $maxPosition + 1, // Place at top (highest position)
                     ]);
                 }
                 

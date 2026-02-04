@@ -391,6 +391,7 @@
                   />
                 
                 <textarea
+                  ref="observacionInput"
                   v-model.trim="editForm.observacion"
                   rows="3"
                   placeholder="Observación (motivo de desistimiento o notas)"
@@ -456,7 +457,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
 import axios from 'axios';
 import { confirmDialog, toastSuccess, toastError } from '../ui/alerts';
 
@@ -889,6 +890,7 @@ const submitQuick = async () => {
 const editOpen = ref(false);
 const editSaving = ref(false);
 const editError = ref('');
+const observacionInput = ref(null);
 const editForm = ref({
   id: null,
   name: '',
@@ -921,6 +923,12 @@ const openEditModal = (lead) => {
     observacion: lead.observacion ?? '',
   };
   editOpen.value = true;
+  nextTick(() => {
+    if (observacionInput.value?.focus) {
+      observacionInput.value.focus();
+      observacionInput.value.select?.();
+    }
+  });
 };
 
 const markDesistido = async () => {
@@ -951,6 +959,10 @@ const markDesistido = async () => {
     }
     
     toastSuccess('Lead marcado como desistido');
+
+    // Redireccionar inmediatamente usando la ubicación del backend
+    const target = res?.data?.location || '/desistidos';
+    window.location.assign(target);
   } catch (e) {
     const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo marcar como desistido.';
     toastError(msg);
@@ -985,6 +997,10 @@ const sendToEspera = async () => {
     }
     
     toastSuccess('Lead enviado a zona de espera');
+
+    // Redireccionar inmediatamente usando la ubicación del backend
+    const target = res?.data?.location || '/espera';
+    window.location.assign(target);
   } catch (e) {
     const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo enviar a zona de espera.';
     toastError(msg);

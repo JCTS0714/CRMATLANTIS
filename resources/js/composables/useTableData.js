@@ -21,6 +21,7 @@ export function useTableData(config = {}) {
   const loading = ref(false);
   const error = ref(null);
   const items = ref([]);
+  const stagesData = ref([]);
   
   const pagination = reactive({
     current_page: 1,
@@ -66,7 +67,14 @@ export function useTableData(config = {}) {
       const response = await axios.get(endpoint, { params: requestParams });
       
       const data = response.data?.data || response.data;
-      items.value = data?.items || [];
+      // Support both 'items' (generic) and 'leads' (LeadDataController response)
+      items.value = data?.items || data?.leads || [];
+      
+      // Also extract stages if available
+      if (data?.stages) {
+        // Emit stages for consumers that need them
+        stagesData.value = data.stages;
+      }
       
       if (data?.pagination) {
         Object.assign(pagination, data.pagination);
@@ -124,6 +132,7 @@ export function useTableData(config = {}) {
     loading,
     error,
     items,
+    stagesData,
     pagination,
     filters,
     

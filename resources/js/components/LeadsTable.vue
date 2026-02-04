@@ -37,8 +37,6 @@
           <thead class="text-xs uppercase bg-gray-50 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
             <tr>
               <th class="px-4 py-3">ID</th>
-              <th class="px-4 py-3">Etapa</th>
-              <th class="px-4 py-3">Acciones</th>
               <th class="px-4 py-3">Nombre</th>
               <th class="px-4 py-3 text-right">Monto</th>
               <th class="px-4 py-3">Moneda</th>
@@ -52,7 +50,6 @@
               <th class="px-4 py-3">Customer ID</th>
               <th class="px-4 py-3">Creado por</th>
               <th class="px-4 py-3">Won at</th>
-              <th class="px-4 py-3">Archivado</th>
               <th class="px-4 py-3">Creado</th>
               <th class="px-4 py-3">Actualizado</th>
             </tr>
@@ -63,16 +60,10 @@
               v-for="lead in items"
               :key="lead.id"
               :lead="lead"
-              :stages="stages"
-              :stage-name-by-id="stageNameById"
-              :saving-stage="savingStageIds.has(lead.id)"
-              :archiving="archivingIds.has(lead.id)"
-              @stage-change="handleStageChange"
-              @archive="handleArchive"
             />
 
             <tr v-if="isEmpty">
-              <td colspan="19" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
+              <td colspan="16" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
                 Sin leads.
               </td>
             </tr>
@@ -108,6 +99,7 @@ const {
   loading,
   error,
   items,
+  stagesData,
   pagination,
   filters,
   isEmpty,
@@ -122,25 +114,15 @@ const {
   defaultPerPage: 25
 });
 
-// Component state
-const stages = ref([]);
+// Component state - use stagesData from composable
+const stages = computed(() => stagesData.value || []);
 const importing = ref(false);
-const savingStageIds = ref(new Set());
-const archivingIds = ref(new Set());
 
 const searchInput = ref('');
 const activeStageId = ref(null);
 const perPage = computed(() => pagination.per_page);
 const totalCount = computed(() => pagination.total || 0);
 
-// Stage name mapping for quick lookup
-const stageNameById = computed(() => {
-  const map = new Map();
-  stages.value.forEach(stage => {
-    map.set(stage.id, stage.name);
-  });
-  return map;
-});
 
 // Watch search input for debounced search
 watch(searchInput, (newValue) => {
@@ -154,80 +136,9 @@ const changePerPage = (newPerPage) => {
 
 const handleStageFilter = (stageId) => {
   activeStageId.value = stageId;
-  applyFilters({ stageId, page: 1 });
+  applyFilters({ stage_id: stageId, page: 1 });
 };
 
-const handleStageChange = async (lead, event) => {
-  const newStageId = parseInt(event.target.value);
-  if (newStageId === lead.stage_id) return;
-
-  savingStageIds.value.add(lead.id);
-
-  try {
-    await axios.patch(`/leads/${lead.id}`, { stage_id: newStageId });
-    
-    // Update local data
-    lead.stage_id = newStageId;
-    lead.stage_name = stageNameById.value.get(newStageId);
-    
-    Swal.fire({
-      title: '¡Actualizado!',
-      text: 'Etapa del lead actualizada correctamente',
-      icon: 'success',
-      timer: 2000,
-      showConfirmButton: false
-    });
-  } catch (err) {
-    console.error(err);
-    Swal.fire({
-      title: 'Error',
-      text: 'No se pudo actualizar la etapa del lead',
-      icon: 'error'
-    });
-  } finally {
-    savingStageIds.value.delete(lead.id);
-  }
-};
-
-const handleArchive = async (lead) => {
-  const result = await Swal.fire({
-    title: '¿Archivar lead?',
-    text: `Se archivará el lead "${lead.name}"`,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonText: 'Sí, archivar',
-    cancelButtonText: 'Cancelar',
-    reverseButtons: true
-  });
-
-  if (!result.isConfirmed) return;
-
-  archivingIds.value.add(lead.id);
-
-  try {
-    await axios.patch(`/leads/${lead.id}/archive`);
-    
-    Swal.fire({
-      title: '¡Archivado!',
-      text: 'Lead archivado correctamente',
-      icon: 'success',
-      timer: 2000,
-      showConfirmButton: false
-    });
-    
-    // Refresh data
-    await fetchData();
-  } catch (err) {
-    console.error(err);
-    Swal.fire({
-      title: 'Error',
-      text: 'No se pudo archivar el lead',
-      icon: 'error'
-    });
-  } finally {
-    archivingIds.value.delete(lead.id);
-  }
-};
 
 const handleImportFile = async (event) => {
   const file = event.target.files[0];
@@ -273,20 +184,8 @@ const handleImportFile = async (event) => {
   }
 };
 
-const loadStages = async () => {
-  try {
-    const response = await axios.get('/leads/stages');
-    stages.value = response.data?.data || [];
-  } catch (err) {
-    console.error('Error loading stages:', err);
-  }
-};
-
 // Initialize component
 onMounted(async () => {
-  await Promise.all([
-    loadStages(),
-    fetchData()
-  ]);
+  await fetchData();
 });
 </script>

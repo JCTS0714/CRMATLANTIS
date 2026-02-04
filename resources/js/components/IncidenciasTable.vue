@@ -86,7 +86,6 @@
             <tr>
               <th class="px-4 py-3">ID</th>
               <th class="px-4 py-3">Correlativo</th>
-              <th class="px-4 py-3">Columna</th>
               <th class="px-4 py-3">Acciones</th>
               <th class="px-4 py-3">Título</th>
               <th class="px-4 py-3">Cliente</th>
@@ -105,19 +104,6 @@
             >
               <td class="px-4 py-3 font-medium text-gray-900 dark:text-slate-100">{{ it.id }}</td>
               <td class="px-4 py-3">{{ it.correlative || '—' }}</td>
-
-              <td class="px-4 py-3">
-                <select
-                  :value="it.stage_id"
-                  class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  :disabled="savingStageIds.has(it.id) || isLocked(it)"
-                  @change="onChangeStage(it, $event)"
-                >
-                  <option v-for="stage in stages" :key="stage.id" :value="stage.id">
-                    {{ stage.name }}
-                  </option>
-                </select>
-              </td>
 
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
@@ -170,7 +156,7 @@
             </tr>
 
             <tr v-if="!loading && incidences.length === 0">
-              <td colspan="10" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
+              <td colspan="9" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
                 Sin incidencias.
               </td>
             </tr>
@@ -217,7 +203,6 @@ const totalCount = ref(0);
 const loading = ref(false);
 const error = ref('');
 
-const savingStageIds = ref(new Set());
 const archivingIds = ref(new Set());
 const deletingIds = ref(new Set());
 
@@ -328,30 +313,6 @@ const canArchive = (it) => {
   if (!it || isLocked(it)) return false;
   const stage = stageById.value.get(it.stage_id);
   return !!stage?.is_done;
-};
-
-const onChangeStage = async (it, ev) => {
-  const targetStageId = Number(ev?.target?.value);
-  if (!it?.id || !Number.isFinite(targetStageId)) return;
-
-  savingStageIds.value.add(it.id);
-  error.value = '';
-  try {
-    const res = await axios.patch(`/incidencias/${it.id}/move-stage`, { stage_id: targetStageId });
-    const updated = res?.data?.data;
-    if (updated && typeof updated === 'object') {
-      Object.assign(it, updated);
-    } else {
-      it.stage_id = targetStageId;
-    }
-    toastSuccess('Incidencia actualizada');
-  } catch (e) {
-    const msg = e?.response?.data?.message ?? 'No se pudo mover la incidencia.';
-    error.value = msg;
-    toastError(msg);
-  } finally {
-    savingStageIds.value.delete(it.id);
-  }
 };
 
 const archive = async (it) => {

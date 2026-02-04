@@ -101,22 +101,34 @@
               </div>
             </div>
 
-            <div class="mt-5 flex items-center justify-end gap-2">
+            <div class="mt-5 flex items-center justify-between gap-2">
               <button
+                v-if="form.id"
                 type="button"
-                class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                @click="hide"
+                class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
+                :disabled="saving || deleting"
+                @click="deleteIncidence"
               >
-                Cancelar
+                {{ deleting ? 'Eliminando…' : 'Eliminar' }}
               </button>
 
-              <button
-                type="submit"
-                class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
-                :disabled="saving || !form.id"
-              >
-                {{ saving ? 'Guardando…' : 'Guardar cambios' }}
-              </button>
+              <div class="ml-auto flex items-center gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                  @click="hide"
+                >
+                  Cancelar
+                </button>
+
+                <button
+                  type="submit"
+                  class="inline-flex items-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+                  :disabled="saving || deleting || !form.id"
+                >
+                  {{ saving ? 'Guardando…' : 'Guardar cambios' }}
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -128,10 +140,11 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue';
 import axios from 'axios';
-import { toastError, toastSuccess } from '../ui/alerts';
+import { confirmDialog, toastError, toastSuccess } from '../ui/alerts';
 
 const open = ref(false);
 const saving = ref(false);
+const deleting = ref(false);
 const error = ref('');
 
 const form = ref({
@@ -151,6 +164,7 @@ let customerTimer = null;
 
 const reset = () => {
   error.value = '';
+  deleting.value = false;
   form.value = {
     id: null,
     title: '',
@@ -307,6 +321,35 @@ const submit = async () => {
     toastError(error.value);
   } finally {
     saving.value = false;
+  }
+};
+
+const deleteIncidence = async () => {
+  if (!form.value.id) return;
+
+  const ok = await confirmDialog({
+    title: '¿Seguro que quieres eliminar la incidencia?',
+    text: 'Esta acción no se puede deshacer.',
+    icon: 'warning',
+    confirmText: 'Eliminar',
+    cancelText: 'Cancelar',
+  });
+
+  if (!ok) return;
+
+  deleting.value = true;
+  error.value = '';
+
+  try {
+    await axios.delete(`/incidencias/${form.value.id}`);
+    toastSuccess('Incidencia eliminada correctamente');
+    hide();
+    window.dispatchEvent(new CustomEvent('incidencias:deleted', { detail: { id: form.value.id } }));
+  } catch (e) {
+    error.value = e?.response?.data?.message ?? 'No se pudo eliminar la incidencia.';
+    toastError(error.value);
+  } finally {
+    deleting.value = false;
   }
 };
 

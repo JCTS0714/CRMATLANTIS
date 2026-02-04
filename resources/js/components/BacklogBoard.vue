@@ -141,52 +141,10 @@
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  :disabled="isLocked(incidence)"
-                  @mousedown.stop
-                  @click.stop.prevent="openEdit(incidence)"
-                >
-                  Editar
-                </button>
-
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
-                  :disabled="isLocked(incidence)"
-                  @mousedown.stop
-                  @click.stop.prevent="deleteIncidence(incidence)"
-                >
-                  Eliminar
-                </button>
-
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="archivingIds.has(incidence.id)"
                   @click.stop.prevent="archive(incidence, stage)"
                 >
                   {{ archivingIds.has(incidence.id) ? 'Archivando…' : 'Archivar' }}
-                </button>
-              </div>
-
-              <div v-else class="mt-3 flex justify-end gap-2">
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  :disabled="isLocked(incidence)"
-                  @mousedown.stop
-                  @click.stop.prevent="openEdit(incidence)"
-                >
-                  Editar
-                </button>
-
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-700 dark:bg-red-900/20 dark:text-red-400 dark:hover:bg-red-900/30"
-                  :disabled="isLocked(incidence)"
-                  @mousedown.stop
-                  @click.stop.prevent="deleteIncidence(incidence)"
-                >
-                  Eliminar
                 </button>
               </div>
             </article>
@@ -584,54 +542,6 @@ const reorderIncidencesInStage = async (stageId, incidenceId, position) => {
   });
 };
 
-const deleteIncidence = async (incidence) => {
-  if (!incidence?.id) return;
-
-  try {
-    const result = await confirmDialog({
-      title: '¿Seguro que quieres eliminar la incidencia?',
-      text: 'Esta acción no se puede deshacer.',
-      icon: 'warning',
-      confirmText: 'Eliminar',
-      cancelText: 'Cancelar'
-    });
-
-    if (!result) return;
-
-    await axios.delete(`/incidencias/${incidence.id}`);
-
-    // Remove from UI
-    for (const stage of stages.value) {
-      const idx = stage?.incidences?.findIndex?.(x => x.id === incidence.id) ?? -1;
-      if (idx !== -1) {
-        stage.incidences.splice(idx, 1);
-        stage.count = Math.max(0, (stage.count ?? 0) - 1);
-        break;
-      }
-    }
-
-    toastSuccess('Incidencia eliminada correctamente');
-  } catch (error) {
-    console.error('Error eliminando incidencia:', error);
-    
-    let errorMessage = 'Error al eliminar la incidencia';
-    
-    if (error.response?.status === 403) {
-      errorMessage = 'No tienes permisos para eliminar incidencias';
-    } else if (error.response?.status === 404) {
-      errorMessage = 'La incidencia no fue encontrada';
-    } else if (error.response?.status === 422) {
-      errorMessage = error.response.data?.message || 'Datos inválidos';
-    } else if (error.response?.data?.message) {
-      errorMessage = error.response.data.message;
-    } else if (error.message) {
-      errorMessage = error.message;
-    }
-    
-    toastError(errorMessage);
-  }
-};
-
 const archive = async (it, stage) => {
   if (!it?.id) return;
   if (!stage?.is_done) return;
@@ -662,10 +572,27 @@ const archive = async (it, stage) => {
 };
 
 const onCreated = () => load({ showLoading: false });
+const onDeleted = (e) => {
+  const id = e?.detail?.id ?? e?.detail?.incidence?.id ?? e?.detail?.incidenceId ?? null;
+  if (!id) {
+    load({ showLoading: false });
+    return;
+  }
+
+  for (const stage of stages.value) {
+    const idx = stage?.incidences?.findIndex?.(x => x.id === id) ?? -1;
+    if (idx !== -1) {
+      stage.incidences.splice(idx, 1);
+      stage.count = Math.max(0, (stage.count ?? 0) - 1);
+      break;
+    }
+  }
+};
 
 onMounted(async () => {
   window.addEventListener('incidencias:created', onCreated);
   window.addEventListener('incidencias:archived', onCreated);
+  window.addEventListener('incidencias:deleted', onDeleted);
   window.addEventListener('incidencias:updated', onUpdated);
   await load();
 });
@@ -673,6 +600,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   window.removeEventListener('incidencias:created', onCreated);
   window.removeEventListener('incidencias:archived', onCreated);
+  window.removeEventListener('incidencias:deleted', onDeleted);
   window.removeEventListener('incidencias:updated', onUpdated);
   
   // Clean up drag state
