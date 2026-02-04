@@ -134,6 +134,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:leads.update')
         ->name('espera.update');
 
+    Route::post('/espera/{waitingLead}/reactivate', [WaitingLeadController::class, 'reactivate'])
+        ->whereNumber('waitingLead')
+        ->middleware('permission:leads.create')
+        ->name('espera.reactivate');
+
     Route::middleware('permission:customers.view')->group(function () {
         Route::get('/customers', function () {
             return view('dashboard');

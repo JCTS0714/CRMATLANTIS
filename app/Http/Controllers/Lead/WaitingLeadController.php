@@ -70,6 +70,57 @@ class WaitingLeadController extends Controller
         ]);
     }
 
+    /**
+     * Reactivate a waiting lead back to the pipeline
+     */
+    public function reactivate(WaitingLead $waitingLead): JsonResponse
+    {
+        try {
+            DB::transaction(function () use ($waitingLead) {
+                // Find the original lead if it still exists
+                $originalLead = $waitingLead->lead_id ? Lead::find($waitingLead->lead_id) : null;
+                
+                if ($originalLead && $originalLead->archived_at) {
+                    // Reactivate the original lead
+                    $originalLead->archived_at = null;
+                    $originalLead->save();
+                } else {
+                    // Create a new lead from the waiting lead data
+                    $firstStage = \App\Models\LeadStage::orderBy('sort_order')->orderBy('id')->first();
+                    if (!$firstStage) {
+                        throw new \RuntimeException('No hay etapas de leads configuradas.');
+                    }
+                    
+                    Lead::create([
+                        'stage_id' => $firstStage->id,
+                        'name' => $waitingLead->name,
+                        'contact_name' => $waitingLead->contact_name,
+                        'contact_phone' => $waitingLead->contact_phone,
+                        'contact_email' => $waitingLead->contact_email,
+                        'company_name' => $waitingLead->company_name,
+                        'company_address' => $waitingLead->company_address,
+                        'document_type' => $waitingLead->document_type,
+                        'document_number' => $waitingLead->document_number,
+                        'observacion' => $waitingLead->observacion,
+                        'created_by' => $waitingLead->created_by,
+                        'position' => 0, // Will be set to highest position
+                    ]);
+                }
+                
+                // Remove from waiting leads
+                $waitingLead->delete();
+            });
+
+            return response()->json([
+                'message' => 'Lead reactivado exitosamente.',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'No se pudo reactivar el lead: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function createFromLead(Request $request, Lead $lead): JsonResponse
     {
         $validated = $request->validate([

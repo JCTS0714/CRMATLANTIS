@@ -865,9 +865,19 @@ const submitQuick = async () => {
   };
 
   try {
-    await axios.post('/leads', payload);
+    const response = await axios.post('/leads', payload);
+    const newLead = response.data.data;
+    
+    // Agregar el nuevo lead al inicio de la primera etapa (Seguimiento)
+    const firstStage = stages.value.find(s => s.sort_order === 10 || s.key === 'follow_up') || stages.value[0];
+    if (firstStage) {
+      if (!Array.isArray(firstStage.leads)) firstStage.leads = [];
+      firstStage.leads.unshift(newLead);
+      firstStage.count = firstStage.leads.length;
+    }
+    
+    toastSuccess('Lead creado exitosamente');
     hideQuickModal();
-    await load();
   } catch (error) {
     quickError.value = firstValidationMessage(error) ?? error?.response?.data?.message ?? 'No se pudo crear el lead.';
   } finally {
@@ -926,8 +936,21 @@ const markDesistido = async () => {
 
   try {
     const res = await axios.post(`/leads/${editForm.value.id}/desist`, { observacion: editForm.value.observacion || '' });
-    const loc = res?.data?.location || '/desistidos';
-    window.location.assign(loc);
+    
+    // Cerrar modal inmediatamente
+    closeEditModal();
+    
+    // Remover lead de la UI
+    for (const stage of stages.value) {
+      const idx = stage.leads?.findIndex?.(l => l.id === editForm.value.id) ?? -1;
+      if (idx !== -1) {
+        stage.leads.splice(idx, 1);
+        stage.count = stage.leads.length;
+        break;
+      }
+    }
+    
+    toastSuccess('Lead marcado como desistido');
   } catch (e) {
     const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo marcar como desistido.';
     toastError(msg);
@@ -947,12 +970,39 @@ const sendToEspera = async () => {
 
   try {
     const res = await axios.post(`/leads/${editForm.value.id}/wait`, { observacion: editForm.value.observacion || '' });
-    const loc = res?.data?.location || '/espera';
-    window.location.assign(loc);
+    
+    // Cerrar modal inmediatamente
+    closeEditModal();
+    
+    // Remover lead de la UI
+    for (const stage of stages.value) {
+      const idx = stage.leads?.findIndex?.(l => l.id === editForm.value.id) ?? -1;
+      if (idx !== -1) {
+        stage.leads.splice(idx, 1);
+        stage.count = stage.leads.length;
+        break;
+      }
+    }
+    
+    toastSuccess('Lead enviado a zona de espera');
   } catch (e) {
     const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo enviar a zona de espera.';
     toastError(msg);
   }
+};
+      if (idx !== -1) {
+        stage.leads.splice(idx, 1);
+        stage.count = stage.leads.length;
+        break;
+      }
+    }
+    
+    toastSuccess('Lead enviado a zona de espera');
+  } catch (e) {
+    const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo enviar a zona de espera.';
+    toastError(msg);
+  }
+};
 };
 
 const closeEditModal = () => {

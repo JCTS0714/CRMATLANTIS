@@ -104,13 +104,24 @@
               <td class="px-4 py-3 text-slate-300 whitespace-nowrap">{{ formatDate(item.created_at) }}</td>
 
               <td class="px-4 py-3">
-                <button
-                  type="button"
-                  class="inline-flex items-center rounded-lg border border-slate-700 bg-slate-900/40 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
-                  @click="openModal(item.id)"
-                >
-                  Ver / Observación
-                </button>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-lg border border-slate-700 bg-slate-900/40 px-3 py-2 text-xs font-medium text-slate-200 hover:bg-slate-800"
+                    @click="openModal(item.id)"
+                  >
+                    Ver
+                  </button>
+                  
+                  <button
+                    type="button"
+                    class="inline-flex items-center rounded-lg bg-green-600 px-3 py-2 text-xs font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-4 focus:ring-green-300 disabled:opacity-60"
+                    :disabled="reactivating.has(item.id)"
+                    @click="reactivateLead(item)"
+                  >
+                    {{ reactivating.has(item.id) ? 'Reactivando...' : 'Reactivar' }}
+                  </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -200,10 +211,12 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import axios from 'axios';
 import { toastError, toastSuccess } from '../ui/alerts';
+import { useDialog } from '../utils/dialogs';
 
 const q = ref('');
 const items = ref([]);
 const loading = ref(false);
+const reactivating = ref(new Set());
 
 const importInput = ref(null);
 const importing = ref(false);
@@ -213,6 +226,8 @@ const modalItem = ref(null);
 const observacion = ref('');
 const saving = ref(false);
 const observacionEl = ref(null);
+
+const { confirmDialog } = useDialog();
 
 const pagination = ref({
   current_page: 1,
@@ -333,6 +348,48 @@ const saveObservacion = async () => {
     toastError(msg);
   } finally {
     saving.value = false;
+  }
+};
+
+const reactivateLead = async (item) => {
+  if (!item?.id) return;
+  
+  const ok = await confirmDialog({
+    title: 'Reactivar lead',
+    text: `¿Estás seguro que deseas reactivar el lead "${item.name}"? Esto lo moverá de vuelta al pipeline de leads.`,
+    confirmText: 'Sí, reactivar',
+    cancelText: 'Cancelar',
+    icon: 'question',
+  });
+  
+  if (!ok) return;
+  
+  reactivating.value.add(item.id);
+  
+  try {
+    const response = await axios.post(`/espera/${item.id}/reactivate`);
+    
+    // Remover de la lista
+    const index = items.value.findIndex(i => i.id === item.id);
+    if (index !== -1) {
+      items.value.splice(index, 1);
+      // Actualizar paginación
+      pagination.value.total = Math.max(0, pagination.value.total - 1);
+    }
+    
+    toastSuccess('Lead reactivado exitosamente');
+    
+    // Opcional: redirigir al pipeline de leads
+    setTimeout(() => {
+      window.location.assign('/leads');
+    }, 1500);
+    
+  } catch (error) {
+    console.error('Error reactivating lead:', error);
+    const msg = error?.response?.data?.message ?? 'No se pudo reactivar el lead';
+    toastError(msg);
+  } finally {
+    reactivating.value.delete(item.id);
   }
 };
 
