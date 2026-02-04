@@ -93,17 +93,18 @@
             <!-- Preview line when dragging over -->
             <div 
               v-if="dragOverStageId === stage.id && dropPreviewPosition === index && draggedIncidence?.id !== incidence.id"
-              class="h-1 bg-blue-500 rounded-full mx-3 mb-2 animate-pulse transition-all duration-300"
+              class="h-1 bg-blue-500 rounded-full mx-3 mb-2 animate-pulse transition-all duration-200"
             ></div>
 
             <article
               :data-incidence-id="incidence.id"
-              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-slate-800 dark:border-slate-700 transition-all duration-200"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-slate-800 dark:border-slate-700 will-change-transform"
               :class="{
                 'opacity-60 scale-95 shadow-lg': draggedIncidence?.id === incidence.id,
                 'cursor-not-allowed opacity-80': isLocked(incidence),
                 'cursor-grab hover:bg-blue-50/30 dark:hover:bg-slate-800/50 hover:shadow-md': !isLocked(incidence)
               }"
+              :style="draggedIncidence?.id === incidence.id ? 'transition: none !important; transform: scale(1.02);' : 'transition: transform 0.1s ease, opacity 0.1s ease;'"
               :draggable="!isLocked(incidence)"
               @dragstart="onDragStart(incidence, stage, $event)"
               @dragend="onDragEnd"
@@ -194,7 +195,7 @@
           <!-- Preview line at the end when dragging -->
           <div 
             v-if="dragOverStageId === stage.id && dropPreviewPosition >= (stage.incidences?.length || 0)"
-            class="h-1 bg-blue-500 rounded-full mx-3 mt-2 animate-pulse transition-all duration-300"
+            class="h-1 bg-blue-500 rounded-full mx-3 mt-2 animate-pulse transition-all duration-200"
           ></div>
         </div>
       </section>
@@ -229,9 +230,6 @@ const draggingId = ref(null);
 const dropPerformed = ref(false);
 const previewApplied = ref(false);
 const originalPosition = ref(null);
-
-// Timeout for drag over throttling
-let dragOverTimeout = null;
 
 const archivingIds = ref(new Set());
 
@@ -365,16 +363,12 @@ const clearPreview = (revert = false) => {
 };
 
 const onDragEnd = () => {
-  // Clean up any pending timeouts
-  if (dragOverTimeout) {
-    clearTimeout(dragOverTimeout);
-    dragOverTimeout = null;
-  }
-  
+  // Limpiar preview si no se completó el drop
   if (!dropPerformed.value && previewApplied.value) {
     clearPreview(true);
   }
 
+  // Clean up inmediato
   draggedIncidence.value = null;
   draggedFromStageId.value = null;
   draggingId.value = null;
@@ -390,6 +384,9 @@ const onDropOnStage = async (targetStage, event) => {
   event.preventDefault();
   
   if (!draggedIncidence.value || !targetStage) return;
+  
+  // Marcar como performed inmediatamente para prevenir cleanup prematuro
+  dropPerformed.value = true;
   
   const incidence = draggedIncidence.value;
   const fromStageId = draggedFromStageId.value;
@@ -408,30 +405,48 @@ const onDropOnStage = async (targetStage, event) => {
     const newPosition = calculateDropPosition(targetStage, dropY, incidence.id);
     
     if (fromStageId === targetStage.id) {
-      // Reordenar dentro de la misma etapa
-      await reorderIncidencesInStage(targetStage.id, incidence.id, newPosition);
+      // Reordenar dentro de la misma etapa - sin await para ser inmediato
+      reorderIncidencesInStage(targetStage.id, incidence.id, newPosition);
       toastSuccess('Incidencia reordenada');
     } else {
-      // Mover a diferente etapa
-      // Primero actualizar la etapa en el backend
-      const response = await axios.patch(`/incidencias/${incidence.id}/move-stage`, {
-        stage_id: targetStage.id
-      });
-
-      // Remover de etapa original
+      // Mover a diferente etapa - Optimistic UI Update
+      // 1. Update UI inmediatamente (optimistic)
       removeIncidenceFromStage(fromStageId, incidence.id);
-      
-      // Actualizar datos de la incidencia con respuesta del servidor
-      const updatedIncidence = response?.data?.data ?? incidence;
-      updatedIncidence.stage_id = targetStage.id;
-      
-      // Agregar a nueva etapa
+      const updatedIncidence = { ...incidence, stage_id: targetStage.id };
       addIncidenceToStageAtIndex(targetStage.id, updatedIncidence, newPosition);
       
-      // Reordenar la nueva etapa para mantener las posiciones correctas
-      await reorderIncidencesInStage(targetStage.id, incidence.id, newPosition);
-      
-      toastSuccess('Incidencia movida correctamente');
+      // 2. Sync con backend en background
+      axios.patch(`/incidencias/${incidence.id}/move-stage`, {
+        stage_id: targetStage.id
+      }).then((response) => {
+        // Actualizar con datos del servidor si es necesario
+        const serverIncidence = response?.data?.data;
+        if (serverIncidence) {
+          const stage = stages.value.find(s => s.id === targetStage.id);
+          if (stage) {
+            const idx = stage.incidences.findIndex(i => i.id === incidence.id);
+            if (idx !== -1) {
+              Object.assign(stage.incidences[idx], serverIncidence);
+            }
+          }
+        }
+        
+        // 3. Reordenar en background
+        const orderedIds = targetStage.incidences?.map(i => i.id) || [];
+        return axios.patch('/incidencias/reorder', {
+          stage_id: targetStage.id,
+          ordered_ids: orderedIds
+        });
+      }).then(() => {
+        toastSuccess('Incidencia movida correctamente');
+      }).catch(error => {
+        console.error('Error moving incidence:', error);
+        const msg = error?.response?.data?.message ?? 'No se pudo mover la incidencia.';
+        moveError.value = msg;
+        toastError(msg);
+        // En caso de error, recargar datos
+        load({ showLoading: false });
+      });
     }
   } catch (error) {
     console.error('Error in onDropOnStage:', error);
@@ -439,14 +454,14 @@ const onDropOnStage = async (targetStage, event) => {
     moveError.value = msg;
     toastError(msg);
     await load({ showLoading: false });
-  } finally {
-    // Reset drag state
-    draggedIncidence.value = null;
-    draggedFromStageId.value = null;
-    draggingId.value = null;
-    dragOverStageId.value = null;
-    dropPreviewPosition.value = null;
   }
+  
+  // Reset drag state al final siempre
+  draggedIncidence.value = null;
+  draggedFromStageId.value = null;
+  draggingId.value = null;
+  dragOverStageId.value = null;
+  dropPreviewPosition.value = null;
 };
 
 const removeIncidenceFromStage = (stageId, incidenceId) => {
@@ -485,7 +500,7 @@ const onDragOver = (event) => {
   if (!draggedIncidence.value) return;
   event.preventDefault(); // Allow drop
   
-  // Encontrar la etapa sobre la que se está arrastrando
+  // Encontrar la etapa sobre la que se está arrastrando directamente
   const stageElement = event.currentTarget.closest('section[data-stage-id]');
   if (!stageElement) return;
   
@@ -495,31 +510,41 @@ const onDragOver = (event) => {
   
   dragOverStageId.value = stageId;
   
-  // Calcular posición de preview
+  // Calcular posición de preview directamente
   const dropY = event.clientY;
   dropPreviewPosition.value = calculateDropPosition(targetStage, dropY, draggedIncidence.value.id);
 };
 
+// Cache para elementos DOM en BacklogBoard
+const backlogStageElementCache = new Map();
+
 const calculateDropPosition = (stage, dropY, draggedIncidenceId = null) => {
-  const stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
-  if (!stageElement) return 0;
-  
-  const incidenceCards = stageElement.querySelectorAll('article[data-incidence-id]');
-  
-  // Filtrar las tarjetas para excluir la que se está arrastrando
-  const validCards = Array.from(incidenceCards).filter(card => {
-    const incidenceId = parseInt(card.getAttribute('data-incidence-id'));
-    return draggedIncidenceId ? incidenceId !== draggedIncidenceId : true;
-  });
-  
-  for (let i = 0; i < validCards.length; i++) {
-    const rect = validCards[i].getBoundingClientRect();
-    if (dropY < rect.top + rect.height / 2) {
-      return i; // Insert before this card
-    }
+  let stageElement = backlogStageElementCache.get(stage.id);
+  if (!stageElement || !document.contains(stageElement)) {
+    stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
+    if (!stageElement) return 0;
+    backlogStageElementCache.set(stage.id, stageElement);
   }
   
-  return validCards.length; // Insert at end
+  const incidenceCards = stageElement.querySelectorAll('article[data-incidence-id]');
+  let position = 0;
+  
+  // Optimización: loop directo sin Array.from para mejor performance
+  for (let i = 0; i < incidenceCards.length; i++) {
+    const card = incidenceCards[i];
+    const incidenceId = parseInt(card.getAttribute('data-incidence-id'));
+    
+    // Skip si es la tarjeta que se está arrastrando
+    if (draggedIncidenceId && incidenceId === draggedIncidenceId) continue;
+    
+    const rect = card.getBoundingClientRect();
+    if (dropY < rect.top + rect.height / 2) {
+      return position;
+    }
+    position++;
+  }
+  
+  return position; // Insert at end
 };
 
 const reorderIncidencesInStage = async (stageId, incidenceId, position) => {
@@ -542,15 +567,20 @@ const reorderIncidencesInStage = async (stageId, incidenceId, position) => {
   // Insertar en nueva posición
   stage.incidences.splice(newIndex, 0, incidence);
   
-  // Actualizar conteo
+  // Actualizar conteo inmediatamente para UI responsiva
   stage.count = stage.incidences.length;
   
-  // Enviar nuevo orden al backend
+  // Enviar nuevo orden al backend (sin await para no bloquear UI)
   const orderedIds = stage.incidences.map(i => i.id);
   
-  await axios.patch('/incidencias/reorder', {
+  // Ejecutar en background para no bloquear la UI
+  axios.patch('/incidencias/reorder', {
     stage_id: stageId,
     ordered_ids: orderedIds
+  }).catch(error => {
+    console.error('Error reordering incidences:', error);
+    // En caso de error, recargar datos
+    load({ showLoading: false });
   });
 };
 

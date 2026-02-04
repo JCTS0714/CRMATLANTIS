@@ -75,17 +75,18 @@
             <!-- Preview line when dragging over -->
             <div 
               v-if="dragOverStageId === stage.id && dropPreviewPosition === index && draggedLead?.id !== lead.id"
-              class="h-1 bg-blue-500 rounded-full mx-3 mb-2 animate-pulse transition-all duration-300"
+              class="h-1 bg-blue-500 rounded-full mx-3 mb-2 animate-pulse transition-all duration-200"
             ></div>
 
             <article
               :data-lead-id="lead.id"
-              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-slate-800 dark:border-slate-700 transition-all duration-200"
+              class="select-none bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 dark:bg-slate-800 dark:border-slate-700 will-change-transform"
               :class="{
                 'opacity-60 scale-95 shadow-lg': draggedLead?.id === lead.id,
                 'cursor-not-allowed opacity-80': isLeadLocked(lead, stage),
                 'cursor-grab hover:bg-blue-50/30 dark:hover:bg-slate-800/50 hover:shadow-md': !isLeadLocked(lead, stage)
               }"
+              :style="draggedLead?.id === lead.id ? 'transition: none !important; transform: scale(1.02);' : 'transition: transform 0.1s ease, opacity 0.1s ease;'"
               :draggable="!isLeadLocked(lead, stage)"
               @dragstart="onDragStart(lead, stage, $event)"
               @dragend="onDragEnd"
@@ -128,7 +129,7 @@
           <!-- Preview line at the end when dragging -->
           <div 
             v-if="dragOverStageId === stage.id && dropPreviewPosition >= (stage.leads?.length || 0)"
-            class="h-1 bg-blue-500 rounded-full mx-3 mt-2 animate-pulse transition-all duration-300"
+            class="h-1 bg-blue-500 rounded-full mx-3 mt-2 animate-pulse transition-all duration-200"
           ></div>
         </div>
       </section>
@@ -538,35 +539,36 @@ const onDragStart = (lead, stage, event) => {
   draggedLead.value = lead;
   draggedFromStage.value = stages.value.find(s => s.id === lead.stage_id);
   
-  // Visual feedback con animación suave
-  event.target.style.transform = 'scale(1.05)';
-  event.target.style.opacity = '0.8';
-  event.target.style.transition = 'all 0.2s ease';
+  // Visual feedback optimizado - sin transiciones lentas
+  if (event?.target) {
+    event.target.style.transform = 'scale(1.02)';
+    event.target.style.opacity = '0.7';
+    event.target.style.transition = 'transform 0.1s ease';
+  }
 };
 
 const onDragEnd = (event) => {
-  // Reset visual feedback con animación
-  event.target.style.transform = 'scale(1)';
-  event.target.style.opacity = '1';
-  event.target.style.transition = 'all 0.2s ease';
+  // Reset visual feedback - inmediato
+  if (event?.target) {
+    event.target.style.transform = '';
+    event.target.style.opacity = '';
+    event.target.style.transition = '';
+  }
   
-  // Limpiar preview
+  // Limpiar preview inmediatamente
   dragOverStageId.value = null;
   dropPreviewPosition.value = null;
   
-  // Clean up
-  setTimeout(() => {
-    draggedLead.value = null;
-    draggedFromStage.value = null;
-    event.target.style.transition = '';
-  }, 200);
+  // Clean up inmediato
+  draggedLead.value = null;
+  draggedFromStage.value = null;
 };
 
 const onDragOver = (event) => {
   if (!draggedLead.value) return;
   event.preventDefault(); // Allow drop
   
-  // Encontrar la etapa sobre la que se está arrastrando
+  // Encontrar la etapa sobre la que se está arrastrando directamente
   const stageElement = event.currentTarget.closest('section[data-stage-id]');
   if (!stageElement) return;
   
@@ -576,7 +578,7 @@ const onDragOver = (event) => {
   
   dragOverStageId.value = stageId;
   
-  // Calcular posición de preview
+  // Calcular posición de preview directamente
   const dropY = event.clientY;
   dropPreviewPosition.value = calculateDropPosition(targetStage, dropY, draggedLead.value.id);
 };
@@ -615,21 +617,34 @@ const onDropOnStage = async (targetStage, event) => {
       // CASO 1: Reordenamiento dentro de la misma columna
       const dropY = event.clientY;
       const newPosition = calculateDropPosition(targetStage, dropY, lead.id);
-      await reorderLeadsInStage(targetStage.id, lead.id, newPosition);
+      // No usar await - que sea inmediato
+      reorderLeadsInStage(targetStage.id, lead.id, newPosition);
       
     } else {
-      // CASO 2: Movimiento entre columnas diferentes
-      // 1. Move between stages
-      await axios.patch(`/leads/${lead.id}/move-stage`, { 
-        stage_id: targetStage.id 
-      });
+      // CASO 2: Movimiento entre columnas diferentes - Optimistic UI Update
+      const dropY = event.clientY;
+      const newPosition = calculateDropPosition(targetStage, dropY, lead.id);
       
-      // 2. Update UI 
+      // 1. Update UI inmediatamente (optimistic)
       removeLeadFromStage(fromStage.id, lead.id);
-      addLeadToStage(targetStage.id, { ...lead, stage_id: targetStage.id });
+      addLeadToStage(targetStage.id, { ...lead, stage_id: targetStage.id }, newPosition);
       
-      // 3. Set position in new stage (top by default)
-      await reorderLeadsInStage(targetStage.id, lead.id, 0);
+      // 2. Sync con backend en background
+      axios.patch(`/leads/${lead.id}/move-stage`, { 
+        stage_id: targetStage.id 
+      }).then(() => {
+        // 3. Mantener orden actual que ya está en la UI
+        const orderedIds = targetStage.leads.map(l => l.id);
+        return axios.patch('/leads/reorder', {
+          stage_id: targetStage.id,
+          ordered_ids: orderedIds
+        });
+      }).catch(error => {
+        console.error('Error moving lead:', error);
+        moveError.value = 'Error al mover el lead. Recargando...';
+        // En caso de error, recargar datos
+        load({ showLoading: false });
+      });
     }
     
   } catch (error) {
@@ -640,26 +655,36 @@ const onDropOnStage = async (targetStage, event) => {
   }
 };
 
+// Cache para elementos DOM
+const stageElementCache = new Map();
+
 const calculateDropPosition = (stage, dropY, draggedLeadId = null) => {
-  const stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
-  if (!stageElement) return 0;
-  
-  const leadCards = stageElement.querySelectorAll('article[data-lead-id]');
-  
-  // Filtrar las tarjetas para excluir la que se está arrastrando
-  const validCards = Array.from(leadCards).filter(card => {
-    const leadId = parseInt(card.getAttribute('data-lead-id'));
-    return draggedLeadId ? leadId !== draggedLeadId : true;
-  });
-  
-  for (let i = 0; i < validCards.length; i++) {
-    const rect = validCards[i].getBoundingClientRect();
-    if (dropY < rect.top + rect.height / 2) {
-      return i; // Insert before this card
-    }
+  let stageElement = stageElementCache.get(stage.id);
+  if (!stageElement || !document.contains(stageElement)) {
+    stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
+    if (!stageElement) return 0;
+    stageElementCache.set(stage.id, stageElement);
   }
   
-  return validCards.length; // Insert at end
+  const leadCards = stageElement.querySelectorAll('article[data-lead-id]');
+  let position = 0;
+  
+  // Optimización: usar for loop directo sin Array.from
+  for (let i = 0; i < leadCards.length; i++) {
+    const card = leadCards[i];
+    const leadId = parseInt(card.getAttribute('data-lead-id'));
+    
+    // Skip si es la tarjeta que se está arrastrando
+    if (draggedLeadId && leadId === draggedLeadId) continue;
+    
+    const rect = card.getBoundingClientRect();
+    if (dropY < rect.top + rect.height / 2) {
+      return position;
+    }
+    position++;
+  }
+  
+  return position; // Insert at end
 };
 
 const reorderLeadsInStage = async (stageId, leadId, position) => {
@@ -682,15 +707,20 @@ const reorderLeadsInStage = async (stageId, leadId, position) => {
   // Insertar en nueva posición
   stage.leads.splice(newIndex, 0, lead);
   
-  // Actualizar conteo
+  // Actualizar conteo inmediatamente para UI responsiva
   stage.count = stage.leads.length;
   
-  // Enviar nuevo orden al backend
+  // Enviar nuevo orden al backend (sin await para no bloquear UI)
   const orderedIds = stage.leads.map(l => l.id);
   
-  await axios.patch('/leads/reorder', {
+  // Ejecutar en background para no bloquear la UI
+  axios.patch('/leads/reorder', {
     stage_id: stageId,
     ordered_ids: orderedIds
+  }).catch(error => {
+    console.error('Error reordering leads:', error);
+    // En caso de error, recargar datos
+    load({ showLoading: false });
   });
 };
 
@@ -709,7 +739,7 @@ const removeLeadFromStage = (stageId, leadId) => {
   }
 };
 
-const addLeadToStage = (stageId, lead) => {
+const addLeadToStage = (stageId, lead, position = 0) => {
   const stage = stages.value.find(s => s.id === stageId);
   if (!stage) return;
   
@@ -721,8 +751,9 @@ const addLeadToStage = (stageId, lead) => {
     stage.leads.splice(existingIndex, 1);
   }
   
-  // Add to top
-  stage.leads.unshift(lead);
+  // Insert at specific position
+  const insertIndex = Math.min(Math.max(0, position), stage.leads.length);
+  stage.leads.splice(insertIndex, 0, lead);
   stage.count = stage.leads.length;
 };
 
