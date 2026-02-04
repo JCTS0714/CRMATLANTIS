@@ -101,7 +101,7 @@
 
           <LeadsEmailCampaign v-else-if="isLeadsEmail" />
 
-          <IncidenciasTable v-if="isIncidencias && currentView === 'table'" />
+          <IncidenciasTable v-else-if="isIncidencias && currentView === 'table'" />
 
           <IncidenciasBoard v-else-if="isIncidencias && currentView === 'board'" />
 
