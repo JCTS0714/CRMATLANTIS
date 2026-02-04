@@ -306,6 +306,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:incidencias.update')
         ->name('incidencias.update');
 
+    Route::delete('/incidencias/{incidence}', [IncidenceController::class, 'destroy'])
+        ->middleware('permission:incidencias.delete')
+        ->name('incidencias.destroy');
+
     Route::patch('/leads/{lead}/move-stage', [LeadController::class, 'moveStage'])
         ->middleware('permission:leads.update')
         ->name('leads.moveStage');

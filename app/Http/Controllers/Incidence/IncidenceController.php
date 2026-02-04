@@ -447,4 +447,25 @@ class IncidenceController extends Controller
             'path' => $path,
         ]);
     }
+
+    /**
+     * Remove the specified incidence from storage.
+     */
+    public function destroy(Incidence $incidence): JsonResponse
+    {
+        try {
+            // Delete the incidence
+            $incidence->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Incidencia eliminada correctamente'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al eliminar la incidencia: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
