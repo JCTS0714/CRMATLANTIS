@@ -990,20 +990,6 @@ const sendToEspera = async () => {
     toastError(msg);
   }
 };
-      if (idx !== -1) {
-        stage.leads.splice(idx, 1);
-        stage.count = stage.leads.length;
-        break;
-      }
-    }
-    
-    toastSuccess('Lead enviado a zona de espera');
-  } catch (e) {
-    const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo enviar a zona de espera.';
-    toastError(msg);
-  }
-};
-};
 
 const closeEditModal = () => {
   editOpen.value = false;

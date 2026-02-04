@@ -210,8 +210,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref } from 'vue';
 import axios from 'axios';
-import { toastError, toastSuccess } from '../ui/alerts';
-import { useDialog } from '../utils/dialogs';
+import { confirmDialog, toastError, toastSuccess } from '../ui/alerts';
 
 const q = ref('');
 const items = ref([]);
@@ -226,8 +225,6 @@ const modalItem = ref(null);
 const observacion = ref('');
 const saving = ref(false);
 const observacionEl = ref(null);
-
-const { confirmDialog } = useDialog();
 
 const pagination = ref({
   current_page: 1,
