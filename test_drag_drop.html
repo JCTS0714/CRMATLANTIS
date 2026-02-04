@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test BacklogBoard Drag & Drop</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+        .stage { background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; min-height: 400px; }
+        .stage-header { padding: 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        .stage-title { font-weight: 600; color: #1a202c; }
+        .stage-count { color: #64748b; font-size: 0.875rem; }
+        .stage-content { padding: 12px; min-height: 200px; }
+        .incidence { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: grab; transition: all 0.15s; }
+        .incidence:hover { background: #e2e8f0; }
+        .incidence.dragging { opacity: 0.5; transform: scale(1.02); cursor: grabbing; }
+        .incidence.faded { opacity: 0.3; }
+        .stage.drag-over { background-color: #dbeafe; }
+        .incidence-title { font-weight: 500; color: #1e293b; margin-bottom: 4px; }
+        .incidence-meta { font-size: 0.75rem; color: #64748b; }
+        .priority { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 500; }
+        .priority-alta { background: #fee2e2; color: #dc2626; }
+        .priority-media { background: #fef3c7; color: #d97706; }
+        .priority-baja { background: #dcfce7; color: #16a34a; }
+        .empty { text-align: center; color: #94a3b8; padding: 40px 20px; }
+        .error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .btn { padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white; cursor: pointer; }
+        .btn:hover { background: #f9fafb; }
+        .btn-primary { background: #3b82f6; color: white; border-color: #3b82f6; }
+        .btn-primary:hover { background: #2563eb; }
+        .debug { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-top: 20px; }
+        .debug pre { font-size: 0.875rem; color: #475569; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <h1 style="margin-bottom: 20px; color: #1e293b;">BacklogBoard Drag & Drop Test</h1>
+            
+            <div class="controls">
+                <button class="btn btn-primary" @click="loadMockData">Cargar Datos de Prueba</button>
+                <button class="btn" @click="showDebugInfo = !showDebugInfo">{{ showDebugInfo ? 'Ocultar' : 'Mostrar' }} Debug</button>
+                <button class="btn" @click="testDragLogic">Test Drag Logic</button>
+            </div>
+            
+            <div v-if="error" class="error">
+                {{ error }}
+            </div>
+            
+            <div v-if="stages.length === 0" class="empty">
+                No hay datos. Haz clic en "Cargar Datos de Prueba" para comenzar.
+            </div>
+            
+            <div v-else class="grid">
+                <div 
+                    v-for="stage in stages" 
+                    :key="stage.id"
+                    class="stage"
+                    :class="{ 'drag-over': dragOverStageId === stage.id }"
+                    @dragover.prevent="onDragOver(stage, $event)"
+                    @dragleave="onDragLeave"
+                    @drop.prevent="onDrop(stage, $event)"
+                >
+                    <div class="stage-header">
+                        <div class="stage-title">{{ stage.name }}</div>
+                        <div class="stage-count">{{ stage.incidences?.length || 0 }} incidencias</div>
+                    </div>
+                    
+                    <div class="stage-content">
+                        <div v-if="(stage.incidences?.length || 0) === 0" class="empty">
+                            Sin incidencias
+                        </div>
+                        
+                        <div 
+                            v-for="incidence in stage.incidences" 
+                            :key="incidence.id"
+                            class="incidence"
+                            :class="{
+                                'dragging': draggingId === incidence.id,
+                                'faded': draggingId && draggingId !== incidence.id
+                            }"
+                            draggable="true"
+                            @dragstart="onDragStart(incidence, $event)"
+                            @dragend="onDragEnd"
+                        >
+                            <div class="incidence-title">{{ incidence.title }}</div>
+                            <div class="incidence-meta">
+                                <span :class="'priority priority-' + (incidence.priority || 'baja')">
+                                    {{ (incidence.priority || 'Baja').toUpperCase() }}
+                                </span>
+                                • ID: {{ incidence.id }}
+                                • Stage: {{ incidence.stage_id }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div v-if="showDebugInfo" class="debug">
+                <h3 style="margin-bottom: 12px;">Debug Info</h3>
+                <pre>{{ debugData }}</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+        
+        createApp({
+            setup() {
+                // State
+                const stages = ref([]);
+                const error = ref('');
+                const showDebugInfo = ref(false);
+                
+                // Drag & Drop State
+                const draggingId = ref(null);
+                const draggedIncidence = ref(null);
+                const dragOverStageId = ref(null);
+                
+                // Debug computed
+                const debugData = computed(() => {
+                    return JSON.stringify({
+                        stagesCount: stages.value.length,
+                        draggingId: draggingId.value,
+                        draggedIncidence: draggedIncidence.value ? {
+                            id: draggedIncidence.value.id,
+                            title: draggedIncidence.value.title,
+                            stage_id: draggedIncidence.value.stage_id
+                        } : null,
+                        dragOverStageId: dragOverStageId.value,
+                        stages: stages.value.map(stage => ({
+                            id: stage.id,
+                            name: stage.name,
+                            incidencesCount: stage.incidences?.length || 0,
+                            incidences: stage.incidences?.map(inc => ({
+                                id: inc.id,
+                                title: inc.title,
+                                stage_id: inc.stage_id
+                            })) || []
+                        }))
+                    }, null, 2);
+                });
+                
+                // Mock Data
+                const loadMockData = () => {
+                    stages.value = [
+                        {
+                            id: 1,
+                            name: 'Pendientes',
+                            incidences: [
+                                { id: 101, title: 'Error en login', stage_id: 1, priority: 'alta' },
+                                { id: 102, title: 'Mejora en UI', stage_id: 1, priority: 'baja' },
+                                { id: 103, title: 'Bug en cálculos', stage_id: 1, priority: 'media' }
+                            ]
+                        },
+                        {
+                            id: 2,
+                            name: 'En Progreso',
+                            incidences: [
+                                { id: 201, title: 'Optimización DB', stage_id: 2, priority: 'alta' }
+                            ]
+                        },
+                        {
+                            id: 3,
+                            name: 'Terminadas',
+                            incidences: []
+                        }
+                    ];
+                    error.value = '';
+                };
+                
+                // Drag & Drop Logic
+                const onDragStart = (incidence, event) => {
+                    console.log('🚀 Drag Start:', incidence);
+                    draggingId.value = incidence.id;
+                    draggedIncidence.value = incidence;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', incidence.id.toString());
+                };
+                
+                const onDragEnd = () => {
+                    console.log('🏁 Drag End');
+                    draggingId.value = null;
+                    draggedIncidence.value = null;
+                    dragOverStageId.value = null;
+                };
+                
+                const onDragOver = (targetStage, event) => {
+                    event.preventDefault();
+                    dragOverStageId.value = targetStage.id;
+                    console.log('📍 Drag Over Stage:', targetStage.id);
+                };
+                
+                const onDragLeave = () => {
+                    dragOverStageId.value = null;
+                };
+                
+                const onDrop = (targetStage, event) => {
+                    event.preventDefault();
+                    dragOverStageId.value = null;
+                    
+                    if (!draggedIncidence.value) {
+                        console.log('❌ No dragged incidence');
+                        return;
+                    }
+                    
+                    const incidence = draggedIncidence.value;
+                    const originalStageId = incidence.stage_id;
+                    
+                    console.log('🎯 Drop:', {
+                        incidenceId: incidence.id,
+                        from: originalStageId,
+                        to: targetStage.id
+                    });
+                    
+                    if (originalStageId === targetStage.id) {
+                        console.log('⚠️ Same stage, no action');
+                        return;
+                    }
+                    
+                    // Update data optimistically
+                    try {
+                        // Find and remove from original stage
+                        const originalStage = stages.value.find(s => s.id === originalStageId);
+                        if (originalStage) {
+                            const index = originalStage.incidences.findIndex(i => i.id === incidence.id);
+                            if (index !== -1) {
+                                originalStage.incidences.splice(index, 1);
+                                console.log('✅ Removed from original stage');
+                            }
+                        }
+                        
+                        // Add to target stage
+                        if (!targetStage.incidences) {
+                            targetStage.incidences = [];
+                        }
+                        incidence.stage_id = targetStage.id;
+                        targetStage.incidences.push(incidence);
+                        console.log('✅ Added to target stage');
+                        
+                        error.value = '';
+                    } catch (err) {
+                        console.error('❌ Drop error:', err);
+                        error.value = 'Error al mover incidencia: ' + err.message;
+                    }
+                };
+                
+                const testDragLogic = () => {
+                    console.log('🧪 Testing drag logic...');
+                    if (stages.value.length < 2) {
+                        error.value = 'Cargar datos de prueba primero';
+                        return;
+                    }
+                    
+                    const testIncidence = stages.value[0].incidences?.[0];
+                    if (!testIncidence) {
+                        error.value = 'No hay incidencias para probar';
+                        return;
+                    }
+                    
+                    const targetStage = stages.value[1];
+                    
+                    console.log('Test data:', {
+                        incidence: testIncidence,
+                        targetStage: targetStage
+                    });
+                    
+                    // Simulate drag start
+                    draggedIncidence.value = testIncidence;
+                    draggingId.value = testIncidence.id;
+                    
+                    setTimeout(() => {
+                        // Simulate drop
+                        onDrop(targetStage, { preventDefault: () => {} });
+                        
+                        // Clean up
+                        onDragEnd();
+                    }, 1000);
+                };
+                
+                // Initialize
+                onMounted(() => {
+                    loadMockData();
+                });
+                
+                return {
+                    stages,
+                    error,
+                    showDebugInfo,
+                    debugData,
+                    draggingId,
+                    dragOverStageId,
+                    loadMockData,
+                    testDragLogic,
+                    onDragStart,
+                    onDragEnd,
+                    onDragOver,
+                    onDragLeave,
+                    onDrop
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

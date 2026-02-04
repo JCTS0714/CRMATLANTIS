@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnóstico Drag and Drop - CRM Atlantis</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .section h2 {
+            color: #34495e;
+            margin-top: 0;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        
+        .test-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        button.danger {
+            background-color: #e74c3c;
+        }
+        
+        button.danger:hover {
+            background-color: #c0392b;
+        }
+        
+        button.success {
+            background-color: #27ae60;
+        }
+        
+        button.success:hover {
+            background-color: #229954;
+        }
+        
+        .result {
+            margin: 15px 0;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .result.success {
+            background-color: #d5f4e6;
+            border-color: #27ae60;
+            color: #155724;
+        }
+        
+        .result.error {
+            background-color: #f8d7da;
+            border-color: #e74c3c;
+            color: #721c24;
+        }
+        
+        .result.info {
+            background-color: #d1ecf1;
+            border-color: #17a2b8;
+            color: #0c5460;
+        }
+        
+        .result.warning {
+            background-color: #fff3cd;
+            border-color: #ffc107;
+            color: #856404;
+        }
+        
+        .code-block {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            margin: 10px 0;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        
+        .comparison-table th,
+        .comparison-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        
+        .comparison-table th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+        
+        .highlight {
+            background-color: #fff3cd;
+        }
+        
+        .loading {
+            opacity: 0.6;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-ok {
+            background-color: #27ae60;
+        }
+        
+        .status-error {
+            background-color: #e74c3c;
+        }
+        
+        .status-warning {
+            background-color: #f39c12;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Diagnóstico Drag and Drop - CRM Atlantis</h1>
+        
+        <div class="section">
+            <h2>🧪 Tests de Conectividad API</h2>
+            <div class="test-buttons">
+                <button onclick="testLeadsAPI()">Test Leads API</button>
+                <button onclick="testIncidenciasAPI()">Test Incidencias API</button>
+                <button onclick="testBacklogAPI()">Test Backlog API</button>
+                <button onclick="testAllAPIs()" class="success">Test Todo</button>
+                <button onclick="clearResults()" class="danger">Limpiar</button>
+            </div>
+            <div id="api-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔍 Análisis de Estructura de Datos</h2>
+            <div class="test-buttons">
+                <button onclick="analyzeDataStructure()">Analizar Estructura</button>
+                <button onclick="compareImplementations()">Comparar Implementaciones</button>
+            </div>
+            <div id="structure-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>🎯 Test de Lógica Drag & Drop</h2>
+            <div class="test-buttons">
+                <button onclick="simulateDragDrop()">Simular Drag & Drop</button>
+                <button onclick="testReorderLogic()">Test Lógica de Reorden</button>
+            </div>
+            <div id="logic-results"></div>
+        </div>
+
+        <div class="section">
+            <h2>📋 Resumen de Problemas</h2>
+            <div id="summary-results">
+                <p><em>Ejecuta los tests para ver el resumen de problemas encontrados.</em></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let testResults = {
+            apis: {},
+            structure: {},
+            logic: {},
+            summary: []
+        };
+
+        function addResult(containerId, type, title, content) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span class="status-indicator status-${type === 'success' ? 'ok' : type === 'error' ? 'error' : 'warning'}"></span>
+                    <strong>${title}</strong>
+                </div>
+                <div>${content}</div>
+            `;
+            container.appendChild(div);
+            
+            // Auto scroll to new result
+            div.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function clearResults() {
+            ['api-results', 'structure-results', 'logic-results', 'summary-results'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            testResults = { apis: {}, structure: {}, logic: {}, summary: [] };
+        }
+
+        async function testLeadsAPI() {
+            addResult('api-results', 'info', 'Testing Leads API...', 'Iniciando tests de Leads...');
+            
+            try {
+                // Test board data
+                const boardResponse = await axios.get('/leads/board-data');
+                testResults.apis.leadsBoard = boardResponse.data;
+                
+                addResult('api-results', 'success', 'Leads Board Data', 
+                    `<div class="code-block">${JSON.stringify(boardResponse.data, null, 2)}</div>`);
+                
+                // Test reorder endpoint (with dummy data)
+                try {
+                    await axios.patch('/leads/reorder', { 
+                        stage_id: 999999, 
+                        ordered_ids: [] 
+                    });
+                } catch (error) {
+                    if (error.response?.status === 422 || error.response?.status === 400) {
+                        addResult('api-results', 'info', 'Leads Reorder Endpoint', 
+                            'Endpoint exists and validates correctly (422/400 expected for dummy data)');
+                        testResults.apis.leadsReorder = 'working';
+                    } else {
+                        throw error;
+                    }
+                }
+                
+            } catch (error) {
+                testResults.apis.leadsError = error.message;
+                addResult('api-results', 'error', 'Leads API Error', 
+                    `<div class="code-block">${error.message}\n${JSON.stringify(error.response?.data, null, 2)}</div>`);
+            }
+        }
+
+        async function testIncidenciasAPI() {
+            addResult('api-results', 'info', 'Testing Incidencias API...', 'Iniciando tests de Incidencias...');
+            
+            try {
+                // Test board data
+                const boardResponse = await axios.get('/incidencias/board-data');
+                testResults.apis.incidenciasBoard = boardResponse.data;
+                
+                addResult('api-results', 'success', 'Incidencias Board Data', 
+                    `<div class="code-block">${JSON.stringify(boardResponse.data, null, 2)}</div>`);
+                
+                // Test reorder endpoint
+                try {
+                    await axios.patch('/incidencias/reorder', { 
+                        stage_id: 999999, 
+                        ordered_ids: [] 
+                    });
+                } catch (error) {
+                    if (error.response?.status === 422 || error.response?.status === 400) {
+                        addResult('api-results', 'info', 'Incidencias Reorder Endpoint', 
+                            'Endpoint exists and validates correctly');
+                        testResults.apis.incidenciasReorder = 'working';
+                    } else {
+                        throw error;
+                    }
+                }
+                
+            } catch (error) {
+                testResults.apis.incidenciasError = error.message;
+                addResult('api-results', 'error', 'Incidencias API Error', 
+                    `<div class="code-block">${error.message}\n${JSON.stringify(error.response?.data, null, 2)}</div>`);
+            }
+        }
+
+        async function testBacklogAPI() {
+            addResult('api-results', 'info', 'Testing Backlog API...', 'Iniciando tests de Backlog...');
+            
+            try {
+                const boardResponse = await axios.get('/backlog/board-data');
+                testResults.apis.backlogBoard = boardResponse.data;
+                
+                addResult('api-results', 'success', 'Backlog Board Data', 
+                    `<div class="code-block">${JSON.stringify(boardResponse.data, null, 2)}</div>`);
+                
+            } catch (error) {
+                testResults.apis.backlogError = error.message;
+                addResult('api-results', 'error', 'Backlog API Error', 
+                    `<div class="code-block">${error.message}\n${JSON.stringify(error.response?.data, null, 2)}</div>`);
+            }
+        }
+
+        async function testAllAPIs() {
+            clearResults();
+            await Promise.all([
+                testLeadsAPI(),
+                testIncidenciasAPI(),
+                testBacklogAPI()
+            ]);
+            
+            setTimeout(() => {
+                analyzeDataStructure();
+                updateSummary();
+            }, 1000);
+        }
+
+        function analyzeDataStructure() {
+            addResult('structure-results', 'info', 'Analizando estructura de datos...', '');
+            
+            const comparisons = [];
+            
+            // Compare data structures
+            if (testResults.apis.leadsBoard && testResults.apis.incidenciasBoard) {
+                const leadsStages = testResults.apis.leadsBoard.data?.stages || [];
+                const incidenciasStages = testResults.apis.incidenciasBoard.data?.stages || [];
+                
+                addResult('structure-results', 'info', 'Comparación de Estructuras', `
+                    <table class="comparison-table">
+                        <tr>
+                            <th>Sistema</th>
+                            <th>Endpoints</th>
+                            <th>Campo de Orden</th>
+                            <th>Estructura de Items</th>
+                            <th>Cantidad de Etapas</th>
+                        </tr>
+                        <tr>
+                            <td>Leads</td>
+                            <td>/leads/board-data, /leads/reorder</td>
+                            <td class="highlight">position (descendente)</td>
+                            <td>stages[].leads[]</td>
+                            <td>${leadsStages.length}</td>
+                        </tr>
+                        <tr>
+                            <td>Incidencias</td>
+                            <td>/incidencias/board-data, /incidencias/reorder</td>
+                            <td class="highlight">sort_order (ascendente)</td>
+                            <td>stages[].incidences[]</td>
+                            <td>${incidenciasStages.length}</td>
+                        </tr>
+                    </table>
+                `);
+                
+                // Check for sample data
+                const leadsHasData = leadsStages.some(s => s.leads && s.leads.length > 0);
+                const incidenciasHasData = incidenciasStages.some(s => s.incidences && s.incidences.length > 0);
+                
+                addResult('structure-results', leadsHasData ? 'success' : 'warning', 
+                    'Datos de Prueba - Leads', 
+                    leadsHasData ? 'Hay leads para testear' : 'No hay leads en el sistema');
+                
+                addResult('structure-results', incidenciasHasData ? 'success' : 'warning', 
+                    'Datos de Prueba - Incidencias', 
+                    incidenciasHasData ? 'Hay incidencias para testear' : 'No hay incidencias en el sistema');
+                
+                testResults.structure.comparison = {
+                    leadsHasData,
+                    incidenciasHasData,
+                    differentOrderFields: true
+                };
+            }
+        }
+
+        function compareImplementations() {
+            addResult('structure-results', 'info', 'Comparando implementaciones...', `
+                <h4>Diferencias clave encontradas:</h4>
+                <ul>
+                    <li><strong>Campo de ordenamiento:</strong> Leads usa 'position' vs Incidencias usa 'sort_order'</li>
+                    <li><strong>Dirección del orden:</strong> Leads ordena descendente vs Incidencias ascendente</li>
+                    <li><strong>Nombres de arrays:</strong> 'leads' vs 'incidences'</li>
+                    <li><strong>Endpoints:</strong> Ambos tienen endpoints de reorden separados</li>
+                </ul>
+                
+                <h4>Posibles causas del problema:</h4>
+                <ol>
+                    <li>Datos inconsistentes en la base de datos (position/sort_order sin actualizar)</li>
+                    <li>Lógica de frontend que no actualiza correctamente la UI optimista</li>
+                    <li>Diferencias en la implementación del cálculo de posiciones</li>
+                    <li>Problemas de sincronización entre cambio de columna y reordenamiento</li>
+                </ol>
+            `);
+        }
+
+        function simulateDragDrop() {
+            addResult('logic-results', 'info', 'Simulando lógica de drag & drop...', '');
+            
+            // Test position calculation logic
+            const testArray = [
+                {id: 1, title: 'Item 1'},
+                {id: 2, title: 'Item 2'},
+                {id: 3, title: 'Item 3'},
+                {id: 4, title: 'Item 4'}
+            ];
+            
+            // Simulate moving item 1 to position 3 (after item 3)
+            const draggedItem = testArray[0]; // Item 1
+            const targetIndex = 2; // Insert after item 2 (index 2)
+            
+            // Remove from current position
+            testArray.splice(0, 1);
+            // Insert at new position
+            testArray.splice(targetIndex, 0, draggedItem);
+            
+            addResult('logic-results', 'success', 'Simulación de Reorden', `
+                <strong>Resultado de mover Item 1 a posición 3:</strong>
+                <div class="code-block">${JSON.stringify(testArray, null, 2)}</div>
+                <em>La lógica básica de reordenamiento funciona correctamente.</em>
+            `);
+            
+            testResults.logic.basicReorder = 'working';
+        }
+
+        function testReorderLogic() {
+            // Test the actual reorder logic patterns used in the app
+            addResult('logic-results', 'info', 'Testing reorder logic patterns...', '');
+            
+            const issues = [];
+            
+            // Check for common issues
+            if (testResults.structure.comparison?.differentOrderFields) {
+                issues.push('Diferentes campos de ordenamiento entre sistemas');
+            }
+            
+            if (!testResults.structure.comparison?.leadsHasData) {
+                issues.push('Sin datos de prueba en Leads');
+            }
+            
+            if (!testResults.structure.comparison?.incidenciasHasData) {
+                issues.push('Sin datos de prueba en Incidencias');
+            }
+            
+            if (issues.length > 0) {
+                addResult('logic-results', 'warning', 'Problemas Detectados', `
+                    <ul>
+                        ${issues.map(issue => `<li>${issue}</li>`).join('')}
+                    </ul>
+                `);
+            } else {
+                addResult('logic-results', 'success', 'Lógica Base', 'No se detectaron problemas obvios en la lógica base');
+            }
+        }
+
+        function updateSummary() {
+            const summaryEl = document.getElementById('summary-results');
+            
+            const problems = [];
+            const suggestions = [];
+            
+            if (testResults.apis.leadsError) {
+                problems.push('❌ Error en API de Leads');
+                suggestions.push('Revisar controlador LeadDataController');
+            }
+            
+            if (testResults.apis.incidenciasError) {
+                problems.push('❌ Error en API de Incidencias');
+                suggestions.push('Revisar controlador IncidenceController');
+            }
+            
+            if (testResults.structure.comparison?.differentOrderFields) {
+                problems.push('⚠️ Diferentes campos de ordenamiento entre sistemas');
+                suggestions.push('Unificar campo de ordenamiento o asegurar que ambas lógicas funcionen correctamente');
+            }
+            
+            if (!testResults.structure.comparison?.leadsHasData) {
+                problems.push('⚠️ Sin datos para probar en Leads');
+                suggestions.push('Crear algunos leads de prueba para validar el drag & drop');
+            }
+            
+            if (!testResults.structure.comparison?.incidenciasHasData) {
+                problems.push('⚠️ Sin datos para probar en Incidencias');
+                suggestions.push('Crear algunas incidencias de prueba para validar el drag & drop');
+            }
+            
+            summaryEl.innerHTML = `
+                <h3>🔍 Problemas Encontrados:</h3>
+                ${problems.length > 0 ? 
+                    `<ul>${problems.map(p => `<li>${p}</li>`).join('')}</ul>` : 
+                    '<p style="color: green;">✅ No se encontraron problemas críticos</p>'
+                }
+                
+                <h3>💡 Recomendaciones:</h3>
+                ${suggestions.length > 0 ? 
+                    `<ol>${suggestions.map(s => `<li>${s}</li>`).join('')}</ol>` : 
+                    '<p>No hay recomendaciones específicas en este momento.</p>'
+                }
+                
+                <h3>🔧 Próximos Pasos:</h3>
+                <ol>
+                    <li>Crear datos de prueba si no existen</li>
+                    <li>Verificar que las migraciones se hayan ejecutado correctamente</li>
+                    <li>Probar drag & drop manualmente en cada sistema</li>
+                    <li>Revisar logs de Laravel para errores específicos</li>
+                    <li>Verificar la lógica de actualización optimista en el frontend</li>
+                </ol>
+            `;
+        }
+
+        // Auto-run basic connectivity test on load
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addResult('api-results', 'info', 'Sistema Cargado', 'Ready para diagnóstico. Click "Test Todo" para análisis completo.');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simple BacklogBoard Test</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .board { display: flex; gap: 20px; }
+        .stage { width: 300px; border: 1px solid #ccc; border-radius: 8px; padding: 10px; min-height: 200px; }
+        .incidence { background: #f5f5f5; padding: 10px; margin: 5px 0; border-radius: 4px; cursor: move; }
+        .incidence.dragging { opacity: 0.5; }
+        .stage.drag-over { background-color: #e3f2fd; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <h1>Simple BacklogBoard Test</h1>
+        
+        <button @click="loadData">Load Data</button>
+        <button @click="showDebugInfo">Show Debug Info</button>
+        
+        <div v-if="error" class="error" style="color: red; margin: 10px 0;">
+            Error: {{ error }}
+        </div>
+        
+        <div v-if="loading">Loading...</div>
+        
+        <div v-else class="board">
+            <div 
+                v-for="stage in stages" 
+                :key="stage.id" 
+                class="stage"
+                :class="{ 'drag-over': dragOverStageId === stage.id }"
+                @dragover.prevent="dragOverStageId = stage.id"
+                @dragleave="dragOverStageId = null"
+                @drop.prevent="onDrop(stage, $event)"
+            >
+                <h3>{{ stage.name }} ({{ stage.count }})</h3>
+                <div 
+                    v-for="incidence in stage.incidences" 
+                    :key="incidence.id"
+                    class="incidence"
+                    :class="{ dragging: draggingId === incidence.id }"
+                    draggable="true"
+                    @dragstart="onDragStart(incidence, $event)"
+                    @dragend="onDragEnd"
+                >
+                    <strong>{{ incidence.title }}</strong>
+                    <br>
+                    <small>ID: {{ incidence.id }}, Stage: {{ incidence.stage_id }}</small>
+                </div>
+            </div>
+        </div>
+        
+        <div v-if="debugInfo" style="margin-top: 20px; padding: 10px; background: #f0f0f0; border-radius: 4px;">
+            <h3>Debug Info</h3>
+            <pre>{{ debugInfo }}</pre>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+        
+        createApp({
+            setup() {
+                const stages = ref([]);
+                const loading = ref(false);
+                const error = ref('');
+                const draggingId = ref(null);
+                const draggedIncidence = ref(null);
+                const dragOverStageId = ref(null);
+                const debugInfo = ref('');
+                
+                const loadData = async () => {
+                    loading.value = true;
+                    error.value = '';
+                    try {
+                        const response = await axios.get('/backlog/board-data');
+                        console.log('API Response:', response.data);
+                        
+                        if (response.data && response.data.data && response.data.data.stages) {
+                            stages.value = response.data.data.stages.map(stage => ({
+                                ...stage,
+                                incidences: response.data.data.incidences.filter(inc => inc.stage_id === stage.id)
+                            }));
+                        } else {
+                            error.value = 'Invalid response structure';
+                        }
+                    } catch (err) {
+                        error.value = err.message + (err.response ? ': ' + JSON.stringify(err.response.data) : '');
+                        console.error('API Error:', err);
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+                
+                const onDragStart = (incidence, event) => {
+                    console.log('Drag start:', incidence);
+                    draggingId.value = incidence.id;
+                    draggedIncidence.value = incidence;
+                    event.dataTransfer.effectAllowed = 'move';
+                    event.dataTransfer.setData('text/plain', incidence.id);
+                };
+                
+                const onDragEnd = () => {
+                    console.log('Drag end');
+                    draggingId.value = null;
+                    draggedIncidence.value = null;
+                    dragOverStageId.value = null;
+                };
+                
+                const onDrop = async (targetStage, event) => {
+                    event.preventDefault();
+                    dragOverStageId.value = null;
+                    
+                    if (!draggedIncidence.value) {
+                        console.log('No dragged incidence');
+                        return;
+                    }
+                    
+                    const incidence = draggedIncidence.value;
+                    const originalStageId = incidence.stage_id;
+                    
+                    console.log('Drop:', {
+                        incidence: incidence.id,
+                        from: originalStageId,
+                        to: targetStage.id
+                    });
+                    
+                    if (originalStageId === targetStage.id) {
+                        console.log('Same stage, no action needed');
+                        return;
+                    }
+                    
+                    // Optimistic update
+                    const originalStage = stages.value.find(s => s.id === originalStageId);
+                    if (originalStage) {
+                        const index = originalStage.incidences.findIndex(i => i.id === incidence.id);
+                        if (index !== -1) {
+                            originalStage.incidences.splice(index, 1);
+                            originalStage.count = Math.max(0, originalStage.count - 1);
+                        }
+                    }
+                    
+                    incidence.stage_id = targetStage.id;
+                    targetStage.incidences.push(incidence);
+                    targetStage.count = targetStage.count + 1;
+                    
+                    try {
+                        const response = await axios.patch(`/incidencias/${incidence.id}/move-stage`, {
+                            stage_id: targetStage.id
+                        });
+                        console.log('Move API Success:', response.data);
+                        error.value = '';
+                    } catch (err) {
+                        console.error('Move API Error:', err);
+                        error.value = 'Failed to move incidence: ' + err.message;
+                        // Revert optimistic update
+                        await loadData();
+                    }
+                };
+                
+                const showDebugInfo = () => {
+                    debugInfo.value = JSON.stringify({
+                        stagesCount: stages.value.length,
+                        stages: stages.value.map(s => ({
+                            id: s.id,
+                            name: s.name,
+                            count: s.count,
+                            incidencesCount: s.incidences?.length || 0
+                        })),
+                        draggingId: draggingId.value,
+                        error: error.value
+                    }, null, 2);
+                };
+                
+                // Load data on mount
+                loadData();
+                
+                return {
+                    stages,
+                    loading,
+                    error,
+                    draggingId,
+                    dragOverStageId,
+                    debugInfo,
+                    loadData,
+                    onDragStart,
+                    onDragEnd,
+                    onDrop,
+                    showDebugInfo
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

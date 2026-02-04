@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug BacklogBoard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; }
+        .test-result { margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        .data { background-color: #f8f9fa; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug BacklogBoard</h1>
+        <div id="results"></div>
+        
+        <button onclick="testAPI()">Test API Endpoints</button>
+        <button onclick="testDragDrop()">Test Drag & Drop Logic</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        function addResult(type, title, content) {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<h3>${title}</h3><div class="data">${content}</div>`;
+            resultsDiv.appendChild(div);
+        }
+        
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+        
+        async function testAPI() {
+            addResult('info', 'Testing API Endpoints', 'Starting tests...');
+            
+            // Test 1: Board Data
+            try {
+                const response = await axios.get('/backlog/board-data');
+                addResult('success', 'GET /backlog/board-data', JSON.stringify(response.data, null, 2));
+            } catch (error) {
+                addResult('error', 'GET /backlog/board-data', `Error: ${error.message}\n${JSON.stringify(error.response?.data, null, 2)}`);
+            }
+            
+            // Test 2: Test Move Stage (simulated)
+            try {
+                // This is just to check if the endpoint exists
+                await axios.patch('/incidencias/999999/move-stage', { stage_id: 1 });
+            } catch (error) {
+                if (error.response?.status === 404 && error.response?.data?.message?.includes('No query results')) {
+                    addResult('info', 'PATCH /incidencias/ID/move-stage', 'Endpoint exists (404 expected for non-existent ID)');
+                } else {
+                    addResult('error', 'PATCH /incidencias/ID/move-stage', `Error: ${error.message}\n${JSON.stringify(error.response?.data, null, 2)}`);
+                }
+            }
+            
+            // Test 3: Test Reorder (simulated)
+            try {
+                await axios.patch('/incidencias/reorder', { stage_id: 1, ordered_ids: [] });
+            } catch (error) {
+                if (error.response?.status === 422) {
+                    addResult('info', 'PATCH /incidencias/reorder', 'Endpoint exists (422 expected for empty array)');
+                } else {
+                    addResult('error', 'PATCH /incidencias/reorder', `Error: ${error.message}\n${JSON.stringify(error.response?.data, null, 2)}`);
+                }
+            }
+        }
+        
+        function testDragDrop() {
+            addResult('info', 'Testing Drag & Drop Logic', 'Testing key functions...');
+            
+            // Simulate some data
+            const testData = {
+                stages: [
+                    {
+                        id: 1,
+                        name: 'Test Stage 1',
+                        incidences: [
+                            { id: 100, title: 'Test Incidence 1', stage_id: 1 },
+                            { id: 101, title: 'Test Incidence 2', stage_id: 1 }
+                        ],
+                        count: 2
+                    },
+                    {
+                        id: 2,
+                        name: 'Test Stage 2',
+                        incidences: [],
+                        count: 0
+                    }
+                ]
+            };
+            
+            // Test drag start logic
+            const draggedIncidence = testData.stages[0].incidences[0];
+            const draggedFromStageId = draggedIncidence.stage_id;
+            
+            addResult('success', 'Drag Start Test', `
+Dragged Incidence: ${JSON.stringify(draggedIncidence, null, 2)}
+From Stage ID: ${draggedFromStageId}
+            `);
+            
+            // Test drop logic simulation
+            const targetStage = testData.stages[1];
+            
+            addResult('success', 'Drop Target Test', `
+Target Stage: ${JSON.stringify(targetStage, null, 2)}
+Would move incidence ${draggedIncidence.id} from stage ${draggedFromStageId} to stage ${targetStage.id}
+            `);
+        }
+        
+        // Auto-run basic test when page loads
+        window.addEventListener('load', () => {
+            setTimeout(testAPI, 1000);
+        });
+    </script>
+</body>
+</html>

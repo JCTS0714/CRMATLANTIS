@@ -66,7 +66,7 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
     search: '',
     per_page: config.defaultPerPage || 25,
     page: 1,
-    sort_by: null,
+    sort_by: null as string | null,
     sort_direction: 'asc',
     ...config.defaultFilters
   });

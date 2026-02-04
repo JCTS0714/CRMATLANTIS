@@ -1,4 +1,4 @@
-import axios, { AxiosResponse } from 'axios';
+import axios, { type AxiosResponse } from 'axios';
 import Swal from 'sweetalert2';
 import type { ApiResponse } from '@/types';
 
