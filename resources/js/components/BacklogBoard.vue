@@ -562,11 +562,11 @@ const deleteIncidence = async (incidence) => {
       title: '¿Seguro que quieres eliminar la incidencia?',
       text: 'Esta acción no se puede deshacer.',
       icon: 'warning',
-      confirmButtonText: 'Eliminar',
-      cancelButtonText: 'Cancelar'
+      confirmText: 'Eliminar',
+      cancelText: 'Cancelar'
     });
 
-    if (!result.isConfirmed) return;
+    if (!result) return;
 
     await axios.delete(`/incidencias/${incidence.id}`);
 
