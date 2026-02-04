@@ -145,6 +145,7 @@ Route::middleware('auth')->group(function () {
         })->name('customers.index');
 
         Route::get('/customers/data', [CustomerController::class, 'data'])->name('customers.data');
+        Route::get('/customers/search', [CustomerController::class, 'search'])->name('customers.search');
     });
 
     Route::post('/customers', [CustomerController::class, 'store'])

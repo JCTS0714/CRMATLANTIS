@@ -62,12 +62,6 @@
             <td class="px-4 py-3">{{ c.contact_email || '—' }}</td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
-                <a
-                  class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-                  :href="leadsLinkFor(c)"
-                >
-                  Ver leads
-                </a>
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -185,13 +179,6 @@ const onImportFileSelected = async (ev) => {
     importing.value = false;
     if (importInput.value) importInput.value.value = '';
   }
-};
-
-const leadsLinkFor = (c) => {
-  const q = c?.document_number || c?.name || '';
-  const url = new URL(window.location.origin + '/leads/list');
-  if (q) url.searchParams.set('q', q);
-  return url.pathname + url.search;
 };
 
 const editCustomer = async (c) => {

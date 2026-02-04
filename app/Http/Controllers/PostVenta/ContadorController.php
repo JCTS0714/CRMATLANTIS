@@ -83,7 +83,8 @@ class ContadorController extends Controller
             'usuario' => ['nullable', 'string', 'max:150'],
             'contrasena' => ['nullable', 'string', 'max:255'],
             'servidor' => ['nullable', 'string', 'max:50'],
-            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'customer_ids' => ['nullable', 'array'],
+            'customer_ids.*' => ['integer', 'exists:customers,id'],
         ]);
 
         $contador = null;
@@ -102,11 +103,13 @@ class ContadorController extends Controller
                 'servidor' => $validated['servidor'] ?? null,
             ]);
 
-            $customerId = $validated['customer_id'] ?? null;
-            if ($customerId) {
-                $contador->customers()->sync([
-                    $customerId => ['fecha_asignacion' => now()],
-                ]);
+            $customerIds = $validated['customer_ids'] ?? [];
+            if (!empty($customerIds)) {
+                $syncData = [];
+                foreach ($customerIds as $customerId) {
+                    $syncData[$customerId] = ['fecha_asignacion' => now()];
+                }
+                $contador->customers()->sync($syncData);
             }
         });
 
@@ -135,7 +138,8 @@ class ContadorController extends Controller
             'usuario' => ['nullable', 'string', 'max:150'],
             'contrasena' => ['nullable', 'string', 'max:255'],
             'servidor' => ['nullable', 'string', 'max:50'],
-            'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'customer_ids' => ['nullable', 'array'],
+            'customer_ids.*' => ['integer', 'exists:customers,id'],
         ]);
 
         DB::transaction(function () use ($validated, $contador) {
@@ -153,11 +157,13 @@ class ContadorController extends Controller
             ]);
             $contador->save();
 
-            $customerId = $validated['customer_id'] ?? null;
-            if ($customerId) {
-                $contador->customers()->sync([
-                    $customerId => ['fecha_asignacion' => now()],
-                ]);
+            $customerIds = $validated['customer_ids'] ?? [];
+            if (!empty($customerIds)) {
+                $syncData = [];
+                foreach ($customerIds as $customerId) {
+                    $syncData[$customerId] = ['fecha_asignacion' => now()];
+                }
+                $contador->customers()->sync($syncData);
             } else {
                 $contador->customers()->detach();
             }

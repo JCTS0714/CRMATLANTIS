@@ -375,9 +375,14 @@ const loadRecipients = async () => {
       params.stage_id = filters.value.stage_id;
     }
 
+    console.log('Loading recipients with params:', params);
+
     const res = await axios.get('/leads/whatsapp/recipients', {
       params,
     });
+    
+    console.log('Recipients response:', res.data);
+    
     stages.value = res.data?.data?.stages ?? [];
     availableContacts.value = res.data?.data?.contacts ?? [];
     counts.value = res.data?.data?.counts ?? { total: 0, without_phone: 0 };
@@ -389,7 +394,8 @@ const loadRecipients = async () => {
 
     selectedIds.value = new Set(availableContacts.value.map((c) => c.id));
   } catch (e) {
-    recipientsError.value = e?.response?.data?.message || 'No se pudieron cargar destinatarios.';
+    console.error('Error loading recipients:', e);
+    recipientsError.value = e?.response?.data?.message || e?.message || 'No se pudieron cargar destinatarios.';
   } finally {
     loadingRecipients.value = false;
   }
@@ -408,12 +414,22 @@ const createCampaign = async () => {
 
   try {
     const ids = Array.from(selectedIds.value);
+    
+    console.log('Creating campaign with:', {
+      name: form.value.name || null,
+      message_template: form.value.message_template,
+      source: source.value,
+      ids,
+    });
+
     const res = await axios.post('/leads/whatsapp-campaigns', {
       name: form.value.name || null,
       message_template: form.value.message_template,
       source: source.value,
       ids,
     });
+
+    console.log('Campaign created:', res.data);
 
     createdCampaignId.value = res.data?.data?.campaign_id ?? null;
 
@@ -426,7 +442,8 @@ const createCampaign = async () => {
       createError.value = `Se omitieron ${skipped.length} registros sin teléfono.`;
     }
   } catch (e) {
-    createError.value = e?.response?.data?.message || 'No se pudo crear la campaña.';
+    console.error('Error creating campaign:', e);
+    createError.value = e?.response?.data?.message || e?.message || 'No se pudo crear la campaña.';
   } finally {
     creatingCampaign.value = false;
   }
@@ -450,17 +467,25 @@ const openCampaign = async (id) => {
   historyError.value = '';
 
   try {
+    console.log('Opening campaign:', id);
+    
     const res = await axios.get(`/leads/whatsapp-campaigns/${id}`);
+    
+    console.log('Campaign data:', res.data);
+    
     activeCampaign.value = res.data?.data?.campaign ?? null;
   } catch (e) {
-    historyError.value = e?.response?.data?.message || 'No se pudo abrir la campaña.';
+    console.error('Error opening campaign:', e);
+    historyError.value = e?.response?.data?.message || e?.message || 'No se pudo abrir la campaña.';
   }
 };
 
 const normalizePhoneDigits = (phone) => {
   if (!phone) return '';
+  
+  // Remove all non-digits
   const digits = String(phone).replace(/\D+/g, '');
-  if (!digits) return '';
+  if (!digits || digits.length < 8) return '';
 
   // Peru: ensure starts with 51 if phone has 9 digits only
   if (digits.length === 9 && digits.startsWith('9')) {
@@ -468,15 +493,21 @@ const normalizePhoneDigits = (phone) => {
   }
 
   // If already includes country code (like 51xxxxxxxxx), keep.
-  if (digits.startsWith('51')) return digits;
+  if (digits.startsWith('51') && digits.length >= 11) return digits;
+  
+  // Other country codes - keep as is if reasonable length
+  if (digits.length >= 10) return digits;
 
-  // Fallback: return digits as-is
-  return digits;
+  // Too short - invalid
+  return '';
 };
 
 const waLink = (phone, text) => {
   const digits = normalizePhoneDigits(phone);
-  if (!digits) return '#';
+  if (!digits) {
+    console.warn('Invalid phone number for WhatsApp link:', phone);
+    return '#';
+  }
   const msg = encodeURIComponent(text || '');
   return `https://wa.me/${digits}?text=${msg}`;
 };

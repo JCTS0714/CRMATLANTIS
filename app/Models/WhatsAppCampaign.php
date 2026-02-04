@@ -16,6 +16,7 @@ class WhatsAppCampaign extends Model
         'name',
         'message_template',
         'status',
+        'source',
     ];
 
     // ==================== RELATIONSHIPS ====================

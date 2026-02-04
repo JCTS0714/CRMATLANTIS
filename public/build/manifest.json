@@ -3,8 +3,8 @@
     "file": "assets/App-BKnWLVNC.css",
     "src": "_App-BKnWLVNC.css"
   },
-  "_App-Bt9-hbAg.js": {
-    "file": "assets/App-Bt9-hbAg.js",
+  "_App-BQAus7JI.js": {
+    "file": "assets/App-BQAus7JI.js",
     "name": "App",
     "isDynamicEntry": true,
     "imports": [
@@ -69,7 +69,7 @@
     "name": "vendor-vue"
   },
   "resources/css/app.css": {
-    "file": "assets/app-OI8bmIxr.css",
+    "file": "assets/app-DK4wWcmb.css",
     "src": "resources/css/app.css",
     "isEntry": true,
     "name": "app",
@@ -86,7 +86,7 @@
     "src": "resources/images/LOGO_TEXTO.png"
   },
   "resources/js/app.js": {
-    "file": "assets/app-DjmpOHxG.js",
+    "file": "assets/app-DcWcYQGw.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -95,7 +95,7 @@
       "_vendor-vue-Db-AqoDh.js"
     ],
     "dynamicImports": [
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/components/AnimatedBackgroundLogin.vue"
     ]
   },
@@ -113,21 +113,21 @@
     ]
   },
   "resources/js/components/BacklogBoard.vue": {
-    "file": "assets/BacklogBoard-BdiS8N_J.js",
+    "file": "assets/BacklogBoard-DqISEjtX.js",
     "name": "BacklogBoard",
     "src": "resources/js/components/BacklogBoard.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/CalendarView.vue": {
-    "file": "assets/CalendarView-C4N7ezT1.js",
+    "file": "assets/CalendarView-BycAD8eB.js",
     "name": "CalendarView",
     "src": "resources/js/components/CalendarView.vue",
     "isDynamicEntry": true,
@@ -135,7 +135,7 @@
       "resources/js/app.js",
       "_vendor-utils-Czy7fllw.js",
       "_vendor-ui-DEm6YKEA.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "_vendor-vue-Db-AqoDh.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
@@ -147,42 +147,42 @@
     ]
   },
   "resources/js/components/CertificadosTable.vue": {
-    "file": "assets/CertificadosTable-BNoOMIg1.js",
+    "file": "assets/CertificadosTable-HperP373.js",
     "name": "CertificadosTable",
     "src": "resources/js/components/CertificadosTable.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/ContadoresTable.vue": {
-    "file": "assets/ContadoresTable-5Lr7hv2X.js",
+    "file": "assets/ContadoresTable-C5QGjQyb.js",
     "name": "ContadoresTable",
     "src": "resources/js/components/ContadoresTable.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/CustomersTable.vue": {
-    "file": "assets/CustomersTable-DCc0y_-4.js",
+    "file": "assets/CustomersTable-CX9kNDWd.js",
     "name": "CustomersTable",
     "src": "resources/js/components/CustomersTable.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
@@ -201,28 +201,28 @@
     ]
   },
   "resources/js/components/IncidenciasTable.vue": {
-    "file": "assets/IncidenciasTable-DunAY1Fs.js",
+    "file": "assets/IncidenciasTable-fa0bHgDA.js",
     "name": "IncidenciasTable",
     "src": "resources/js/components/IncidenciasTable.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/LeadsBoard.vue": {
-    "file": "assets/LeadsBoard-CUnmdhDe.js",
+    "file": "assets/LeadsBoard-DFhcl-1h.js",
     "name": "LeadsBoard",
     "src": "resources/js/components/LeadsBoard.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
@@ -250,7 +250,7 @@
     ]
   },
   "resources/js/components/LeadsWhatsAppCampaign.vue": {
-    "file": "assets/LeadsWhatsAppCampaign-CruOvj3h.js",
+    "file": "assets/LeadsWhatsAppCampaign-CU8cUbtd.js",
     "name": "LeadsWhatsAppCampaign",
     "src": "resources/js/components/LeadsWhatsAppCampaign.vue",
     "isDynamicEntry": true,
@@ -260,35 +260,35 @@
     ]
   },
   "resources/js/components/LostLeadsList.vue": {
-    "file": "assets/LostLeadsList-Di_n8JTy.js",
+    "file": "assets/LostLeadsList-BUnO80hd.js",
     "name": "LostLeadsList",
     "src": "resources/js/components/LostLeadsList.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/PostventaCustomersTable.vue": {
-    "file": "assets/PostventaCustomersTable-D_UZq9av.js",
+    "file": "assets/PostventaCustomersTable-CTAZfOv3.js",
     "name": "PostventaCustomersTable",
     "src": "resources/js/components/PostventaCustomersTable.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ]
   },
   "resources/js/components/RolesTable.vue": {
-    "file": "assets/RolesTable-ChO9PHeK.js",
+    "file": "assets/RolesTable-DkgpdnOf.js",
     "name": "RolesTable",
     "src": "resources/js/components/RolesTable.vue",
     "isDynamicEntry": true,
@@ -319,14 +319,14 @@
     ]
   },
   "resources/js/components/WaitingLeadsList.vue": {
-    "file": "assets/WaitingLeadsList-BEarDO3s.js",
+    "file": "assets/WaitingLeadsList-BZTCrFME.js",
     "name": "WaitingLeadsList",
     "src": "resources/js/components/WaitingLeadsList.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-vue-Db-AqoDh.js",
       "_vendor-utils-Czy7fllw.js",
-      "_App-Bt9-hbAg.js",
+      "_App-BQAus7JI.js",
       "resources/js/app.js",
       "_vendor-ui-DEm6YKEA.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"

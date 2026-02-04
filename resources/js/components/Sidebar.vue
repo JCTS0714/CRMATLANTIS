@@ -641,7 +641,7 @@ const canSeeUsers = computed(() => hasPermission('menu.users'));
 const canSeeRoles = computed(() => hasPermission('menu.roles'));
 const canSeeLeads = computed(() => hasPermission('menu.leads'));
 const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission('menu.leads'));
-const canSeeInbox = computed(() => canSeeLeads.value || canSeeEmail.value);
+const canSeeInbox = computed(() => hasPermission('menu.inbox'));
 const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));

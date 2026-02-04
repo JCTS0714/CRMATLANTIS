@@ -76,6 +76,10 @@ class WhatsAppCampaignController extends BaseCampaignController
     {
         $template = (string) $validated['message_template'];
 
+        if (trim($template) === '') {
+            throw new \InvalidArgumentException('El template de mensaje no puede estar vacío.');
+        }
+
         foreach ($items as $item) {
             $phone = trim((string) ($item->contact_phone ?? ''));
             if ($phone === '') {
@@ -87,6 +91,11 @@ class WhatsAppCampaignController extends BaseCampaignController
             $vars = $this->getTemplateVars($item, $modelClass);
 
             $rendered = $this->renderTemplate($template, $vars);
+
+            if (trim($rendered) === '') {
+                $missingContactIds[] = $item->id;
+                continue;
+            }
 
             WhatsAppCampaignRecipient::create([
                 'campaign_id' => $campaign->id,

@@ -369,6 +369,7 @@ const menuLabelMap = {
   'menu.roles': 'Roles',
   'menu.leads': 'Leads',
   'menu.email': 'Email masivo',
+  'menu.inbox': 'Bandeja de entrada',
   'menu.customers': 'Clientes',
   'menu.calendar': 'Calendario',
   'menu.postventa': 'Postventa',

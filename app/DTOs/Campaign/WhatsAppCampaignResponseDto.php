@@ -29,15 +29,15 @@ class WhatsAppCampaignResponseDto extends BaseCampaignResponseDto
     {
         return new self(
             id: $campaign->id,
-            name: $campaign->name,
-            subject: $campaign->subject,
-            status: $campaign->status,
-            source: $campaign->source,
-            scheduledAt: $campaign->scheduled_at?->format('Y-m-d H:i:s'),
-            sentAt: $campaign->sent_at?->format('Y-m-d H:i:s'),
+            name: $campaign->name ?? '',
+            subject: null, // WhatsApp campaigns don't have subjects
+            status: $campaign->status ?? 'draft',
+            source: $campaign->source ?? 'leads',
+            scheduledAt: null, // WhatsApp campaigns don't have scheduling yet
+            sentAt: null, // WhatsApp campaigns don't have sent_at yet
             createdAt: $campaign->created_at->format('Y-m-d H:i:s'),
             updatedAt: $campaign->updated_at->format('Y-m-d H:i:s'),
-            message: $includeMessage ? $campaign->message : null,
+            message: $includeMessage ? $campaign->message_template : null,
             recipientsCount: $campaign->relationLoaded('recipients') ? $campaign->recipients->count() : null,
         );
     }

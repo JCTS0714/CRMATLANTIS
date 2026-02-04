@@ -122,7 +122,23 @@ class CustomerController extends Controller
             'message' => 'Cliente eliminado.',
         ]);
     }
+    public function search(Request $request): JsonResponse
+    {
+        $q = trim((string) $request->query('q', ''));
+        
+        if (strlen($q) < 2) {
+            return response()->json(['customers' => []]);
+        }
 
+        $customers = Customer::where('name', 'LIKE', "%{$q}%")
+            ->orWhere('company_name', 'LIKE', "%{$q}%")
+            ->orWhere('document_number', 'LIKE', "%{$q}%")
+            ->select(['id', 'name', 'company_name', 'document_number'])
+            ->limit(10)
+            ->get();
+
+        return response()->json(['customers' => $customers]);
+    }
     public function importCsv(Request $request): JsonResponse
     {
         $request->validate([

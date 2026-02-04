@@ -173,9 +173,10 @@ abstract class BaseCampaignController extends Controller
     /**
      * Show single campaign with recipients
      */
-    public function show(Request $request, $campaign): JsonResponse
+    public function show(Request $request, $campaignId): JsonResponse
     {
-        $campaign->load(['recipients']);
+        $campaignModel = $this->getCampaignModel();
+        $campaign = $campaignModel::with(['recipients'])->findOrFail($campaignId);
 
         $campaignData = array_merge([
             'id' => $campaign->id,
@@ -251,6 +252,7 @@ abstract class BaseCampaignController extends Controller
             'message' => 'Campaña creada.',
             'data' => [
                 'campaign' => $dtoClass::fromModel($campaign->fresh(), includeBody: false)->toArray(),
+                'campaign_id' => $campaign->id,
                 'skipped_missing_' . $this->getContactField() . '_ids' => $missingContactIds,
             ],
         ]);
