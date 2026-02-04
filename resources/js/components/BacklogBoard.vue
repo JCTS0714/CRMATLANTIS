@@ -582,7 +582,23 @@ const deleteIncidence = async (incidence) => {
 
     toastSuccess('Incidencia eliminada correctamente');
   } catch (error) {
-    toastError('Error al eliminar la incidencia');
+    console.error('Error eliminando incidencia:', error);
+    
+    let errorMessage = 'Error al eliminar la incidencia';
+    
+    if (error.response?.status === 403) {
+      errorMessage = 'No tienes permisos para eliminar incidencias';
+    } else if (error.response?.status === 404) {
+      errorMessage = 'La incidencia no fue encontrada';
+    } else if (error.response?.status === 422) {
+      errorMessage = error.response.data?.message || 'Datos inválidos';
+    } else if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    toastError(errorMessage);
   }
 };
 
