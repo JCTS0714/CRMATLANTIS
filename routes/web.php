@@ -20,6 +20,7 @@ use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Campaign\WhatsAppCampaignController;
 use App\Http\Controllers\Campaign\EmailCampaignController;
 use App\Http\Controllers\EmailUnsubscribeController;
+use App\Http\Controllers\Api\NotificationController as ApiNotificationController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -256,6 +257,7 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
 
     Route::put('/customers/{customer}', [CustomerController::class, 'update'])
         ->middleware('permission:customers.update')
@@ -396,6 +398,16 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/configuracion/logo-paths', [SettingsController::class, 'logoPaths'])
         ->name('settings.logo.paths');
+
+    // API de notificaciones
+    Route::prefix('api/notifications')->group(function () {
+        Route::post('/closed', [ApiNotificationController::class, 'markClosed'])->name('api.notifications.closed');
+        Route::get('/upcoming-events', [ApiNotificationController::class, 'getUpcomingEvents'])->name('api.notifications.upcoming');
+        Route::post('/test', [ApiNotificationController::class, 'sendTestNotification'])->name('api.notifications.test');
+        Route::put('/preferences', [ApiNotificationController::class, 'updatePreferences'])->name('api.notifications.preferences.update');
+        Route::get('/preferences', [ApiNotificationController::class, 'getPreferences'])->name('api.notifications.preferences');
+        Route::get('/status', [ApiNotificationController::class, 'getNotificationStatus'])->name('api.notifications.status');
+    });
 });
 
 require __DIR__.'/modules/demos.php';

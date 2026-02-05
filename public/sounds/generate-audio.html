@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generador de Audio de Notificación</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1d4ed8;
+        }
+        audio {
+            width: 100%;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔊 Generador de Audio de Notificación</h1>
+        <p>Esta herramienta genera un archivo de audio de notificación para el CRM Atlantis.</p>
+        
+        <div id="status"></div>
+        
+        <button onclick="generateAudio()">🎵 Generar Audio de Notificación</button>
+        <button onclick="testAudio()" id="testBtn" disabled>🧪 Probar Audio</button>
+        <button onclick="downloadAudio()" id="downloadBtn" disabled>💾 Descargar Audio</button>
+        
+        <audio id="audioPlayer" controls style="display: none;"></audio>
+        
+        <div style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 6px;">
+            <h3>Instrucciones:</h3>
+            <ol>
+                <li>Haz clic en "Generar Audio de Notificación"</li>
+                <li>Prueba el audio generado</li>
+                <li>Si te gusta, descárgalo como "notification.wav"</li>
+                <li>Coloca el archivo en la carpeta <code>/public/sounds/</code></li>
+                <li>Renómbralo a <code>notification.mp3</code> si es necesario</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        let audioBlob = null;
+        let audioUrl = null;
+
+        function showStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.style.display = 'block';
+        }
+
+        async function generateAudio() {
+            try {
+                showStatus('🔄 Generando audio de notificación...', 'info');
+                
+                // Crear contexto de audio offline para generar el sonido
+                const sampleRate = 44100;
+                const duration = 0.8; // 800ms
+                const offlineContext = new OfflineAudioContext(1, sampleRate * duration, sampleRate);
+                
+                // Crear oscilador para el primer tono (como WhatsApp)
+                const oscillator1 = offlineContext.createOscillator();
+                oscillator1.type = 'sine';
+                oscillator1.frequency.setValueAtTime(800, 0); // 800Hz
+                
+                // Crear oscilador para el segundo tono
+                const oscillator2 = offlineContext.createOscillator();
+                oscillator2.type = 'sine';
+                oscillator2.frequency.setValueAtTime(600, 0.4); // 600Hz después de 400ms
+                
+                // Crear gain nodes para controlar el volumen
+                const gain1 = offlineContext.createGain();
+                const gain2 = offlineContext.createGain();
+                
+                // Configurar envelope para el primer tono
+                gain1.gain.setValueAtTime(0, 0);
+                gain1.gain.linearRampToValueAtTime(0.3, 0.05); // fade in
+                gain1.gain.setValueAtTime(0.3, 0.35);
+                gain1.gain.linearRampToValueAtTime(0, 0.4); // fade out
+                
+                // Configurar envelope para el segundo tono
+                gain2.gain.setValueAtTime(0, 0.4);
+                gain2.gain.linearRampToValueAtTime(0.25, 0.45); // fade in
+                gain2.gain.setValueAtTime(0.25, 0.75);
+                gain2.gain.linearRampToValueAtTime(0, 0.8); // fade out
+                
+                // Conectar nodos
+                oscillator1.connect(gain1);
+                gain1.connect(offlineContext.destination);
+                
+                oscillator2.connect(gain2);
+                gain2.connect(offlineContext.destination);
+                
+                // Iniciar osciladores
+                oscillator1.start(0);
+                oscillator1.stop(0.4);
+                
+                oscillator2.start(0.4);
+                oscillator2.stop(0.8);
+                
+                // Renderizar audio
+                const audioBuffer = await offlineContext.startRendering();
+                
+                // Convertir a WAV para compatibilidad
+                audioBlob = audioBufferToWav(audioBuffer);
+                
+                // Crear URL para reproducción
+                if (audioUrl) {
+                    URL.revokeObjectURL(audioUrl);
+                }
+                audioUrl = URL.createObjectURL(audioBlob);
+                
+                // Configurar reproductor
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.src = audioUrl;
+                audioPlayer.style.display = 'block';
+                
+                // Habilitar botones
+                document.getElementById('testBtn').disabled = false;
+                document.getElementById('downloadBtn').disabled = false;
+                
+                showStatus('✅ ¡Audio de notificación generado correctamente!', 'success');
+                
+            } catch (error) {
+                console.error('Error generando audio:', error);
+                showStatus('❌ Error generando audio: ' + error.message, 'error');
+            }
+        }
+
+        function testAudio() {
+            if (audioUrl) {
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.currentTime = 0;
+                audioPlayer.play();
+            }
+        }
+
+        function downloadAudio() {
+            if (audioBlob) {
+                const a = document.createElement('a');
+                a.href = audioUrl;
+                a.download = 'notification.wav';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                showStatus('💾 Archivo descargado como "notification.wav"', 'success');
+            }
+        }
+
+        // Función para convertir AudioBuffer a WAV
+        function audioBufferToWav(buffer) {
+            const length = buffer.length;
+            const arrayBuffer = new ArrayBuffer(44 + length * 2);
+            const view = new DataView(arrayBuffer);
+            
+            // WAV header
+            const writeString = (offset, string) => {
+                for (let i = 0; i < string.length; i++) {
+                    view.setUint8(offset + i, string.charCodeAt(i));
+                }
+            };
+            
+            writeString(0, 'RIFF');
+            view.setUint32(4, 36 + length * 2, true);
+            writeString(8, 'WAVE');
+            writeString(12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, 1, true);
+            view.setUint32(24, buffer.sampleRate, true);
+            view.setUint32(28, buffer.sampleRate * 2, true);
+            view.setUint16(32, 2, true);
+            view.setUint16(34, 16, true);
+            writeString(36, 'data');
+            view.setUint32(40, length * 2, true);
+            
+            // Convert float samples to 16-bit PCM
+            const channelData = buffer.getChannelData(0);
+            let offset = 44;
+            for (let i = 0; i < length; i++) {
+                const sample = Math.max(-1, Math.min(1, channelData[i]));
+                view.setInt16(offset, sample * 0x7FFF, true);
+                offset += 2;
+            }
+            
+            return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        // Cleanup when page unloads
+        window.addEventListener('beforeunload', () => {
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+            }
+        });
+    </script>
+</body>
+</html>

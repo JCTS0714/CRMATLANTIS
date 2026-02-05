@@ -85,11 +85,22 @@
         </section>
       </div>
     </div>
+
+    <!-- Sección de Notificaciones -->
+    <div class="bg-white dark:bg-slate-900 shadow sm:rounded-lg p-6 mt-6">
+      <div class="border-l-4 border-blue-600 pl-4 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-slate-100">🔔 Notificaciones</h2>
+        <p class="text-sm text-gray-600 dark:text-slate-300">Configura las notificaciones del calendario y recordatorios</p>
+      </div>
+      
+      <NotificationSettings />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onBeforeUnmount, onMounted } from 'vue';
+import NotificationSettings from './NotificationSettings.vue';
 
 const status = ref('');
 const errorMark = ref('');

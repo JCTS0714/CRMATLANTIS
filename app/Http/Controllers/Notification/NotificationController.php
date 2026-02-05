@@ -42,4 +42,12 @@ class NotificationController extends Controller
 
         return response()->json(['message' => 'OK']);
     }
+
+    public function markAllAsRead(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $user->unreadNotifications->markAsRead();
+
+        return response()->json(['message' => 'All notifications marked as read']);
+    }
 }

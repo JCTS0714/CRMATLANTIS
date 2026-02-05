@@ -26,7 +26,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import axios from 'axios';
 
 import FullCalendar from '@fullcalendar/vue3';
@@ -35,6 +35,10 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 import { confirmDialog, toastError, toastSuccess } from '../ui/alerts';
+
+// Importar sistema de notificaciones
+import '../notifications.js';
+import '../calendar-notifications.js';
 
 const authUser = window.__AUTH_USER__ ?? null;
 const canDeleteEvents = computed(() => {
@@ -425,9 +429,23 @@ const calendarOptions = computed(() => ({
 
     saving.value = true;
     try {
-      await axios.post('/calendar/events', payload);
+      const response = await axios.post('/calendar/events', payload);
+      const newEvent = response.data?.data || response.data;
+      
       toastSuccess('Evento creado');
       arg.view.calendar.refetchEvents();
+      
+      // Programar notificaciones para el nuevo evento
+      if (newEvent && newEvent.id) {
+        scheduleEventNotifications({
+          id: newEvent.id,
+          title: payload.title,
+          description: payload.description,
+          start_at: payload.start_at,
+          end_at: payload.end_at,
+          reminder_minutes: payload.reminder_minutes
+        });
+      }
     } catch (e) {
       toastError(e?.response?.data?.message ?? 'No se pudo crear el evento');
     } finally {
@@ -465,6 +483,9 @@ const calendarOptions = computed(() => ({
         await axios.delete(`/calendar/events/${ev.id}`);
         toastSuccess('Evento eliminado');
         clickInfo.view.calendar.refetchEvents();
+        
+        // Cancelar notificaciones del evento eliminado
+        cancelEventNotifications(ev.id);
       } catch (e) {
         toastError(e?.response?.data?.message ?? 'No se pudo eliminar el evento');
       } finally {
@@ -481,6 +502,17 @@ const calendarOptions = computed(() => ({
       await axios.put(`/calendar/events/${ev.id}`, payload);
       toastSuccess('Evento actualizado');
       clickInfo.view.calendar.refetchEvents();
+      
+      // Reprogramar notificaciones para el evento actualizado
+      cancelEventNotifications(ev.id);
+      scheduleEventNotifications({
+        id: ev.id,
+        title: payload.title,
+        description: payload.description,
+        start_at: payload.start_at,
+        end_at: payload.end_at,
+        reminder_minutes: payload.reminder_minutes
+      });
     } catch (e) {
       toastError(e?.response?.data?.message ?? 'No se pudo actualizar el evento');
     } finally {
@@ -550,9 +582,23 @@ const createEventQuick = async () => {
 
   saving.value = true;
   try {
-    await axios.post('/calendar/events', payload);
+    const response = await axios.post('/calendar/events', payload);
+    const newEvent = response.data?.data || response.data;
+    
     toastSuccess('Evento creado');
     refetchEvents();
+    
+    // Programar notificaciones para el nuevo evento
+    if (newEvent && newEvent.id) {
+      scheduleEventNotifications({
+        id: newEvent.id,
+        title: payload.title,
+        description: payload.description,
+        start_at: payload.start_at,
+        end_at: payload.end_at,
+        reminder_minutes: payload.reminder_minutes
+      });
+    }
   } catch (e) {
     toastError(e?.response?.data?.message ?? 'No se pudo crear el evento');
   } finally {
@@ -604,9 +650,23 @@ const maybePrefillFromUrl = async () => {
 
   saving.value = true;
   try {
-    await axios.post('/calendar/events', payload);
+    const response = await axios.post('/calendar/events', payload);
+    const newEvent = response.data?.data || response.data;
+    
     toastSuccess('Evento creado');
     refetchEvents();
+    
+    // Programar notificaciones para el nuevo evento (desde URL params)
+    if (newEvent && newEvent.id) {
+      scheduleEventNotifications({
+        id: newEvent.id,
+        title: payload.title,
+        description: payload.description,
+        start_at: payload.start_at,
+        end_at: payload.end_at,
+        reminder_minutes: payload.reminder_minutes
+      });
+    }
   } catch (e) {
     toastError(e?.response?.data?.message ?? 'No se pudo crear el evento');
   } finally {
@@ -616,17 +676,79 @@ const maybePrefillFromUrl = async () => {
 
 const onCalendarRefetchEvent = () => refetchEvents();
 
+// Funciones para notificaciones
+const scheduleExistingEventsNotifications = async () => {
+  // API endpoint no implementado - skip silenciosamente  
+  // try {
+  //   const response = await axios.get('/api/notifications/upcoming-events', {
+  //     params: { minutes: 1440 }
+  //   });
+  //   const events = response.data?.events || [];
+  //   events.forEach(event => {
+  //     scheduleEventNotifications({
+  //       id: event.id,
+  //       title: event.title,
+  //       description: event.description,
+  //       start_at: event.start_datetime,
+  //       end_at: event.end_datetime,
+  //       reminder_minutes: event.reminder_minutes
+  //     });
+  //   });
+  // } catch (error) {
+  //   // API no implementado
+  // }
+};
+
+const scheduleEventNotifications = (eventData) => {
+  if (!window.CalendarNotifications || !eventData) return;
+  
+  // Convertir datos del evento al formato esperado
+  const formattedEvent = {
+    id: eventData.id,
+    title: eventData.title,
+    description: eventData.description || '',
+    start_datetime: eventData.start_at,
+    end_datetime: eventData.end_at,
+    start_time: new Date(eventData.start_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
+    reminder_minutes: eventData.reminder_minutes
+  };
+  
+  // Configurar recordatorios
+  if (formattedEvent.reminder_minutes && formattedEvent.reminder_minutes > 0) {
+    window.CalendarNotifications.setReminderTimes([formattedEvent.reminder_minutes]);
+  } else {
+    window.CalendarNotifications.setReminderTimes([15, 5]);
+  }
+  window.CalendarNotifications.scheduleReminders(formattedEvent);
+};
+
+const cancelEventNotifications = (eventId) => {
+  if (window.CalendarNotifications && eventId) {
+    window.CalendarNotifications.cancelReminders(eventId);
+  }
+};
+
 onMounted(() => {
   window.addEventListener('calendar:refetch', onCalendarRefetchEvent);
-  // allow calendar to mount first
-  setTimeout(() => {
+  
+  // Inicializar rápidamente sin delay
+  nextTick(() => {
     const api = calendarRef.value?.getApi?.();
     if (api) {
       api.gotoDate(new Date());
     }
-    maybePrefillFromUrl();
     updateTitle();
-  }, 0);
+    
+    // Inicializar notificaciones en paralelo, no bloqueante
+    Promise.resolve().then(() => {
+      if (window.CalendarNotifications) {
+        window.CalendarNotifications.init();
+      }
+    });
+    
+    // Prefill desde URL sin bloquear
+    maybePrefillFromUrl();
+  });
 });
 
 onBeforeUnmount(() => {
