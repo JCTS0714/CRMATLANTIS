@@ -131,6 +131,31 @@
               </div>
             </div>
 
+            <!-- Foto de perfil -->
+            <div class="space-y-3">
+              <div class="border-b border-gray-200 dark:border-slate-700 pb-3">
+                <h4 class="text-base font-semibold text-gray-900 dark:text-slate-100">Foto de perfil</h4>
+                <p class="text-sm text-gray-600 dark:text-slate-400">Sube una foto para el usuario (opcional)</p>
+              </div>
+
+              <div class="flex items-center gap-4">
+                <div class="w-16 h-16 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-800 flex items-center justify-center">
+                  <img v-if="photoPreview" :src="photoPreview" alt="Preview" class="w-full h-full object-cover" />
+                  <div v-else class="text-sm text-gray-500 dark:text-slate-400">Sin foto</div>
+                </div>
+
+                <div class="flex-1">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    @change="handlePhotoChange"
+                    class="block w-full text-sm text-gray-500 file:bg-white file:border file:rounded file:px-3 file:py-1 file:mr-3 file:border-gray-300 file:text-sm file:cursor-pointer dark:file:bg-slate-800"
+                  />
+                  <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Formatos: JPG, PNG. Tamaño recomendado: 300x300px</p>
+                </div>
+              </div>
+            </div>
+
             <div v-if="!editingUser" class="space-y-3">
               <div class="border-b border-gray-200 dark:border-slate-700 pb-3">
                 <h4 class="text-base font-semibold text-gray-900 dark:text-slate-100">Configuración de Acceso</h4>
@@ -254,6 +279,9 @@ const userForm = ref({
   password: ''
 });
 
+const photoFile = ref(null);
+const photoPreview = ref(null);
+
 // Methods
 const formatDateTime = (datetime) => {
   if (!datetime) return '';
@@ -267,6 +295,9 @@ const editUser = (user) => {
     email: user.email,
     password: ''
   };
+  // set photo preview if available
+  photoPreview.value = user.profile_photo_url || user.profile_photo_path || null;
+  photoFile.value = null;
   userModal.value?.open();
 };
 
@@ -280,16 +311,57 @@ const saveUser = async () => {
   saving.value = true;
 
   try {
-    if (editingUser.value) {
-      await performTableAction('update', editingUser.value.id, userForm.value);
+    // If a photo file was selected, use FormData for multipart upload
+    let payload = null;
+    if (photoFile.value) {
+      const fd = new FormData();
+      fd.append('name', userForm.value.name);
+      fd.append('email', userForm.value.email);
+      if (!editingUser.value) {
+        fd.append('password', userForm.value.password);
+        fd.append('password_confirmation', userForm.value.password);
+      }
+      fd.append('photo', photoFile.value);
+      payload = fd;
     } else {
-      await performTableAction('create', null, userForm.value);
+      payload = { ...userForm.value };
+      if (!editingUser.value && userForm.value.password) {
+        payload.password_confirmation = userForm.value.password;
+      }
+    }
+
+    if (editingUser.value) {
+      await performTableAction('update', editingUser.value.id, payload);
+    } else {
+      await performTableAction('create', null, payload);
     }
 
     closeUserModal();
     refresh();
   } catch (err) {
     console.error('Error saving user:', err);
+
+    const message = err?.response?.data?.message || 'No se pudo guardar el usuario.';
+    const validation = err?.response?.data?.errors;
+
+    if (validation && typeof validation === 'object') {
+      const details = Object.values(validation)
+        .flat()
+        .filter(Boolean)
+        .join('<br>');
+
+      Swal.fire({
+        title: 'Validación fallida',
+        html: details || message,
+        icon: 'error',
+      });
+    } else {
+      Swal.fire({
+        title: 'Error',
+        text: message,
+        icon: 'error',
+      });
+    }
   } finally {
     saving.value = false;
   }
@@ -302,6 +374,8 @@ const closeUserModal = () => {
     email: '',
     password: ''
   };
+  photoFile.value = null;
+  photoPreview.value = null;
   userModal.value?.close();
   // Reset create modal state after a brief delay
   nextTick(() => {
@@ -319,12 +393,26 @@ watch(() => showCreateModal.value, (newValue) => {
       password: ''
     };
     editingUser.value = null;
+    photoFile.value = null;
+    photoPreview.value = null;
     // Use nextTick to ensure DOM is ready
     nextTick(() => {
       userModal.value?.open();
     });
   }
 });
+
+// Handle photo selection and preview
+const handlePhotoChange = (e) => {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  photoFile.value = file;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    photoPreview.value = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+};
 
 // Initialize
 onMounted(async () => {

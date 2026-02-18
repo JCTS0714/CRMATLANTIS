@@ -33,16 +33,19 @@ class UserController extends Controller
     {
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
+            'q' => ['nullable', 'string', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', Rule::in([10, 25, 50, 100])],
             'sort' => ['nullable', 'string', Rule::in(['id', 'name', 'email', 'created_at'])],
+            'sort_by' => ['nullable', 'string', Rule::in(['id', 'name', 'email', 'created_at'])],
             'dir' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
+            'sort_direction' => ['nullable', 'string', Rule::in(['asc', 'desc'])],
         ]);
 
-        $search = trim((string) ($validated['search'] ?? ''));
+        $search = trim((string) ($validated['search'] ?? $validated['q'] ?? ''));
         $perPage = (int) ($validated['per_page'] ?? 10);
-        $sort = (string) ($validated['sort'] ?? 'id');
-        $dir = (string) ($validated['dir'] ?? 'desc');
+        $sort = (string) ($validated['sort'] ?? $validated['sort_by'] ?? 'id');
+        $dir = (string) ($validated['dir'] ?? $validated['sort_direction'] ?? 'desc');
 
         $columns = ['id', 'name', 'email', 'created_at'];
         if (Schema::hasColumn('users', 'profile_photo_path')) {
@@ -73,13 +76,18 @@ class UserController extends Controller
                 ? '/storage/' . ltrim($user->profile_photo_path, '/')
                 : null;
 
+            $roles = $user->roles
+                ->map(fn ($role) => ['id' => $role->id, 'name' => $role->name])
+                ->values();
+
             return [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
                 'profile_photo_url' => $photoUrl,
                 'created_at' => $user->created_at,
-                'role' => $user->roles->pluck('name')->first(),
+                'roles' => $roles,
+                'role' => $roles->pluck('name')->first(),
             ];
         });
 
@@ -139,6 +147,7 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Usuario creado.',
             'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+                'roles' => [['id' => null, 'name' => $role]],
                 'role' => $role,
             ]),
         ], 201);
@@ -195,6 +204,7 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Usuario actualizado.',
             'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+                'roles' => $user->roles()->get(['id', 'name'])->map(fn ($r) => ['id' => $r->id, 'name' => $r->name])->values(),
                 'role' => $user->roles()->pluck('name')->first(),
             ]),
         ]);

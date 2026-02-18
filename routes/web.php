@@ -294,6 +294,10 @@ Route::middleware('auth')->group(function () {
         ->name('leads.whatsapp.recipients.update');
 
     // Refactored: Import moved to LeadImportController
+    Route::post('/leads/import', [LeadImportController::class, 'import'])
+        ->middleware('permission:leads.create')
+        ->name('leads.import');
+
     Route::post('/leads/import/prospectos', [LeadImportController::class, 'import'])
         ->middleware('permission:leads.create')
         ->name('leads.import.prospectos');

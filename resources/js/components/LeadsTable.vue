@@ -150,19 +150,28 @@ const handleImportFile = async (event) => {
     const formData = new FormData();
     formData.append('file', file);
 
-    const response = await axios.post('/leads/import', formData, {
+    const response = await axios.post('/leads/import/prospectos', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
 
     const result = response.data;
+    const importData = result?.data ?? {};
+    const processed = result?.processed ?? (
+      (importData.created || 0) +
+      (importData.updated || 0) +
+      (importData.skipped || 0) +
+      (importData.invalid || 0)
+    );
+    const imported = result?.imported ?? ((importData.created || 0) + (importData.updated || 0));
+    const errors = result?.errors ?? (importData.invalid || 0);
     
     Swal.fire({
       title: '¡Importación completada!',
       html: `
         <div class="text-left">
-          <p><strong>Procesados:</strong> ${result.processed || 0}</p>
-          <p><strong>Importados:</strong> ${result.imported || 0}</p>
-          <p><strong>Errores:</strong> ${result.errors || 0}</p>
+          <p><strong>Procesados:</strong> ${processed}</p>
+          <p><strong>Importados:</strong> ${imported}</p>
+          <p><strong>Errores:</strong> ${errors}</p>
         </div>
       `,
       icon: 'success'

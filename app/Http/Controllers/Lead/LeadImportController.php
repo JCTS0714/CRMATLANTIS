@@ -37,6 +37,10 @@ class LeadImportController extends Controller
 
         return response()->json([
             'message' => 'Importación completada.',
+            // Backward-compatible keys expected by legacy frontend
+            'processed' => ($result['created'] ?? 0) + ($result['updated'] ?? 0) + ($result['skipped'] ?? 0) + ($result['invalid'] ?? 0),
+            'imported' => ($result['created'] ?? 0) + ($result['updated'] ?? 0),
+            'errors' => ($result['invalid'] ?? 0),
             'data' => $result,
         ]);
     }

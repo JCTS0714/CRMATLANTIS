@@ -12,7 +12,8 @@ export class TableActions {
   // Basic CRUD operations
   async create(data) {
     try {
-      const response = await axios.post(this.baseEndpoint, data);
+      const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      const response = await axios.post(this.baseEndpoint, data, config);
       return response.data;
     } catch (error) {
       throw error;
@@ -21,8 +22,18 @@ export class TableActions {
 
   async update(id, data) {
     try {
-      const response = await axios.patch(`${this.baseEndpoint}/${id}`, data);
-      return response.data;
+      const config = data instanceof FormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+      try {
+        const response = await axios.put(`${this.baseEndpoint}/${id}`, data, config);
+        return response.data;
+      } catch (error) {
+        const status = error?.response?.status;
+        if (status === 404 || status === 405) {
+          const response = await axios.patch(`${this.baseEndpoint}/${id}`, data, config);
+          return response.data;
+        }
+        throw error;
+      }
     } catch (error) {
       throw error;
     }

@@ -31,8 +31,17 @@ export class TableActions {
 
   async update<T = any>(id: string | number, data: Record<string, any>): Promise<T> {
     try {
-      const response: AxiosResponse<T> = await axios.patch(`${this.baseEndpoint}/${id}`, data);
-      return response.data;
+      try {
+        const response: AxiosResponse<T> = await axios.put(`${this.baseEndpoint}/${id}`, data);
+        return response.data;
+      } catch (error: any) {
+        const status = error?.response?.status;
+        if (status === 404 || status === 405) {
+          const response: AxiosResponse<T> = await axios.patch(`${this.baseEndpoint}/${id}`, data);
+          return response.data;
+        }
+        throw error;
+      }
     } catch (error) {
       throw error;
     }
