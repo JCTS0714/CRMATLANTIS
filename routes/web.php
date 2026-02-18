@@ -172,6 +172,10 @@ Route::middleware('auth')->group(function () {
             return view('dashboard');
         })->name('incidencias.index');
 
+        Route::get('/incidencias/board', function () {
+            return redirect('/backlog');
+        })->name('incidencias.board');
+
         Route::get('/backlog', function () {
             return view('dashboard');
         })->name('backlog.index');
