@@ -586,13 +586,14 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     };
 
     $idx = [
-        'nombre' => $findIndex(['nombre', 'Nombre']),
-        'empresa' => $findIndex(['empresa', 'Empresa']),
+        'nombre' => $findIndex(['nombre', 'Nombre', 'cliente', 'nombre cliente', 'nombrecliente']),
+        'empresa' => $findIndex(['empresa', 'Empresa', 'comercio', 'comercio(s)', 'comercios']),
         'documento' => $findIndex(['documento', 'Documento', 'doc', 'dni', 'ruc']),
         'telefono' => $findIndex(['telefono', 'Teléfono', 'celular', 'movil', 'telf']),
-        'correo' => $findIndex(['correo', 'Correo', 'email', 'e-mail']),
+        'correo' => $findIndex(['correo', 'Correo', 'email', 'e-mail', 'usuario', 'mail']),
         'ciudad' => $findIndex(['ciudad', 'Ciudad']),
         'referencia' => $findIndex(['referencia', 'Referencia']),
+        'fecha_contacto' => $findIndex(['fecha_contacto', 'fecha contacto', 'f. contacto', 'fcontacto']),
         'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'created_at', 'creado_en', 'fechacreacion']),
     ];
 
@@ -675,7 +676,8 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $companyAddress = $addressParts ? mb_substr(implode(' | ', $addressParts), 0, 255) : null;
 
         $createdAt = $parseDateTime($clean($get($idx['fecha_creacion']))) ?? now()->toDateTimeString();
-        $updatedAt = $createdAt;
+        $contactAt = $parseDateTime($clean($get($idx['fecha_contacto'])));
+        $updatedAt = $contactAt && $contactAt > $createdAt ? $contactAt : $createdAt;
 
         $payload = [
             'name' => $nombre ?? $empresa ?? ($telefono ? "Cliente {$telefono}" : 'Cliente'),
@@ -797,8 +799,17 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
 
     $idx = [
         'correlativo' => $findIndex(['correlativo', 'correlative', 'codigo', 'código']),
-        'nombre' => $findIndex(['nombre_incidencia', 'nombreincidencia', 'titulo', 'título', 'title', 'nombre']),
-        'cliente_id' => $findIndex(['cliente_id', 'clienteid', 'customer_id', 'customerid']),
+        'nombre' => $findIndex([
+            'nombre_incidencia',
+            'nombreincidencia',
+            'nombre de la incidencia',
+            'nombredelaincidencia',
+            'titulo',
+            'título',
+            'title',
+            'nombre'
+        ]),
+        'cliente_id' => $findIndex(['cliente_id', 'clienteid', 'customer_id', 'customerid', 'nombre del cliente', 'nombredelcliente', 'cliente']),
         'usuario_id' => $findIndex(['usuario_id', 'usuarioid', 'created_by', 'creado_por']),
         'fecha' => $findIndex(['fecha', 'date']),
         'prioridad' => $findIndex(['prioridad', 'priority']),
@@ -920,6 +931,23 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         if (is_numeric($customerId)) {
             $cid = (int) $customerId;
             if (Customer::query()->whereKey($cid)->exists()) $payload['customer_id'] = $cid;
+        } elseif (is_string($customerId) && trim($customerId) !== '') {
+            $customerName = trim($customerId);
+            $customer = Customer::query()
+                ->where('name', $customerName)
+                ->orWhere('company_name', $customerName)
+                ->first();
+
+            if (!$customer) {
+                $customer = Customer::query()
+                    ->where('name', 'like', '%'.$customerName.'%')
+                    ->orWhere('company_name', 'like', '%'.$customerName.'%')
+                    ->first();
+            }
+
+            if ($customer) {
+                $payload['customer_id'] = $customer->id;
+            }
         }
         if (is_numeric($createdBy)) {
             $uid = (int) $createdBy;
