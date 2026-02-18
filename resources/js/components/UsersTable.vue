@@ -129,6 +129,24 @@
                   class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
                 />
               </div>
+
+              <div>
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Rol *
+                </label>
+                <select
+                  v-model="userForm.role"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                >
+                  <option
+                    v-for="roleName in roleOptions"
+                    :key="roleName"
+                    :value="roleName"
+                  >
+                    {{ roleName }}
+                  </option>
+                </select>
+              </div>
             </div>
 
             <!-- Foto de perfil -->
@@ -272,10 +290,12 @@ const editingUser = ref(null);
 const saving = ref(false);
 const showCreateModal = ref(false);
 const userModal = ref(null);
+const roleOptions = ref(['employee']);
 
 const userForm = ref({
   name: '',
   email: '',
+  role: 'employee',
   password: ''
 });
 
@@ -289,10 +309,14 @@ const formatDateTime = (datetime) => {
 };
 
 const editUser = (user) => {
+  const firstRole = Array.isArray(user?.roles) ? user.roles[0]?.name : null;
+  const selectedRole = firstRole || user?.role || 'employee';
+
   editingUser.value = user;
   userForm.value = {
     name: user.name,
     email: user.email,
+    role: selectedRole,
     password: ''
   };
   // set photo preview if available
@@ -311,12 +335,15 @@ const saveUser = async () => {
   saving.value = true;
 
   try {
+    const selectedRole = userForm.value.role || 'employee';
+
     // If a photo file was selected, use FormData for multipart upload
     let payload = null;
     if (photoFile.value) {
       const fd = new FormData();
       fd.append('name', userForm.value.name);
       fd.append('email', userForm.value.email);
+      fd.append('role', selectedRole);
       if (!editingUser.value) {
         fd.append('password', userForm.value.password);
         fd.append('password_confirmation', userForm.value.password);
@@ -325,6 +352,7 @@ const saveUser = async () => {
       payload = fd;
     } else {
       payload = { ...userForm.value };
+      payload.role = selectedRole;
       if (!editingUser.value && userForm.value.password) {
         payload.password_confirmation = userForm.value.password;
       }
@@ -372,6 +400,7 @@ const closeUserModal = () => {
   userForm.value = {
     name: '',
     email: '',
+    role: 'employee',
     password: ''
   };
   photoFile.value = null;
@@ -390,6 +419,7 @@ watch(() => showCreateModal.value, (newValue) => {
     userForm.value = {
       name: '',
       email: '',
+      role: 'employee',
       password: ''
     };
     editingUser.value = null;
@@ -414,8 +444,23 @@ const handlePhotoChange = (e) => {
   reader.readAsDataURL(file);
 };
 
+const loadRoleOptions = async () => {
+  try {
+    const { data } = await axios.get('/users/role-options');
+    const roles = Array.isArray(data?.data) ? data.data.filter(Boolean) : [];
+    roleOptions.value = roles.length > 0 ? roles : ['employee'];
+
+    if (!roleOptions.value.includes(userForm.value.role)) {
+      userForm.value.role = roleOptions.value[0];
+    }
+  } catch (err) {
+    roleOptions.value = ['employee'];
+  }
+};
+
 // Initialize
 onMounted(async () => {
+  await loadRoleOptions();
   await fetchData();
 });
 </script>
