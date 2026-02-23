@@ -40,6 +40,13 @@ class ContadorController extends Controller
         return response()->json([
             'contadores' => collect($rows->items())->map(function (Contador $c) {
                 $customer = $c->customers->first();
+                $customers = $c->customers
+                    ->map(fn ($item) => [
+                        'id' => $item->id,
+                        'name' => $item->name,
+                    ])
+                    ->values();
+
                 return [
                     'id' => $c->id,
                     'nro' => $c->nro,
@@ -53,6 +60,7 @@ class ContadorController extends Controller
                     'contrasena' => $c->contrasena,
                     'servidor' => $c->servidor,
                     'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->name] : null,
+                    'customers' => $customers,
                 ];
             })->values(),
             'pagination' => [

@@ -32,9 +32,9 @@ class EloquentLeadRepository implements LeadRepositoryInterface
         }
 
         // Date range filter using scope
-        if (!empty($filters['dateFrom'])) {
+        if (!empty($filters['dateFrom']) || !empty($filters['dateTo'])) {
             $query->dateRange(
-                $filters['dateFrom'],
+                $filters['dateFrom'] ?? null,
                 $filters['dateTo'] ?? null
             );
         }

@@ -270,6 +270,7 @@ const createCertificado = async () => {
   if (!payload) return;
 
   try {
+    let response;
     if (payload?.imagen instanceof File) {
       const form = new FormData();
       Object.entries(payload).forEach(([key, value]) => {
@@ -277,13 +278,16 @@ const createCertificado = async () => {
         form.append(key, value);
       });
 
-      await axios.post('/postventa/certificados', form, {
+      response = await axios.post('/postventa/certificados', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
     } else {
-      await axios.post('/postventa/certificados', payload);
+      response = await axios.post('/postventa/certificados', payload);
     }
     toastSuccess('Certificado creado');
+    if (response?.data?.calendar_event_created) {
+      toastSuccess(response?.data?.calendar_event_message || 'La fecha de vencimiento del certificado fue agregada al calendario.');
+    }
     fetchRows(1);
   } catch (e) {
     const msg = e?.response?.data?.message ?? 'No se pudo crear el certificado.';

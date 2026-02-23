@@ -30,22 +30,30 @@ class LeadService
             throw new \RuntimeException('No hay etapas de leads configuradas.');
         }
 
-        return $this->leadRepository->create([
-            'stage_id' => (int) $stageId,
-            'created_by' => $userId,
-            'name' => $data['name'],
-            'amount' => $data['amount'] ?? null,
-            'currency' => $data['currency'] ?? 'PEN',
-            'observacion' => $data['observacion'] ?? null,
-            'migracion' => $data['migracion'] ?? null,
-            'contact_name' => $data['contact_name'] ?? null,
-            'contact_phone' => $data['contact_phone'] ?? null,
-            'contact_email' => $data['contact_email'] ?? null,
-            'company_name' => $data['company_name'] ?? null,
-            'company_address' => $data['company_address'] ?? null,
-            'document_type' => $data['document_type'] ?? null,
-            'document_number' => $data['document_number'] ?? null,
-        ]);
+        return DB::transaction(function () use ($data, $userId, $stageId) {
+            $normalizedStageId = (int) $stageId;
+            $maxPosition = Lead::query()
+                ->where('stage_id', $normalizedStageId)
+                ->max('position') ?? 0;
+
+            return $this->leadRepository->create([
+                'stage_id' => $normalizedStageId,
+                'created_by' => $userId,
+                'name' => $data['name'],
+                'amount' => $data['amount'] ?? null,
+                'currency' => $data['currency'] ?? 'PEN',
+                'observacion' => $data['observacion'] ?? null,
+                'migracion' => $data['migracion'] ?? null,
+                'contact_name' => $data['contact_name'] ?? null,
+                'contact_phone' => $data['contact_phone'] ?? null,
+                'contact_email' => $data['contact_email'] ?? null,
+                'company_name' => $data['company_name'] ?? null,
+                'company_address' => $data['company_address'] ?? null,
+                'document_type' => $data['document_type'] ?? null,
+                'document_number' => $data['document_number'] ?? null,
+                'position' => ((int) $maxPosition) + 1,
+            ]);
+        });
     }
 
     /**

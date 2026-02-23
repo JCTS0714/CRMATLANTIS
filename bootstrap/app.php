@@ -27,9 +27,14 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->call(function () {
             $now = now();
+            $specialTypes = ['customer_payment', 'certificate_expiry'];
 
             // Find due reminders that haven't been sent yet
             $due = CalendarEvent::query()
+                ->where(function ($query) use ($specialTypes) {
+                    $query->whereNull('event_type')
+                        ->orWhereNotIn('event_type', $specialTypes);
+                })
                 ->whereNotNull('reminder_at')
                 ->whereNull('reminded_at')
                 ->where('reminder_at', '<=', $now)
@@ -68,6 +73,57 @@ return Application::configure(basePath: dirname(__DIR__))
                     $user->notify(new CalendarEventReminderNotification($payload));
                 }
             });
+
+            $specialEvents = CalendarEvent::query()
+                ->whereIn('event_type', $specialTypes)
+                ->whereNotNull('assigned_to')
+                ->whereNotNull('start_at')
+                ->where('start_at', '>=', $now->copy()->subDay())
+                ->orderBy('start_at')
+                ->limit(300)
+                ->get();
+
+            foreach ($specialEvents as $event) {
+                foreach ([1440, 0] as $offsetMinutes) {
+                    $dueAt = $event->start_at?->copy()->subMinutes($offsetMinutes);
+                    if (!$dueAt || $dueAt->greaterThan($now)) {
+                        continue;
+                    }
+
+                    $inserted = DB::table('calendar_event_reminder_sends')->insertOrIgnore([
+                        'calendar_event_id' => $event->id,
+                        'reminder_offset_minutes' => $offsetMinutes,
+                        'sent_at' => $now,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+
+                    if ($inserted !== 1) {
+                        continue;
+                    }
+
+                    $user = User::query()->find($event->assigned_to);
+                    if (!$user) {
+                        continue;
+                    }
+
+                    $minsUntil = $event->start_at ? $now->diffInMinutes($event->start_at, false) : null;
+                    $minsUntil = is_int($minsUntil) ? $minsUntil : null;
+
+                    $payload = [
+                        'kind' => 'calendar.reminder',
+                        'event_id' => $event->id,
+                        'title' => $event->title,
+                        'start_at' => optional($event->start_at)->toIso8601String(),
+                        'minutes_until' => $minsUntil,
+                        'event_type' => $event->event_type,
+                        'reminder_offset_minutes' => $offsetMinutes,
+                        'url' => '/calendar',
+                    ];
+
+                    $user->notify(new CalendarEventReminderNotification($payload));
+                }
+            }
         })->everyMinute();
     })
     ->withExceptions(function (Exceptions $exceptions): void {

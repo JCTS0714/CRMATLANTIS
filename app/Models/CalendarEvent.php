@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class CalendarEvent extends Model
 {
     protected $fillable = [
+        'event_type',
         'title',
         'description',
         'location',
@@ -20,6 +21,7 @@ class CalendarEvent extends Model
         'reminded_at',
         'related_type',
         'related_id',
+        'meta',
         'created_by',
         'assigned_to',
     ];
@@ -31,6 +33,7 @@ class CalendarEvent extends Model
         'reminder_at' => 'datetime',
         'reminded_at' => 'datetime',
         'reminder_minutes' => 'integer',
+        'meta' => 'array',
     ];
 
     public function related(): MorphTo

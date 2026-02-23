@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\PostVenta;
 
 use App\Models\Certificado;
+use App\Services\Calendar\CalendarCertificateSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -14,6 +15,10 @@ use App\Http\Controllers\Controller;
 
 class CertificadoController extends Controller
 {
+    public function __construct(private readonly CalendarCertificateSyncService $calendarCertificateSyncService)
+    {
+    }
+
     public function data(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
@@ -94,9 +99,16 @@ class CertificadoController extends Controller
             'updated_by' => $userId,
         ]);
 
+        $calendarSync = $this->calendarCertificateSyncService
+            ->syncCertificateExpiryEvent($certificado, $userId ? (int) $userId : null);
+
         return response()->json([
             'message' => 'Certificado creado.',
             'data' => $certificado,
+            'calendar_event_created' => (bool) ($calendarSync['created'] ?? false),
+            'calendar_event_message' => ($calendarSync['created'] ?? false)
+                ? 'La fecha de vencimiento del certificado fue agregada al calendario.'
+                : null,
         ], 201);
     }
 

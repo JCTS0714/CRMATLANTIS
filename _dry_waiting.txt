@@ -1,0 +1,9 @@
+[DRY] Row 2 -> {"lead_id":null,"name":"Juan Manuel Luna","contact_name":"Juan Manuel Luna","contact_phone":"978249930","contact_email":null,"company_name":"Distribuci├│n de Medicina Natural y Nutrientes","company_address":null,"document_type":"dni","document_number":"55555555","observacion":"en proceso de negociaci├│n con su proveedor - S\/.300.00 anual","created_by":null}
+[DRY] Row 3 -> {"lead_id":null,"name":"Jannylu","contact_name":"Jannylu","contact_phone":"951856732","contact_email":null,"company_name":"ESTUDIO CORNEJO","company_address":null,"document_type":"dni","document_number":"55555555","observacion":"Tesoreria@boutiquelaboral.pe","created_by":null}
+[DRY] Row 4 -> {"lead_id":null,"name":"VILCHEZ FLORES ABNER EZEQUIEL","contact_name":"VILCHEZ FLORES ABNER EZEQUIEL","contact_phone":"980498309","contact_email":null,"company_name":"ESMEVI SA","company_address":null,"document_type":"ruc","document_number":"20552445377","observacion":null,"created_by":null}
+Importaci├│n finalizada
+---
+Creados: 0
+Saltados: 0
+Inv├ílidos: 0
+Modo: dry-run

@@ -64,6 +64,13 @@
               <div class="flex items-center gap-2">
                 <button
                   type="button"
+                  class="inline-flex items-center rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-300 dark:hover:bg-emerald-900/40"
+                  @click="addPaymentDate(c)"
+                >
+                  Agregar fecha de pago
+                </button>
+                <button
+                  type="button"
                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="savingIds.has(c.id)"
                   @click="editCustomer(c)"
@@ -112,7 +119,7 @@
 <script setup>
 import axios from 'axios';
 import { ref, watch } from 'vue';
-import { confirmDialog, promptCustomerEdit, toastError, toastSuccess } from '../ui/alerts';
+import { confirmDialog, promptCustomerEdit, promptCustomerPaymentDate, toastError, toastSuccess } from '../ui/alerts';
 
 const customers = ref([]);
 const loading = ref(false);
@@ -204,6 +211,46 @@ const editCustomer = async (c) => {
   }
 };
 
+const addPaymentDate = async (c) => {
+  if (!c?.id) return;
+
+  const payload = await promptCustomerPaymentDate(c);
+  if (!payload) return;
+
+  const customerName = c.company_name || c.name || `Cliente #${c.id}`;
+  const title = `Pago cliente: ${customerName}`;
+
+  const details = [
+    c.name && c.company_name && c.name !== c.company_name ? `Contacto: ${c.name}` : null,
+    c.document_number ? `Documento: ${c.document_type ? `${c.document_type} ` : ''}${c.document_number}` : null,
+    c.contact_phone ? `Teléfono: ${c.contact_phone}` : null,
+    payload.note ? `Detalle: ${payload.note}` : null,
+  ].filter(Boolean);
+
+  try {
+    await axios.post('/calendar/events', {
+      event_type: 'customer_payment',
+      title,
+      description: details.join(' | ') || null,
+      all_day: true,
+      start_at: payload.date,
+      end_at: null,
+      reminder_minutes: 1440,
+      related_type: 'customer',
+      related_id: c.id,
+      meta: {
+        customer_name: c.name || null,
+        company_name: c.company_name || null,
+        payment_date: payload.date,
+      },
+    });
+
+    toastSuccess('Fecha de pago agregada al calendario');
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo agregar la fecha de pago al calendario.';
+    toastError(msg);
+  }
+};
 const deleteCustomer = async (c) => {
   if (!c?.id) return;
   const ok = await confirmDialog({

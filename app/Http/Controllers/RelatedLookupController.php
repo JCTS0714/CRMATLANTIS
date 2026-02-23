@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Certificado;
 use App\Models\Customer;
 use App\Models\Lead;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,7 @@ class RelatedLookupController extends Controller
     public function index(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'type' => ['required', 'string', 'in:lead,customer'],
+            'type' => ['required', 'string', 'in:lead,customer,certificate'],
             'q' => ['nullable', 'string', 'max:100'],
             'id' => ['nullable', 'integer', 'min:1'],
             'limit' => ['nullable', 'integer', 'min:1', 'max:20'],
@@ -31,13 +32,17 @@ class RelatedLookupController extends Controller
         }
 
         if ($id) {
-            $item = $type === 'lead'
-                ? Lead::query()
+            $item = match ($type) {
+                'lead' => Lead::query()
                     ->select(['id', 'name', 'company_name', 'document_type', 'document_number'])
-                    ->find($id)
-                : Customer::query()
+                    ->find($id),
+                'customer' => Customer::query()
                     ->select(['id', 'name', 'company_name', 'document_type', 'document_number'])
-                    ->find($id);
+                    ->find($id),
+                'certificate' => Certificado::query()
+                    ->select(['id', 'nombre', 'ruc', 'usuario'])
+                    ->find($id),
+            };
 
             return response()->json([
                 'data' => $item ? $this->mapItem($type, $item) : null,
@@ -68,6 +73,23 @@ class RelatedLookupController extends Controller
             ]);
         }
 
+        if ($type === 'certificate') {
+            $items = Certificado::query()
+                ->select(['id', 'nombre', 'ruc', 'usuario', 'updated_at'])
+                ->where(function ($w) use ($q) {
+                    $w->where('nombre', 'like', "%{$q}%")
+                        ->orWhere('ruc', 'like', "%{$q}%")
+                        ->orWhere('usuario', 'like', "%{$q}%");
+                })
+                ->orderByDesc('updated_at')
+                ->limit($limit)
+                ->get();
+
+            return response()->json([
+                'data' => $items->map(fn (Certificado $c) => $this->mapItem('certificate', $c))->values(),
+            ]);
+        }
+
         $items = Customer::query()
             ->select(['id', 'name', 'company_name', 'contact_email', 'document_type', 'document_number', 'updated_at'])
             ->where(function ($w) use ($q) {
@@ -85,8 +107,28 @@ class RelatedLookupController extends Controller
         ]);
     }
 
-    private function mapItem(string $type, Lead|Customer $model): array
+    private function mapItem(string $type, Lead|Customer|Certificado $model): array
     {
+        if ($type === 'certificate') {
+            $main = $model->nombre;
+            $secondary = $model->usuario ?: null;
+            $doc = $model->ruc ?: null;
+
+            $label = $main;
+            if ($secondary && $secondary !== $main) {
+                $label .= ' — '.$secondary;
+            }
+            if ($doc) {
+                $label .= ' (RUC '.$doc.')';
+            }
+
+            return [
+                'type' => $type,
+                'id' => (int) $model->id,
+                'label' => $label,
+            ];
+        }
+
         $main = $model->company_name ?: $model->name;
         $secondary = $model->company_name ? $model->name : null;
         $doc = $model->document_number

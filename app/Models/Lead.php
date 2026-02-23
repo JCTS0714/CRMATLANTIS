@@ -121,19 +121,21 @@ class Lead extends Model
     }
 
     /**
-     * Scope to filter by date range (updated_at)
+     * Scope to filter by date range (created_at)
      *
      * @param  Builder  $query
-     * @param  string  $from
+     * @param  string|null  $from
      * @param  string|null  $to
      * @return Builder
      */
-    public function scopeDateRange(Builder $query, string $from, ?string $to = null): Builder
+    public function scopeDateRange(Builder $query, ?string $from = null, ?string $to = null): Builder
     {
-        $query->where('updated_at', '>=', $from);
+        if ($from) {
+            $query->where('created_at', '>=', $from);
+        }
 
         if ($to) {
-            $query->where('updated_at', '<=', $to);
+            $query->where('created_at', '<=', $to);
         }
 
         return $query;

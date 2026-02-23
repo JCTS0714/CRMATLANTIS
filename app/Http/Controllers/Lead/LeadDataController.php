@@ -34,11 +34,15 @@ class LeadDataController extends Controller
             'q' => ['nullable', 'string', 'max:100'],
             'page' => ['nullable', 'integer', 'min:1'],
             'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date'],
         ]);
 
         $perPage = (int) ($validated['per_page'] ?? 15);
         $query = trim((string) ($validated['q'] ?? ''));
         $stageId = $validated['stage_id'] ?? null;
+        $start = isset($validated['date_from']) ? Carbon::parse($validated['date_from'])->startOfDay() : null;
+        $end = isset($validated['date_to']) ? Carbon::parse($validated['date_to'])->endOfDay() : null;
 
         // Get all stages (cached)
         $stages = $this->configService->getLeadStages();
@@ -49,6 +53,8 @@ class LeadDataController extends Controller
         $countsByStage = $this->leadRepository->countByStage([
             'stageIds' => $stageIds->toArray(),
             'search' => $query !== '' ? $query : null,
+            'dateFrom' => $start?->toDateTimeString(),
+            'dateTo' => $end?->toDateTimeString(),
         ]);
 
         $totalCount = $countsByStage->sum();
@@ -57,6 +63,8 @@ class LeadDataController extends Controller
         $filters = [
             'stageIds' => $stageIds->toArray(),
             'search' => $query !== '' ? $query : null,
+            'dateFrom' => $start?->toDateTimeString(),
+            'dateTo' => $end?->toDateTimeString(),
         ];
 
         if ($stageId) {
@@ -82,6 +90,8 @@ class LeadDataController extends Controller
             filters: [
                 'stage_id' => $stageId,
                 'q' => $query,
+                'date_from' => $validated['date_from'] ?? null,
+                'date_to' => $validated['date_to'] ?? null,
             ],
         );
 
@@ -96,7 +106,7 @@ class LeadDataController extends Controller
     public function boardData(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'limit' => ['nullable', 'integer', 'min:0'],
+            'limit' => ['nullable', 'integer', 'min:0', 'max:50'],
             'date_from' => ['nullable', 'date'],
             'date_to' => ['nullable', 'date'],
         ]);

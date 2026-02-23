@@ -207,11 +207,18 @@ const editContador = async (c) => {
     const res = await axios.put(`/postventa/contadores/${c.id}`, payload);
     const updated = res?.data?.data;
 
-    const customer = updated?.customers?.[0] ? { id: updated.customers[0].id, name: updated.customers[0].name } : null;
+    const customers = Array.isArray(updated?.customers)
+      ? updated.customers.map((customerItem) => ({
+          id: customerItem.id,
+          name: customerItem.name,
+        }))
+      : [];
+    const customer = customers[0] ?? null;
 
     Object.assign(c, {
       ...payload,
       customer,
+      customers,
     });
 
     toastSuccess('Contador actualizado');

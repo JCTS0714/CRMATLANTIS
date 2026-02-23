@@ -13,38 +13,78 @@
           >
             <option :value="20">20</option>
             <option :value="50">50</option>
-            <option :value="100">100</option>
-            <option :value="250">250</option>
           </select>
         </div>
 
         <div class="flex items-center gap-2">
+          <label class="text-xs text-gray-600 dark:text-slate-300">Periodo:</label>
+          <select
+            v-model="periodType"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+          >
+            <option value="all">Todos</option>
+            <option value="last_week">Última semana</option>
+            <option value="month">Por mes</option>
+            <option value="between_months">Entre meses</option>
+            <option value="date">Por fecha</option>
+            <option value="between_dates">Entre fechas</option>
+          </select>
+        </div>
+
+        <div v-if="periodType === 'month'" class="flex items-center gap-2">
+          <label class="text-xs text-gray-600 dark:text-slate-300">Mes:</label>
+          <input
+            v-model="periodMonth"
+            type="month"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
+        </div>
+
+        <div v-if="periodType === 'between_months'" class="flex items-center gap-2">
+          <label class="text-xs text-gray-600 dark:text-slate-300">Desde mes:</label>
+          <input
+            v-model="periodMonthFrom"
+            type="month"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
+        </div>
+
+        <div v-if="periodType === 'between_months'" class="flex items-center gap-2">
+          <label class="text-xs text-gray-600 dark:text-slate-300">Hasta mes:</label>
+          <input
+            v-model="periodMonthTo"
+            type="month"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
+        </div>
+
+        <div v-if="periodType === 'date'" class="flex items-center gap-2">
+          <label class="text-xs text-gray-600 dark:text-slate-300">Fecha:</label>
+          <input
+            v-model="periodDate"
+            type="date"
+            class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+          />
+        </div>
+
+        <div v-if="periodType === 'between_dates'" class="flex items-center gap-2">
           <label class="text-xs text-gray-600 dark:text-slate-300">Desde:</label>
           <input
-            v-model="dateFrom"
+            v-model="periodDateFrom"
             type="date"
             class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
           />
         </div>
 
-        <div class="flex items-center gap-2">
+        <div v-if="periodType === 'between_dates'" class="flex items-center gap-2">
           <label class="text-xs text-gray-600 dark:text-slate-300">Hasta:</label>
           <input
-            v-model="dateTo"
+            v-model="periodDateTo"
             type="date"
             class="rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
           />
         </div>
 
-        <div class="flex items-center gap-2 ms-auto">
-          <button @click="applyFilters" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-1 text-sm text-white">Aplicar</button>
-          <button
-            @click="clearFilters"
-            class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1 text-sm text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          >
-            Limpiar
-          </button>
-        </div>
       </div>
 
     <div v-if="loading" class="text-sm text-gray-600 dark:text-slate-300">Cargando...</div>
@@ -113,8 +153,17 @@
               <div v-if="lead.contact_email">{{ lead.contact_email }}</div>
             </div>
 
-            <div v-if="stage.is_won" class="mt-3 flex justify-end">
+            <div class="mt-3 flex items-center justify-between gap-2">
               <button
+                type="button"
+                class="inline-flex items-center rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 shadow-sm hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
+                @click.stop.prevent="goToCalendarWithLead(lead)"
+              >
+                Agendar
+              </button>
+
+              <button
+                v-if="stage.is_won"
                 type="button"
                 class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 :disabled="archivingIds.has(lead.id)"
@@ -250,6 +299,13 @@
                     :placeholder="documentPlaceholder"
                   />
                 </div>
+
+                <textarea
+                  v-model.trim="quickForm.observacion"
+                  rows="3"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  placeholder="Observación (opcional)"
+                ></textarea>
 
                 <p v-if="quickError" class="text-sm text-red-600">{{ quickError }}</p>
               </div>
@@ -457,15 +513,30 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import axios from 'axios';
 import { confirmDialog, toastSuccess, toastError } from '../ui/alerts';
 
 const loading = ref(true);
 const stages = ref([]);
 const limit = ref(20);
-const dateFrom = ref('');
-const dateTo = ref('');
+const periodType = ref('last_week');
+const periodMonth = ref('');
+const periodMonthFrom = ref('');
+const periodMonthTo = ref('');
+const periodDate = ref('');
+const periodDateFrom = ref('');
+const periodDateTo = ref('');
+const suppressLimitReload = ref(false);
+
+const clearPeriodInputs = () => {
+  periodMonth.value = '';
+  periodMonthFrom.value = '';
+  periodMonthTo.value = '';
+  periodDate.value = '';
+  periodDateFrom.value = '';
+  periodDateTo.value = '';
+};
 
 const moveError = ref('');
 
@@ -490,13 +561,98 @@ const formatMoney = (amount, currency) => {
   return `S/ ${number.toFixed(2)}`;
 };
 
+const pad = (value) => String(value).padStart(2, '0');
+
+const toDateString = (date) => {
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  return `${year}-${month}-${day}`;
+};
+
+const getMonthRange = (value) => {
+  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
+    return { from: null, to: null };
+  }
+
+  const [yearText, monthText] = value.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (Number.isNaN(year) || Number.isNaN(month) || month < 1 || month > 12) {
+    return { from: null, to: null };
+  }
+
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${year}-${pad(month)}-01`,
+    to: `${year}-${pad(month)}-${pad(lastDay)}`,
+  };
+};
+
+const normalizeRange = (from, to) => {
+  if (from && to && from > to) {
+    return { from: to, to: from };
+  }
+  return { from, to };
+};
+
+const resolvePeriodRange = () => {
+  switch (periodType.value) {
+    case 'last_week': {
+      const end = new Date();
+      const start = new Date(end);
+      start.setDate(start.getDate() - 6);
+      return {
+        from: toDateString(start),
+        to: toDateString(end),
+      };
+    }
+
+    case 'month': {
+      const { from, to } = getMonthRange(periodMonth.value);
+      return { from: from ?? undefined, to: to ?? undefined };
+    }
+
+    case 'between_months': {
+      const startRange = getMonthRange(periodMonthFrom.value);
+      const endRange = getMonthRange(periodMonthTo.value);
+      return normalizeRange(startRange.from ?? undefined, endRange.to ?? undefined);
+    }
+
+    case 'date': {
+      if (!periodDate.value) return { from: undefined, to: undefined };
+      return { from: periodDate.value, to: periodDate.value };
+    }
+
+    case 'between_dates': {
+      return normalizeRange(
+        periodDateFrom.value || undefined,
+        periodDateTo.value || undefined,
+      );
+    }
+
+    default:
+      return { from: undefined, to: undefined };
+  }
+};
+
+const isPeriodReady = () => {
+  if (periodType.value === 'all' || periodType.value === 'last_week') return true;
+  if (periodType.value === 'month') return !!periodMonth.value;
+  if (periodType.value === 'between_months') return !!periodMonthFrom.value && !!periodMonthTo.value;
+  if (periodType.value === 'date') return !!periodDate.value;
+  if (periodType.value === 'between_dates') return !!periodDateFrom.value && !!periodDateTo.value;
+  return false;
+};
+
 const load = async ({ showLoading = true } = {}) => {
   if (showLoading) loading.value = true;
   try {
+    const range = resolvePeriodRange();
     const params = {
       limit: limit.value || undefined,
-      date_from: dateFrom.value || undefined,
-      date_to: dateTo.value || undefined,
+      date_from: range.from,
+      date_to: range.to,
     };
 
     const response = await axios.get('/leads/board-data', { params });
@@ -513,16 +669,29 @@ const load = async ({ showLoading = true } = {}) => {
   }
 };
 
-const applyFilters = async () => {
-  await load();
-};
+watch(limit, async (newValue, oldValue) => {
+  if (suppressLimitReload.value) return;
+  if (newValue === oldValue) return;
+  await load({ showLoading: false });
+});
 
-const clearFilters = async () => {
-  limit.value = 100;
-  dateFrom.value = '';
-  dateTo.value = '';
-  await load();
-};
+watch(periodType, async (newType, oldType) => {
+  if (newType !== oldType) {
+    clearPeriodInputs();
+  }
+
+  if (newType === 'all' || newType === 'last_week') {
+    await load({ showLoading: false });
+  }
+});
+
+watch(
+  [periodMonth, periodMonthFrom, periodMonthTo, periodDate, periodDateFrom, periodDateTo],
+  async () => {
+    if (!isPeriodReady()) return;
+    await load({ showLoading: false });
+  }
+);
 
 const archivingIds = ref(new Set());
 
@@ -793,6 +962,31 @@ const archiveLead = async (lead, stage) => {
   }
 };
 
+const goToCalendarWithLead = (lead) => {
+  if (!lead?.id) return;
+
+  const title = lead.name ? `Seguimiento lead: ${lead.name}` : 'Seguimiento lead';
+  const details = [
+    lead.company_name ? `Empresa: ${lead.company_name}` : null,
+    lead.contact_name ? `Contacto: ${lead.contact_name}` : null,
+    lead.contact_phone ? `Teléfono: ${lead.contact_phone}` : null,
+    lead.contact_email ? `Email: ${lead.contact_email}` : null,
+    lead.observacion ? `Observación: ${lead.observacion}` : null,
+  ].filter(Boolean);
+
+  const params = new URLSearchParams({
+    related_type: 'lead',
+    related_id: String(lead.id),
+    title,
+  });
+
+  if (details.length > 0) {
+    params.set('description', details.join(' | '));
+  }
+
+  window.location.assign(`/calendar?${params.toString()}`);
+};
+
 // Quick lead modal
 const quickOpen = ref(false);
 const quickSaving = ref(false);
@@ -809,6 +1003,7 @@ const quickForm = ref({
   company_address: '',
   document_type: '',
   document_number: '',
+  observacion: '',
 });
 
 // Edit modal form already declared below as editForm; ensure observacion included
@@ -832,6 +1027,7 @@ const showQuickModal = () => {
     company_address: '',
     document_type: '',
     document_number: '',
+    observacion: '',
   };
   quickOpen.value = true;
 };
@@ -863,6 +1059,7 @@ const submitQuick = async () => {
     company_address: quickForm.value.company_address || null,
     document_type: quickForm.value.document_type || null,
     document_number: quickForm.value.document_number || null,
+    observacion: quickForm.value.observacion || null,
   };
 
   try {

@@ -283,6 +283,57 @@ export async function promptCustomerCreate() {
   return res.isConfirmed ? res.value : null;
 }
 
+export async function promptCustomerPaymentDate(customer = {}) {
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const defaultDate = `${yyyy}-${mm}-${dd}`;
+
+  const html = `
+    <div class="grid gap-3 text-left">
+      <div class="text-xs text-gray-600 dark:text-slate-300">
+        Cliente: <span class="font-medium text-gray-900 dark:text-slate-100">${escapeHtml(customer.company_name || customer.name || 'Sin nombre')}</span>
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha de pago</label>
+        <input id="sw-pay-date" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${defaultDate}" />
+      </div>
+
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Detalle (opcional)</label>
+        <textarea id="sw-pay-note" rows="3" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" placeholder="Ejemplo: pago mensual, renovación, monto, etc."></textarea>
+      </div>
+    </div>
+  `;
+
+  const res = await modalSwal.fire({
+    title: 'Agregar fecha de pago',
+    html,
+    focusConfirm: false,
+    showCancelButton: true,
+    confirmButtonText: 'Agregar al calendario',
+    cancelButtonText: 'Cancelar',
+    preConfirm: () => {
+      const date = document.getElementById('sw-pay-date')?.value?.trim() ?? '';
+      const note = document.getElementById('sw-pay-note')?.value?.trim() ?? '';
+
+      if (!date) {
+        Swal.showValidationMessage('La fecha de pago es requerida.');
+        return false;
+      }
+
+      return {
+        date,
+        note: note || null,
+      };
+    },
+  });
+
+  return res.isConfirmed ? res.value : null;
+}
+
 export async function promptContadorCreate() {
   return promptContadorEdit({
     nro: '',
@@ -466,7 +517,33 @@ export async function promptCertificadoCreate() {
   }, true);
 }
 
+function normalizeDateInputValue(value) {
+  if (!value) return '';
+
+  const text = String(value).trim();
+  if (text === '') return '';
+
+  const isoMatch = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+
+  const shortMatch = text.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (shortMatch) {
+    return `${shortMatch[3]}-${shortMatch[2]}-${shortMatch[1]}`;
+  }
+
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export async function promptCertificadoEdit(cert = {}, isCreate = false) {
+  const fechaCreacionValue = normalizeDateInputValue(cert.fecha_creacion);
+  const fechaVencimientoValue = normalizeDateInputValue(cert.fecha_vencimiento);
+
   const html = `
     <div class="grid gap-3 text-left">
       <div>
@@ -499,7 +576,7 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
         </div>
         <div>
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha vencimiento</label>
-          <input id="sw-cert-fecha_vencimiento" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(cert.fecha_vencimiento)}" />
+          <input id="sw-cert-fecha_vencimiento" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaVencimientoValue)}" />
         </div>
       </div>
 
@@ -516,7 +593,7 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
 
       <div>
         <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha creación</label>
-        <input id="sw-cert-fecha_creacion" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(cert.fecha_creacion)}" />
+        <input id="sw-cert-fecha_creacion" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaCreacionValue)}" />
       </div>
 
       <div>

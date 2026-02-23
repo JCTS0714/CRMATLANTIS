@@ -11,6 +11,7 @@
       @update:per-page="changePerPage"
       @stage-filter="handleStageFilter"
       @import-file="handleImportFile"
+      @period-filter="handlePeriodFilter"
     />
 
     <!-- Error Display -->
@@ -137,6 +138,14 @@ const changePerPage = (newPerPage) => {
 const handleStageFilter = (stageId) => {
   activeStageId.value = stageId;
   applyFilters({ stage_id: stageId, page: 1 });
+};
+
+const handlePeriodFilter = ({ date_from, date_to } = {}) => {
+  applyFilters({
+    date_from: date_from || undefined,
+    date_to: date_to || undefined,
+    page: 1,
+  });
 };
 
 

@@ -1,0 +1,14 @@
+[DRY] Row 2 -> {"lead_id":null,"name":"Evelyn Espinoza","contact_name":"Evelyn Espinoza","contact_phone":"946530664","contact_email":null,"company_name":"NN","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 3 -> {"lead_id":null,"name":"GV CONNECT","contact_name":"GV CONNECT","contact_phone":"959739132","contact_email":null,"company_name":"NN","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 4 -> {"lead_id":null,"name":"987 948 153","contact_name":"987 948 153","contact_phone":"987 948 153","contact_email":null,"company_name":"NN","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 5 -> {"lead_id":null,"name":"906645480","contact_name":"906645480","contact_phone":"906645480","contact_email":null,"company_name":"NN","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 6 -> {"lead_id":null,"name":"PAMELA RIMAC","contact_name":"PAMELA RIMAC","contact_phone":"943802600","contact_email":null,"company_name":"MINIMARKET","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 7 -> {"lead_id":null,"name":"914135856","contact_name":"914135856","contact_phone":"914135856","contact_email":null,"company_name":"INTEG. CON PAG. WEB","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 8 -> {"lead_id":null,"name":"Gino","contact_name":"Gino","contact_phone":"994688039","contact_email":null,"company_name":"PET SHOP","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+[DRY] Row 9 -> {"lead_id":null,"name":"ABELARDO","contact_name":"ABELARDO","contact_phone":"982185841","contact_email":null,"company_name":"VENTA DE CAFE","company_address":null,"document_type":"dni","document_number":"55555555","observacion":null,"created_by":null}
+Importaci├│n finalizada
+---
+Creados: 0
+Saltados: 0
+Inv├ílidos: 0
+Modo: dry-run

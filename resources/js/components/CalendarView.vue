@@ -100,6 +100,8 @@ const toLocalInput = (dt) => {
 };
 
 const promptEvent = async ({
+  event_type = 'general',
+  is_existing = false,
   title = '',
   start_at = '',
   end_at = '',
@@ -124,6 +126,17 @@ const promptEvent = async ({
 
   const html = `
     <div class="grid gap-3 text-left">
+      <div>
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Tipo de evento</label>
+        <select id="sw-ev-event_type" class="${inputClass}">
+          <option value="general" ${event_type === 'general' ? 'selected' : ''}>General</option>
+          <option value="meeting" ${event_type === 'meeting' ? 'selected' : ''}>Reunión</option>
+          <option value="lead_followup" ${event_type === 'lead_followup' ? 'selected' : ''}>Seguimiento de lead</option>
+          <option value="customer_payment" ${event_type === 'customer_payment' ? 'selected' : ''}>Fecha de pago</option>
+          <option value="certificate_expiry" ${event_type === 'certificate_expiry' ? 'selected' : ''}>Vencimiento de certificado</option>
+        </select>
+      </div>
+
       <div>
         <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Título</label>
         <input id="sw-ev-title" class="${inputClass}" value="${escapeHtml(title)}" />
@@ -163,6 +176,7 @@ const promptEvent = async ({
             <option value="" ${related_type ? '' : 'selected'}>(ninguno)</option>
             <option value="lead" ${related_type === 'lead' ? 'selected' : ''}>Lead</option>
             <option value="customer" ${related_type === 'customer' ? 'selected' : ''}>Cliente</option>
+            <option value="certificate" ${related_type === 'certificate' ? 'selected' : ''}>Certificado</option>
           </select>
         </div>
         <div>
@@ -193,12 +207,16 @@ const promptEvent = async ({
     denyButtonText: 'Eliminar',
     buttonsStyling: false,
     didOpen: async () => {
+      const eventTypeEl = document.getElementById('sw-ev-event_type');
+      const startEl = document.getElementById('sw-ev-start');
+      const endEl = document.getElementById('sw-ev-end');
+      const reminderEl = document.getElementById('sw-ev-reminder');
       const typeEl = document.getElementById('sw-ev-related_type');
       const searchEl = document.getElementById('sw-ev-related_search');
       const idEl = document.getElementById('sw-ev-related_id');
       const resultsEl = document.getElementById('sw-ev-related_results');
 
-      if (!typeEl || !searchEl || !idEl || !resultsEl) return;
+      if (!typeEl || !searchEl || !idEl || !resultsEl || !eventTypeEl || !startEl || !endEl || !reminderEl) return;
 
       let debounceTimer = null;
 
@@ -217,9 +235,59 @@ const promptEvent = async ({
         const t = typeEl.value || '';
         const enabled = !!t;
         searchEl.disabled = !enabled;
-        searchEl.placeholder = enabled ? `Buscar ${t === 'lead' ? 'lead' : 'cliente'}…` : 'Selecciona tipo primero';
+        const label = t === 'lead' ? 'lead' : t === 'customer' ? 'cliente' : 'certificado';
+        searchEl.placeholder = enabled ? `Buscar ${label}…` : 'Selecciona tipo primero';
         if (!enabled) {
           setSelected(null);
+        }
+      };
+
+      const applyEventTypeRules = () => {
+        const eventType = eventTypeEl.value || 'general';
+        const isAllDayType = eventType === 'customer_payment' || eventType === 'certificate_expiry';
+        const isLockedAutoEvent = is_existing && isAllDayType;
+
+        if (eventType === 'customer_payment') {
+          typeEl.value = 'customer';
+        }
+
+        if (eventType === 'certificate_expiry') {
+          typeEl.value = 'certificate';
+        }
+
+        if (isAllDayType) {
+          if (startEl.type !== 'date') {
+            startEl.type = 'date';
+          }
+
+          if (startEl.value && startEl.value.length > 10) {
+            startEl.value = startEl.value.slice(0, 10);
+          }
+
+          endEl.value = '';
+          endEl.disabled = true;
+
+          if (!String(reminderEl.value || '').trim()) {
+            reminderEl.value = '1440';
+          }
+        } else {
+          if (startEl.type !== 'datetime-local') {
+            startEl.type = 'datetime-local';
+            if (startEl.value && startEl.value.length === 10) {
+              startEl.value = `${startEl.value}T09:00`;
+            }
+          }
+          endEl.disabled = false;
+        }
+
+        eventTypeEl.disabled = isLockedAutoEvent;
+        typeEl.disabled = isLockedAutoEvent;
+        searchEl.disabled = isLockedAutoEvent ? true : searchEl.disabled;
+
+        setEnabled();
+
+        if (isLockedAutoEvent) {
+          searchEl.disabled = true;
         }
       };
 
@@ -279,6 +347,11 @@ const promptEvent = async ({
         clearResults();
       });
 
+      eventTypeEl.addEventListener('change', () => {
+        applyEventTypeRules();
+        clearResults();
+      });
+
       searchEl.addEventListener('input', () => {
         // If user edits text after selecting, force re-select.
         idEl.value = '';
@@ -298,7 +371,7 @@ const promptEvent = async ({
         doSearch();
       });
 
-      setEnabled();
+      applyEventTypeRules();
       await lookupById();
     },
     customClass: {
@@ -317,13 +390,23 @@ const promptEvent = async ({
     },
     preConfirm: () => {
       const t = document.getElementById('sw-ev-title')?.value?.trim() ?? '';
+      const et = document.getElementById('sw-ev-event_type')?.value ?? 'general';
       const s = document.getElementById('sw-ev-start')?.value ?? '';
       const e = document.getElementById('sw-ev-end')?.value ?? '';
       const rm = document.getElementById('sw-ev-reminder')?.value ?? '';
       const loc = document.getElementById('sw-ev-location')?.value?.trim() ?? '';
       const desc = document.getElementById('sw-ev-description')?.value?.trim() ?? '';
-      const rt = document.getElementById('sw-ev-related_type')?.value ?? '';
+      let rt = document.getElementById('sw-ev-related_type')?.value ?? '';
       const rid = document.getElementById('sw-ev-related_id')?.value ?? '';
+      const isAllDayType = et === 'customer_payment' || et === 'certificate_expiry';
+
+      if (et === 'customer_payment' && !rt) {
+        rt = 'customer';
+      }
+
+      if (et === 'certificate_expiry' && !rt) {
+        rt = 'certificate';
+      }
 
       if (!t) {
         Swal.showValidationMessage('El título es requerido.');
@@ -338,20 +421,29 @@ const promptEvent = async ({
         return false;
       }
       if (rt && !rid) {
-        Swal.showValidationMessage('Selecciona un registro relacionado (lead/cliente) de la lista.');
+        Swal.showValidationMessage('Selecciona un registro relacionado de la lista.');
         return false;
       }
 
-      const reminderMinutes = rm ? Number(rm) : null;
+      if (et === 'customer_payment' && rt !== 'customer') {
+        Swal.showValidationMessage('Los pagos deben vincularse a un cliente.');
+        return false;
+      }
+
+      const reminderMinutes = rm ? Number(rm) : (isAllDayType ? 1440 : null);
       if (rm && (!Number.isFinite(reminderMinutes) || reminderMinutes < 1)) {
         Swal.showValidationMessage('El recordatorio debe ser un número válido.');
         return false;
       }
 
+      const startValue = isAllDayType ? `${s}T00:00` : s;
+
       return {
+        event_type: et,
         title: t,
-        start_at: new Date(s).toISOString(),
-        end_at: e ? new Date(e).toISOString() : null,
+        all_day: isAllDayType,
+        start_at: new Date(startValue).toISOString(),
+        end_at: isAllDayType ? null : (e ? new Date(e).toISOString() : null),
         reminder_minutes: reminderMinutes,
         location: loc || null,
         description: desc || null,
@@ -364,6 +456,32 @@ const promptEvent = async ({
   if (res.isDenied) return { action: 'delete' };
   if (res.isConfirmed) return { action: 'save', payload: res.value };
   return null;
+};
+
+const normalizeRelatedType = (value) => {
+  const text = String(value || '').toLowerCase();
+  if (!text) return null;
+  if (text.endsWith('lead') || text === 'lead') return 'lead';
+  if (text.endsWith('customer') || text === 'customer') return 'customer';
+  if (text.endsWith('certificado') || text === 'certificate') return 'certificate';
+  return null;
+};
+
+const eventTypeClassNames = (eventType) => {
+  if (eventType === 'customer_payment') {
+    return ['bg-emerald-600', 'border-emerald-700/30', 'dark:bg-emerald-500/70', 'dark:border-emerald-300/20'];
+  }
+  if (eventType === 'certificate_expiry') {
+    return ['bg-amber-600', 'border-amber-700/30', 'dark:bg-amber-500/70', 'dark:border-amber-300/20'];
+  }
+  if (eventType === 'lead_followup') {
+    return ['bg-indigo-600', 'border-indigo-700/30', 'dark:bg-indigo-500/70', 'dark:border-indigo-300/20'];
+  }
+  if (eventType === 'meeting') {
+    return ['bg-violet-600', 'border-violet-700/30', 'dark:bg-violet-500/70', 'dark:border-violet-300/20'];
+  }
+
+  return ['bg-blue-600', 'border-blue-700/30', 'dark:bg-blue-500/70', 'dark:border-blue-300/20'];
 };
 
 const calendarOptions = computed(() => ({
@@ -385,19 +503,16 @@ const calendarOptions = computed(() => ({
     right: 'dayGridMonth,timeGridWeek,timeGridDay',
   },
   eventDisplay: 'block',
-  eventClassNames: () => [
+  eventClassNames: (arg) => [
     'rounded-md',
     'px-2',
     'py-1',
     'text-xs',
     'font-semibold',
-    'bg-blue-600',
     'text-white',
     'shadow-sm',
     'border',
-    'border-blue-700/30',
-    'dark:bg-blue-500/70',
-    'dark:border-blue-300/20',
+    ...eventTypeClassNames(arg?.event?.extendedProps?.event_type || 'general'),
   ],
   selectable: true,
   editable: true,
@@ -457,13 +572,15 @@ const calendarOptions = computed(() => ({
     const ext = ev.extendedProps || {};
 
     const result = await promptEvent({
+      event_type: ext.event_type ?? 'general',
+      is_existing: true,
       title: ev.title,
       start_at: toLocalInput(ev.start),
       end_at: toLocalInput(ev.end),
       reminder_minutes: ext.reminder_minutes ?? '',
       location: ext.location ?? '',
       description: ext.description ?? '',
-      related_type: ext.related_type ? (ext.related_type.endsWith('Lead') ? 'lead' : ext.related_type.endsWith('Customer') ? 'customer' : '') : '',
+      related_type: normalizeRelatedType(ext.related_type) || '',
       related_id: ext.related_id ?? '',
       allowDelete: canDeleteEvents.value,
     });
@@ -531,7 +648,8 @@ const calendarOptions = computed(() => ({
         reminder_minutes: ext.reminder_minutes ?? null,
         location: ext.location ?? null,
         description: ext.description ?? null,
-        related_type: ext.related_type ? (ext.related_type.endsWith('Lead') ? 'lead' : ext.related_type.endsWith('Customer') ? 'customer' : null) : null,
+        event_type: ext.event_type ?? 'general',
+        related_type: normalizeRelatedType(ext.related_type),
         related_id: ext.related_id ?? null,
       });
       toastSuccess('Evento movido');
@@ -554,7 +672,8 @@ const calendarOptions = computed(() => ({
         reminder_minutes: ext.reminder_minutes ?? null,
         location: ext.location ?? null,
         description: ext.description ?? null,
-        related_type: ext.related_type ? (ext.related_type.endsWith('Lead') ? 'lead' : ext.related_type.endsWith('Customer') ? 'customer' : null) : null,
+        event_type: ext.event_type ?? 'general',
+        related_type: normalizeRelatedType(ext.related_type),
         related_id: ext.related_id ?? null,
       });
       toastSuccess('Evento actualizado');
@@ -620,8 +739,9 @@ const maybePrefillFromUrl = async () => {
   const relatedType = url.searchParams.get('related_type') || '';
   const relatedId = url.searchParams.get('related_id') || '';
   const title = url.searchParams.get('title') || '';
+  const description = url.searchParams.get('description') || '';
 
-  if (!relatedType && !relatedId && !title) return;
+  if (!relatedType && !relatedId && !title && !description) return;
 
   const startParam = parseDateParam(url.searchParams.get('start'));
   const endParam = parseDateParam(url.searchParams.get('end'));
@@ -630,17 +750,20 @@ const maybePrefillFromUrl = async () => {
   const end = endParam ?? new Date(start.getTime() + 60 * 60 * 1000);
 
   const result = await promptEvent({
+    event_type: relatedType === 'lead' ? 'lead_followup' : 'general',
     title: title || '',
     start_at: toLocalInput(start),
     end_at: toLocalInput(end),
     related_type: relatedType,
     related_id: relatedId,
+    description,
   });
 
   // Clear params even if user cancels, to prevent re-opening.
   url.searchParams.delete('related_type');
   url.searchParams.delete('related_id');
   url.searchParams.delete('title');
+  url.searchParams.delete('description');
   url.searchParams.delete('start');
   url.searchParams.delete('end');
   window.history.replaceState({}, '', url.pathname + url.search);
