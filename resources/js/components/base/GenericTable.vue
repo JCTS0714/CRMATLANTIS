@@ -33,6 +33,13 @@
         <!-- Additional Filters -->
         <div class="flex items-center gap-2">
           <slot name="filters" />
+
+          <TableColumnsDropdown
+            :columns="columns"
+            :visible-keys="visibleKeys"
+            @toggle="toggleColumn"
+            @reset="resetColumns"
+          />
           
           <!-- Per Page Selector -->
           <select
@@ -58,8 +65,15 @@
     </div>
 
     <!-- Table -->
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm text-left text-gray-700 dark:text-slate-200" :class="tableClass">
+    <div ref="tableScrollRef" class="overflow-x-auto">
+      <table ref="tableRef" class="w-full text-sm text-left text-gray-700 dark:text-slate-200" :class="tableClass">
+        <colgroup>
+          <col
+            v-for="column in columns"
+            :key="column.key"
+            :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+          />
+        </colgroup>
         <!-- Table Header -->
         <thead class="text-xs uppercase bg-gray-50 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
           <tr>
@@ -117,6 +131,14 @@
       </table>
     </div>
 
+    <div
+      v-show="showStickyXScroll"
+      ref="stickyScrollRef"
+      class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+    >
+      <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
+    </div>
+
     <!-- Pagination -->
     <div v-if="showPagination && pagination && pagination.last_page > 1" class="p-4 border-t border-gray-200 dark:border-slate-800">
       <div class="flex items-center justify-between gap-3">
@@ -152,6 +174,9 @@
 import { computed } from 'vue';
 import BaseCard from '../base/BaseCard.vue';
 import BaseButton from '../base/BaseButton.vue';
+import TableColumnsDropdown from './TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../../composables/useStickyHorizontalScroll';
 
 const props = defineProps({
   // Table identification
@@ -273,6 +298,24 @@ defineEmits([
 
 // Computed
 const isEmpty = computed(() => !props.loading && props.items.length === 0);
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: props.tableId,
+  columns: computed(() => props.columns),
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const getRowKey = (item, index) => {
   if (typeof props.rowKey === 'function') {

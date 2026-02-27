@@ -1,13 +1,26 @@
 <template>
   <div class="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden dark:bg-slate-900 dark:border-slate-800">
-    <div class="p-4 border-b border-gray-200 dark:border-slate-800">
+    <div class="p-4 border-b border-gray-200 dark:border-slate-800 flex items-center justify-between gap-3">
       <div class="text-sm text-gray-600 dark:text-slate-300">
         Crea roles y asigna permisos del sistema.
       </div>
+      <TableColumnsDropdown
+        :columns="columns"
+        :visible-keys="visibleKeys"
+        @toggle="toggleColumn"
+        @reset="resetColumns"
+      />
     </div>
 
-    <div class="relative overflow-x-auto">
-      <table class="w-full text-sm text-left text-gray-600 dark:text-slate-300">
+    <div ref="tableScrollRef" class="relative overflow-x-auto">
+      <table ref="tableRef" class="w-full text-sm text-left text-gray-600 dark:text-slate-300">
+        <colgroup>
+          <col
+            v-for="column in columns"
+            :key="column.key"
+            :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+          />
+        </colgroup>
         <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-slate-800 dark:text-slate-200">
           <tr>
             <th scope="col" class="px-6 py-3">Rol</th>
@@ -63,6 +76,14 @@
         </tbody>
       </table>
     </div>
+
+    <div
+      v-show="showStickyXScroll"
+      ref="stickyScrollRef"
+      class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+    >
+      <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
+    </div>
   </div>
 
   <!-- Create Role Modal -->
@@ -113,6 +134,17 @@
 
             <form class="p-4 md:p-5" @submit.prevent="submitCreate">
               <div class="grid gap-4 mb-4 grid-cols-1">
+                <div v-if="isLocalAutofillEnabled" class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+                  Solo local: autollenado para pruebas.
+                  <button
+                    type="button"
+                    class="ml-2 inline-flex items-center rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                    @click="fillRoleCreateForTest"
+                  >
+                    Rellenar test
+                  </button>
+                </div>
+
                 <div>
                   <label class="block mb-2 text-sm font-medium text-gray-900">Nombre</label>
                   <input
@@ -356,10 +388,53 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
+import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
+
+const columns = [
+  { key: 'role', label: 'Rol' },
+  { key: 'modules', label: 'Módulos' },
+  { key: 'permissions', label: 'Permisos' },
+  { key: 'actions', label: 'Acciones' },
+];
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: 'roles-table',
+  columns,
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const rows = ref([]);
 const loading = ref(true);
 const deletingId = ref(null);
+
+const isLocalAutofillEnabled = (() => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+})();
+
+let localAutofillModulePromise = null;
+const getLocalAutofillModule = async () => {
+  if (!isLocalAutofillEnabled) return null;
+  if (!localAutofillModulePromise) {
+    localAutofillModulePromise = import('/resources/js/local/customerModalAutofill.local.js').catch(() => null);
+  }
+  return localAutofillModulePromise;
+};
 
 const permissions = ref([]);
 const permissionsLoading = ref(true);
@@ -583,6 +658,11 @@ const showCreateModal = () => {
   createError.value = '';
   createForm.value = { name: '', permissions: [] };
   createOpen.value = true;
+};
+
+const fillRoleCreateForTest = async () => {
+  const module = await getLocalAutofillModule();
+  module?.autofillRoleCreateForm?.(createForm, menuModules.value, permissions.value);
 };
 
 const hideCreateModal = () => {

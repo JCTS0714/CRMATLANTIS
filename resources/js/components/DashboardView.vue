@@ -56,7 +56,7 @@
 
         <a
           v-if="cards.customers"
-          href="/customers"
+          href="/postventa/clientes"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
           <div class="flex items-center justify-between">
@@ -141,19 +141,34 @@
             <div class="border-b border-slate-200 p-6 dark:border-slate-800">
               <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Certificados por vencer</h2>
-                <a
-                  v-if="cards.certificados"
-                  href="/postventa/certificados"
-                  class="text-sm font-medium text-blue-600 hover:underline"
-                >
-                  Ver certificados
-                </a>
+                <div class="flex items-center gap-2">
+                  <TableColumnsDropdown
+                    :columns="certificadosColumns"
+                    :visible-keys="visibleKeys"
+                    @toggle="toggleColumn"
+                    @reset="resetColumns"
+                  />
+                  <a
+                    v-if="cards.certificados"
+                    href="/postventa/certificados"
+                    class="text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    Ver certificados
+                  </a>
+                </div>
               </div>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Próximos 30 días (máx. 5)</p>
             </div>
 
-            <div class="overflow-x-auto">
-              <table class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
+            <div ref="tableScrollRef" class="overflow-x-auto">
+              <table ref="tableRef" class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
+                <colgroup>
+                  <col
+                    v-for="column in certificadosColumns"
+                    :key="column.key"
+                    :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+                  />
+                </colgroup>
                 <thead class="bg-slate-50 text-xs uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-200">
                   <tr>
                     <th class="px-6 py-3">Nombre</th>
@@ -179,6 +194,14 @@
                   </tr>
                 </tbody>
               </table>
+            </div>
+
+            <div
+              v-show="showStickyXScroll"
+              ref="stickyScrollRef"
+              class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+            >
+              <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
             </div>
           </div>
         </div>
@@ -267,6 +290,34 @@
 <script setup>
 import axios from 'axios';
 import { onMounted, ref } from 'vue';
+import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
+
+const certificadosColumns = [
+  { key: 'nombre', label: 'Nombre' },
+  { key: 'ruc', label: 'RUC' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'vence', label: 'Vence' },
+];
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: 'dashboard-certificados-table',
+  columns: certificadosColumns,
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const loading = ref(true);
 const error = ref('');

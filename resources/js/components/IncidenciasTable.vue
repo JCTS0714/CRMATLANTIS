@@ -33,6 +33,13 @@
           <option :value="25">25</option>
           <option :value="50">50</option>
         </select>
+
+        <TableColumnsDropdown
+          :columns="columns"
+          :visible-keys="visibleKeys"
+          @toggle="toggleColumn"
+          @reset="resetColumns"
+        />
       </div>
     </div>
 
@@ -80,8 +87,15 @@
         <div v-if="loading" class="text-xs text-gray-600 dark:text-slate-300">Cargando…</div>
       </div>
 
-      <div class="overflow-x-auto">
-        <table class="min-w-[1300px] w-full text-sm text-left text-gray-700 dark:text-slate-200">
+      <div ref="tableScrollRef" class="overflow-x-auto">
+        <table ref="tableRef" class="min-w-[1300px] w-full text-sm text-left text-gray-700 dark:text-slate-200">
+          <colgroup>
+            <col
+              v-for="column in columns"
+              :key="column.key"
+              :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+            />
+          </colgroup>
           <thead class="text-xs uppercase bg-gray-50 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
             <tr>
               <th class="px-4 py-3">ID</th>
@@ -164,6 +178,14 @@
         </table>
       </div>
 
+      <div
+        v-show="showStickyXScroll"
+        ref="stickyScrollRef"
+        class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+      >
+        <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
+      </div>
+
       <div class="p-4 flex items-center justify-between gap-3">
         <button
           type="button"
@@ -195,6 +217,9 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { confirmDialog, toastError, toastSuccess } from '../ui/alerts';
+import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
 
 const stages = ref([]);
 const incidences = ref([]);
@@ -224,6 +249,36 @@ const pagination = ref({
   from: 0,
   to: 0,
 });
+
+const columns = [
+  { key: 'id', label: 'ID' },
+  { key: 'correlative', label: 'Correlativo' },
+  { key: 'actions', label: 'Acciones' },
+  { key: 'title', label: 'Título' },
+  { key: 'customer', label: 'Cliente' },
+  { key: 'priority', label: 'Prioridad' },
+  { key: 'date', label: 'Fecha' },
+  { key: 'archived_at', label: 'Archivado' },
+  { key: 'updated_at', label: 'Actualizado' },
+];
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: 'incidencias-table',
+  columns,
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const readInitialFilters = () => {
   const url = new URL(window.location.href);

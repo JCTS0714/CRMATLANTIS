@@ -23,6 +23,13 @@
           <input type="file" class="hidden" accept=".csv,.txt,text/csv" @change="onImportFileChange" />
           Importar CSV
         </label>
+
+        <TableColumnsDropdown
+          :columns="columns"
+          :visible-keys="visibleKeys"
+          @toggle="toggleColumn"
+          @reset="resetColumns"
+        />
       </div>
     </div>
 
@@ -30,8 +37,18 @@
       {{ importStatus }}
     </div>
 
-    <div class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <table class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
+    <div
+      ref="tableScrollRef"
+      class="mt-4 overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+    >
+      <table ref="tableRef" class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
+        <colgroup>
+          <col
+            v-for="column in columns"
+            :key="column.key"
+            :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+          />
+        </colgroup>
         <thead class="bg-slate-50 text-xs uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-200">
           <tr>
             <th class="px-4 py-3">Nro</th>
@@ -80,6 +97,14 @@
       </table>
     </div>
 
+    <div
+      v-show="showStickyXScroll"
+      ref="stickyScrollRef"
+      class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+    >
+      <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
+    </div>
+
     <div class="mt-4 flex items-center justify-between">
       <button
         class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -108,6 +133,9 @@
 import axios from 'axios';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { confirmDialog, promptContadorCreate, promptContadorEdit, toastError, toastSuccess } from '../ui/alerts';
+import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
 
 const contadores = ref([]);
 const loading = ref(false);
@@ -128,6 +156,34 @@ const pagination = ref({
   from: 0,
   to: 0,
 });
+
+const columns = [
+  { key: 'nro', label: 'Nro' },
+  { key: 'comercio', label: 'Comercio' },
+  { key: 'nom_contador', label: 'Nombre' },
+  { key: 'customer', label: 'Cliente' },
+  { key: 'usuario', label: 'Usuario' },
+  { key: 'servidor', label: 'Servidor' },
+  { key: 'actions', label: 'Acciones' },
+];
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: 'contadores-table',
+  columns,
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const fetchRows = async (page = 1) => {
   loading.value = true;

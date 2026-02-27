@@ -51,12 +51,26 @@
         >
           Siguiente
         </button>
+
+        <TableColumnsDropdown
+          :columns="columns"
+          :visible-keys="visibleKeys"
+          @toggle="toggleColumn"
+          @reset="resetColumns"
+        />
       </div>
     </div>
 
     <div class="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden">
-      <div class="overflow-x-auto">
-        <table class="min-w-full text-sm">
+      <div ref="tableScrollRef" class="overflow-x-auto">
+        <table ref="tableRef" class="min-w-full text-sm">
+          <colgroup>
+            <col
+              v-for="column in columns"
+              :key="column.key"
+              :style="{ display: isColumnVisible(column.key) ? '' : 'none' }"
+            />
+          </colgroup>
           <thead class="bg-slate-900/70 border-b border-slate-800">
             <tr class="text-left text-xs font-semibold text-slate-300 uppercase tracking-wider">
               <th class="px-4 py-3">Lead</th>
@@ -111,6 +125,14 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div
+        v-show="showStickyXScroll"
+        ref="stickyScrollRef"
+        class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+      >
+        <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
       </div>
     </div>
 
@@ -196,6 +218,9 @@
 import { computed, nextTick, onMounted, ref } from 'vue';
 import axios from 'axios';
 import { toastError, toastSuccess } from '../ui/alerts';
+import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
+import { useColumnVisibility } from '../composables/useColumnVisibility';
+import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
 
 const q = ref('');
 const items = ref([]);
@@ -216,6 +241,34 @@ const pagination = ref({
   per_page: 25,
   total: 0,
 });
+
+const columns = [
+  { key: 'lead', label: 'Lead' },
+  { key: 'company', label: 'Empresa' },
+  { key: 'document', label: 'Documento' },
+  { key: 'phone', label: 'Teléfono' },
+  { key: 'email', label: 'Email' },
+  { key: 'date', label: 'Fecha' },
+  { key: 'actions', label: 'Acciones' },
+];
+
+const {
+  tableRef,
+  visibleKeys,
+  isColumnVisible,
+  toggleColumn,
+  resetColumns,
+} = useColumnVisibility({
+  tableId: 'lost-leads-table',
+  columns,
+});
+
+const {
+  tableScrollRef,
+  stickyScrollRef,
+  stickyScrollWidth,
+  showStickyXScroll,
+} = useStickyHorizontalScroll({ tableRef });
 
 const rangeText = computed(() => {
   const total = pagination.value.total || 0;
