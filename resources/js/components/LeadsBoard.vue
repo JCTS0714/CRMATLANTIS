@@ -210,7 +210,7 @@
         leave-to-class="opacity-0 scale-95"
       >
         <div v-show="quickOpen" class="relative w-full max-w-lg">
-          <div class="relative bg-white rounded-lg shadow dark:bg-slate-900">
+          <div class="relative max-h-[90vh] overflow-hidden bg-white rounded-lg shadow dark:bg-slate-900">
             <div class="p-4 md:p-5 border-b rounded-t dark:border-slate-800">
               <div class="text-xs font-semibold text-gray-500 dark:text-slate-300 uppercase tracking-wider">Contacto inicial</div>
               <div class="mt-1 text-sm text-gray-600 dark:text-slate-300">
@@ -219,8 +219,11 @@
               <div class="mt-3 text-lg font-semibold text-gray-900 dark:text-slate-100 text-center">Lead rápido</div>
             </div>
 
-            <form class="p-4 md:p-5" @submit.prevent="submitQuick">
+            <form class="max-h-[70vh] overflow-y-auto p-4 md:p-5" @submit.prevent="submitQuick">
               <div class="grid gap-3">
+                <div class="text-xs text-gray-500 dark:text-slate-400">Los campos con <span class="font-semibold text-red-500">*</span> son obligatorios.</div>
+
+                <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Nombre <span class="text-red-500">*</span></label>
                 <input
                   v-model.trim="quickForm.name"
                   type="text"
@@ -282,14 +285,33 @@
                   placeholder="Compañía: Dirección"
                 />
 
+                <input
+                  v-model.trim="quickForm.migracion"
+                  type="text"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  placeholder="Migración (opcional)"
+                />
+
+                <select
+                  v-model="quickForm.referencia"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                >
+                  <option value="">Referencia (opcional)</option>
+                  <option value="TIK TOK">TIK TOK</option>
+                  <option value="FACEBOOK">FACEBOOK</option>
+                  <option value="INSTAGRAM">INSTAGRAM</option>
+                  <option value="whatsapp">whatsapp</option>
+                  <option value="otros">otros</option>
+                </select>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <select
                     v-model="quickForm.document_type"
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                   >
-                    <option value="">Documento: (opcional)</option>
                     <option value="dni">DNI</option>
                     <option value="ruc">RUC</option>
+                    <option value="otro">OTRO</option>
                   </select>
 
                   <input
@@ -320,6 +342,14 @@
                 </button>
 
                 <div class="flex items-center gap-3">
+                  <button
+                    v-if="isLocalAutofillEnabled"
+                    type="button"
+                    class="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                    @click="fillQuickLeadForTest"
+                  >
+                    Rellenar test
+                  </button>
                   <button
                     type="button"
                     class="text-sm font-medium text-gray-600 hover:text-gray-900 dark:text-slate-300 dark:hover:text-slate-100"
@@ -361,13 +391,16 @@
         leave-to-class="opacity-0 scale-95"
       >
         <div v-show="editOpen" class="relative w-full max-w-lg">
-          <div class="relative bg-white rounded-lg shadow dark:bg-slate-900">
+          <div class="relative max-h-[90vh] overflow-hidden bg-white rounded-lg shadow dark:bg-slate-900">
             <div class="p-4 md:p-5 border-b rounded-t dark:border-slate-800">
               <div class="text-lg font-semibold text-gray-900 dark:text-slate-100 text-center">Editar lead</div>
             </div>
 
-            <form class="p-4 md:p-5" @submit.prevent="submitEdit">
+            <form class="max-h-[70vh] overflow-y-auto p-4 md:p-5" @submit.prevent="submitEdit">
               <div class="grid gap-3">
+                <div class="text-xs text-gray-500 dark:text-slate-400">Los campos con <span class="font-semibold text-red-500">*</span> son obligatorios.</div>
+
+                <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Nombre <span class="text-red-500">*</span></label>
                 <input
                   v-model.trim="editForm.name"
                   type="text"
@@ -429,14 +462,33 @@
                   placeholder="Compañía: Dirección"
                 />
 
+                <input
+                  v-model.trim="editForm.migracion"
+                  type="text"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  placeholder="Migración (opcional)"
+                />
+
+                <select
+                  v-model="editForm.referencia"
+                  class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                >
+                  <option value="">Referencia (opcional)</option>
+                  <option value="TIK TOK">TIK TOK</option>
+                  <option value="FACEBOOK">FACEBOOK</option>
+                  <option value="INSTAGRAM">INSTAGRAM</option>
+                  <option value="whatsapp">whatsapp</option>
+                  <option value="otros">otros</option>
+                </select>
+
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <select
                     v-model="editForm.document_type"
                     class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                   >
-                    <option value="">Documento: (opcional)</option>
                     <option value="dni">DNI</option>
                     <option value="ruc">RUC</option>
+                    <option value="otro">OTRO</option>
                   </select>
 
                   <input
@@ -451,7 +503,7 @@
                   v-model.trim="editForm.observacion"
                   rows="3"
                   placeholder="Observación (motivo de desistimiento o notas)"
-                  class="mt-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
+                  class="mt-2 sm:col-span-2 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-600 focus:border-blue-600 block w-full p-2.5 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                 ></textarea>
                 </div>
 
@@ -539,6 +591,21 @@ const clearPeriodInputs = () => {
 };
 
 const moveError = ref('');
+
+const isLocalAutofillEnabled = (() => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+})();
+
+let localAutofillModulePromise = null;
+const getLocalAutofillModule = async () => {
+  if (!isLocalAutofillEnabled) return null;
+  if (!localAutofillModulePromise) {
+    localAutofillModulePromise = import('/resources/js/local/customerModalAutofill.local.js').catch(() => null);
+  }
+  return localAutofillModulePromise;
+};
 
 // 🚀 NUEVO DRAG & DROP SIMPLE
 const draggedLead = ref(null);
@@ -792,6 +859,25 @@ const onDropOnStage = async (targetStage, event) => {
       
     } else {
       // CASO 2: Movimiento entre columnas diferentes - Optimistic UI Update
+      const isLeadConversionToWon = targetStage.is_won && !lead.customer_id;
+
+      if (isLeadConversionToWon) {
+        const response = await axios.patch(`/leads/${lead.id}/move-stage`, {
+          stage_id: targetStage.id,
+        });
+
+        const convertedCustomerId = Number(response?.data?.data?.customer_id ?? 0);
+        const params = new URLSearchParams();
+        if (Number.isInteger(convertedCustomerId) && convertedCustomerId > 0) {
+          params.set('edit_customer_id', String(convertedCustomerId));
+        }
+        params.set('source', 'lead-conversion');
+
+        toastSuccess('Lead convertido a cliente. Completa los datos del cliente.');
+        window.location.assign(`/postventa/clientes?${params.toString()}`);
+        return;
+      }
+
       const dropY = event.clientY;
       const newPosition = calculateDropPosition(targetStage, dropY, lead.id);
       
@@ -1001,8 +1087,10 @@ const quickForm = ref({
   contact_email: '',
   company_name: '',
   company_address: '',
-  document_type: '',
-  document_number: '',
+  migracion: '',
+  referencia: '',
+  document_type: 'otro',
+  document_number: '55555555',
   observacion: '',
 });
 
@@ -1011,6 +1099,7 @@ const quickForm = ref({
 const documentPlaceholder = computed(() => {
   if (quickForm.value.document_type === 'dni') return 'Documento: DNI (8 dígitos)';
   if (quickForm.value.document_type === 'ruc') return 'Documento: RUC (11 dígitos)';
+  if (quickForm.value.document_type === 'otro') return 'Documento: OTRO (por defecto 55555555)';
   return 'Documento: Número (opcional)';
 });
 
@@ -1025,11 +1114,18 @@ const showQuickModal = () => {
     contact_email: '',
     company_name: '',
     company_address: '',
-    document_type: '',
-    document_number: '',
+    migracion: '',
+    referencia: '',
+    document_type: 'otro',
+    document_number: '55555555',
     observacion: '',
   };
   quickOpen.value = true;
+};
+
+const fillQuickLeadForTest = async () => {
+  const module = await getLocalAutofillModule();
+  module?.autofillLeadQuickForm?.(quickForm);
 };
 
 const hideQuickModal = () => {
@@ -1057,6 +1153,8 @@ const submitQuick = async () => {
     contact_email: quickForm.value.contact_email || null,
     company_name: quickForm.value.company_name || null,
     company_address: quickForm.value.company_address || null,
+    migracion: quickForm.value.migracion || null,
+    referencia: quickForm.value.referencia || null,
     document_type: quickForm.value.document_type || null,
     document_number: quickForm.value.document_number || null,
     observacion: quickForm.value.observacion || null,
@@ -1098,8 +1196,10 @@ const editForm = ref({
   contact_email: '',
   company_name: '',
   company_address: '',
-  document_type: '',
-  document_number: '',
+  migracion: '',
+  referencia: '',
+  document_type: 'otro',
+  document_number: '55555555',
   observacion: '',
 });
 
@@ -1115,8 +1215,10 @@ const openEditModal = (lead) => {
     contact_email: lead.contact_email ?? '',
     company_name: lead.company_name ?? '',
     company_address: lead.company_address ?? '',
-    document_type: lead.document_type ?? '',
-    document_number: lead.document_number ?? '',
+    migracion: lead.migracion ?? '',
+    referencia: lead.referencia ?? '',
+    document_type: lead.document_type ?? 'otro',
+    document_number: lead.document_number ?? '55555555',
     observacion: lead.observacion ?? '',
   };
   editOpen.value = true;
@@ -1222,6 +1324,8 @@ const submitEdit = async () => {
     contact_email: editForm.value.contact_email || null,
     company_name: editForm.value.company_name || null,
     company_address: editForm.value.company_address || null,
+    migracion: editForm.value.migracion || null,
+    referencia: editForm.value.referencia || null,
     document_type: editForm.value.document_type || null,
     document_number: editForm.value.document_number || null,
   };

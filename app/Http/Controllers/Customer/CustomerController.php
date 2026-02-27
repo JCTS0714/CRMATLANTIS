@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\DTOs\Customer\CustomerResponseDto;
+use App\Http\Requests\Customer\CreateCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Services\Customer\CustomerService;
@@ -12,7 +13,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
 
 class CustomerController extends Controller
@@ -36,6 +36,13 @@ class CustomerController extends Controller
         ]));
     }
 
+    public function show(Customer $customer): JsonResponse
+    {
+        return response()->json([
+            'data' => CustomerResponseDto::fromModel($customer)->toArray(),
+        ]);
+    }
+
     public function update(UpdateCustomerRequest $request, Customer $customer): JsonResponse
     {
         try {
@@ -53,18 +60,9 @@ class CustomerController extends Controller
         }
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(CreateCustomerRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'contact_name' => ['nullable', 'string', 'max:255'],
-            'contact_phone' => ['nullable', 'string', 'max:50'],
-            'contact_email' => ['nullable', 'email', 'max:255'],
-            'company_name' => ['nullable', 'string', 'max:255'],
-            'company_address' => ['nullable', 'string', 'max:255'],
-            'document_type' => ['nullable', 'string', Rule::in(['dni', 'ruc'])],
-            'document_number' => ['nullable', 'string', 'max:20'],
-        ]);
+        $validated = $request->validated();
 
         $documentType = $validated['document_type'] ?? null;
         $documentNumber = $validated['document_number'] ?? null;
@@ -99,13 +97,26 @@ class CustomerController extends Controller
 
         $customer = Customer::query()->create([
             'name' => $validated['name'],
+            'csv_numero' => $validated['csv_numero'] ?? null,
             'contact_name' => $validated['contact_name'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
             'contact_email' => $validated['contact_email'] ?? null,
             'company_name' => $validated['company_name'] ?? null,
             'company_address' => $validated['company_address'] ?? null,
+            'precio' => $validated['precio'] ?? null,
+            'rubro' => $validated['rubro'] ?? null,
+            'mes' => $validated['mes'] ?? null,
+            'link' => $validated['link'] ?? null,
+            'usuario' => $validated['usuario'] ?? null,
+            'contrasena' => $validated['contrasena'] ?? null,
+            'servidor' => $validated['servidor'] ?? null,
+            'fecha_creacion' => $validated['fecha_creacion'] ?? now()->toDateString(),
+            'fecha_contacto' => $validated['fecha_contacto'] ?? null,
+            'fecha_contacto_mes' => $validated['fecha_contacto_mes'] ?? null,
+            'fecha_contacto_anio' => $validated['fecha_contacto_anio'] ?? null,
             'document_type' => $documentType,
             'document_number' => $documentNumber,
+            'observacion' => $validated['observacion'] ?? null,
         ]);
 
         return response()->json([
@@ -169,6 +180,23 @@ class CustomerController extends Controller
             'exit' => $exit,
             'output' => $output,
             'path' => $path,
+        ]);
+    }
+
+    public function clearTableLocal(Request $request): JsonResponse
+    {
+        if (!app()->environment('local')) {
+            return response()->json([
+                'message' => 'Esta acción solo está disponible en entorno local.',
+            ], 403);
+        }
+
+        $deleted = Customer::query()->count();
+        Customer::query()->delete();
+
+        return response()->json([
+            'message' => 'Tabla de clientes limpiada en local.',
+            'deleted' => $deleted,
         ]);
     }
 }

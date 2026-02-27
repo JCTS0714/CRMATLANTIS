@@ -74,87 +74,247 @@ function escapeHtml(value) {
     .replaceAll("'", '&#039;');
 }
 
+const CUSTOMER_SERVER_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+const CONTACT_MONTH_OPTIONS = [
+  { value: 1, label: 'Enero' },
+  { value: 2, label: 'Febrero' },
+  { value: 3, label: 'Marzo' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Mayo' },
+  { value: 6, label: 'Junio' },
+  { value: 7, label: 'Julio' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Septiembre' },
+  { value: 10, label: 'Octubre' },
+  { value: 11, label: 'Noviembre' },
+  { value: 12, label: 'Diciembre' },
+];
+
+let localCustomerAutofillModulePromise = null;
+
+function isLocalOnlyAutofillEnabled() {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return (
+    import.meta.env.DEV ||
+    host === 'localhost' ||
+    host === '127.0.0.1' ||
+    host === '::1'
+  );
+}
+
+function localAutofillControlMarkup(buttonId = 'sw-local-autofill-btn') {
+  if (!isLocalOnlyAutofillEnabled()) return '';
+  return `
+    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">
+      Solo local: usa el botón <span class="font-semibold">Rellenar test</span> para autocompletar el formulario con datos aleatorios.
+      <button id="${buttonId}" type="button" class="ml-2 inline-flex items-center rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-900/30">Rellenar test</button>
+    </div>
+  `;
+}
+
+async function getLocalCustomerAutofillModule() {
+  if (!isLocalOnlyAutofillEnabled()) return null;
+
+  if (!localCustomerAutofillModulePromise) {
+    localCustomerAutofillModulePromise = import(
+      /* @vite-ignore */ '/resources/js/local/customerModalAutofill.local.js'
+    ).catch(() => null);
+  }
+
+  return localCustomerAutofillModulePromise;
+}
+
+async function bindLocalAutofillButton(buttonId, callback) {
+  const button = document.getElementById(buttonId);
+  if (!button) return;
+  button.addEventListener('click', callback);
+}
+
+function buildCustomerServerOptions(selectedValue = '') {
+  const selected = String(selectedValue ?? '').trim();
+  const options = [
+    `<option value="" ${selected ? '' : 'selected'}>(opcional)</option>`,
+    ...CUSTOMER_SERVER_OPTIONS.map((option) =>
+      `<option value="${option}" ${selected === option ? 'selected' : ''}>${option}</option>`
+    ),
+  ];
+
+  return options.join('');
+}
+
+function buildContactMonthOptions(selectedValue = '') {
+  const selected = Number.parseInt(String(selectedValue ?? ''), 10);
+  const options = [
+    `<option value="" ${Number.isInteger(selected) ? '' : 'selected'}>(mes)</option>`,
+    ...CONTACT_MONTH_OPTIONS.map((month) =>
+      `<option value="${month.value}" ${selected === month.value ? 'selected' : ''}>${month.label}</option>`
+    ),
+  ];
+
+  return options.join('');
+}
+
 export async function promptCustomerEdit(customer = {}) {
+  const normalizedDocumentNumber = (customer.document_number ?? '').trim();
+  const normalizedPrecio = customer.precio ?? '';
+  const normalizedRubro = customer.rubro ?? '';
+  const normalizedObservacion = customer.observacion ?? '';
+
   const html = `
-    <div class="grid gap-3 text-left">
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nombre</label>
-        <input id="sw-cust-name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.name)}" />
-      </div>
+    <div class="w-full max-h-[70vh] overflow-y-auto pr-1 text-left">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Los campos con <span class="font-semibold text-red-500">*</span> son obligatorios.</div>
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contacto</label>
-          <input id="sw-cust-contact_name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contact_name)}" />
+      <div class="mt-3 grid w-full grid-cols-2 gap-4">
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Comercio <span class="text-red-500">*</span></label>
+          <input id="sw-cust-company_name" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.company_name)}" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Empresa</label>
-          <input id="sw-cust-company_name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.company_name)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Rubro</label>
+          <input id="sw-cust-rubro" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(normalizedRubro)}" />
         </div>
-      </div>
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Teléfono</label>
-          <input id="sw-cust-contact_phone" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contact_phone)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contacto <span class="text-red-500">*</span></label>
+          <input id="sw-cust-contact_name" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contact_name)}" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Email</label>
-          <input id="sw-cust-contact_email" type="email" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contact_email)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Año <span class="text-red-500">*</span></label>
+          <input id="sw-cust-fecha_contacto_anio" type="number" min="2000" max="2100" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.fecha_contacto_anio)}" />
         </div>
-      </div>
 
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Dirección</label>
-        <input id="sw-cust-company_address" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.company_address)}" />
-      </div>
-
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Tipo doc</label>
-          <select id="sw-cust-document_type" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-            <option value="" ${customer.document_type ? '' : 'selected'}>(opcional)</option>
-            <option value="dni" ${customer.document_type === 'dni' ? 'selected' : ''}>DNI</option>
-            <option value="ruc" ${customer.document_type === 'ruc' ? 'selected' : ''}>RUC</option>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Celular <span class="text-red-500">*</span></label>
+          <input id="sw-cust-contact_phone" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contact_phone)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Mes <span class="text-red-500">*</span></label>
+          <select id="sw-cust-fecha_contacto_mes" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildContactMonthOptions(customer.fecha_contacto_mes)}
           </select>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Número doc</label>
-          <input id="sw-cust-document_number" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.document_number)}" />
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Ciudad</label>
+          <input id="sw-cust-company_address" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.company_address)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Link</label>
+          <input id="sw-cust-link" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.link)}" />
+        </div>
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Precio <span class="text-red-500">*</span></label>
+          <input id="sw-cust-precio" type="number" step="0.01" min="0" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(normalizedPrecio)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Usuario</label>
+          <input id="sw-cust-usuario" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.usuario)}" />
+        </div>
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">RUC <span class="text-red-500">*</span></label>
+          <input id="sw-cust-document_number" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" maxlength="11" value="${escapeHtml(normalizedDocumentNumber)}" />
+          <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Exactamente 11 dígitos numéricos</div>
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contraseña</label>
+          <input id="sw-cust-contrasena" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(customer.contrasena)}" />
+        </div>
+
+        <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Servidor</label>
+          <select id="sw-cust-servidor" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildCustomerServerOptions(customer.servidor)}
+          </select>
+        </div>
+
+        <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Observación</label>
+          <textarea id="sw-cust-observacion" rows="3" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" placeholder="Observaciones del cliente...">${escapeHtml(normalizedObservacion)}</textarea>
         </div>
       </div>
+
+      <input id="sw-cust-name" type="hidden" value="${escapeHtml(customer.name)}" />
+      <input id="sw-cust-contact_email" type="hidden" value="${escapeHtml(customer.contact_email)}" />
+      <input id="sw-cust-document_type" type="hidden" value="ruc" />
     </div>
   `;
 
   const res = await modalSwal.fire({
-    title: 'Editar cliente',
+    title: 'Editar Cliente Postventa',
     html,
+    width: '980px',
     focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: 'Guardar',
     cancelButtonText: 'Cancelar',
     preConfirm: () => {
-      const name = document.getElementById('sw-cust-name')?.value?.trim() ?? '';
       const contact_name = document.getElementById('sw-cust-contact_name')?.value?.trim() ?? '';
       const company_name = document.getElementById('sw-cust-company_name')?.value?.trim() ?? '';
       const contact_phone = document.getElementById('sw-cust-contact_phone')?.value?.trim() ?? '';
-      const contact_email = document.getElementById('sw-cust-contact_email')?.value?.trim() ?? '';
       const company_address = document.getElementById('sw-cust-company_address')?.value?.trim() ?? '';
-      const document_type = document.getElementById('sw-cust-document_type')?.value ?? '';
+      const precioRaw = document.getElementById('sw-cust-precio')?.value?.trim() ?? '';
+      const rubro = document.getElementById('sw-cust-rubro')?.value?.trim() ?? '';
+      const link = document.getElementById('sw-cust-link')?.value?.trim() ?? '';
+      const usuario = document.getElementById('sw-cust-usuario')?.value?.trim() ?? '';
+      const contrasena = document.getElementById('sw-cust-contrasena')?.value?.trim() ?? '';
+      const servidor = document.getElementById('sw-cust-servidor')?.value?.trim() ?? '';
+      const observacion = document.getElementById('sw-cust-observacion')?.value?.trim() ?? '';
+      const fecha_contacto_mes = document.getElementById('sw-cust-fecha_contacto_mes')?.value?.trim() ?? '';
+      const fecha_contacto_anio = document.getElementById('sw-cust-fecha_contacto_anio')?.value?.trim() ?? '';
       const document_number = document.getElementById('sw-cust-document_number')?.value?.trim() ?? '';
+      const precioNormalized = precioRaw.replace(',', '.');
+      const precio = Number.parseFloat(precioNormalized);
 
-      if (!name) {
-        Swal.showValidationMessage('El nombre es requerido.');
+      const name = contact_name || company_name;
+
+      if (!company_name) {
+        Swal.showValidationMessage('El comercio es requerido.');
         return false;
       }
 
-      if (document_number && !document_type) {
-        Swal.showValidationMessage('El tipo de documento es requerido si envías número de documento.');
+      if (!contact_name) {
+        Swal.showValidationMessage('El contacto es requerido.');
         return false;
       }
 
-      if (document_type && !document_number) {
-        Swal.showValidationMessage('El número de documento es requerido.');
+      if (!contact_phone) {
+        Swal.showValidationMessage('El celular es requerido.');
+        return false;
+      }
+
+      if (!precioRaw || Number.isNaN(precio) || precio < 0) {
+        Swal.showValidationMessage('El precio es requerido y debe ser válido.');
+        return false;
+      }
+
+      if (servidor && !CUSTOMER_SERVER_OPTIONS.includes(servidor)) {
+        Swal.showValidationMessage('El servidor debe ser ATLANTIS ONLINE, ATLANTIS VIP o ATLANTIS POS.');
+        return false;
+      }
+
+      if (!fecha_contacto_mes || !fecha_contacto_anio) {
+        Swal.showValidationMessage('Mes y año son obligatorios.');
+        return false;
+      }
+
+      const mesNumber = Number.parseInt(fecha_contacto_mes, 10);
+      const anioNumber = Number.parseInt(fecha_contacto_anio, 10);
+
+      if (!Number.isInteger(mesNumber) || mesNumber < 1 || mesNumber > 12) {
+        Swal.showValidationMessage('El mes de contacto debe estar entre 1 y 12.');
+        return false;
+      }
+
+      if (!Number.isInteger(anioNumber) || anioNumber < 2000 || anioNumber > 2100) {
+        Swal.showValidationMessage('El año de contacto no es válido.');
+        return false;
+      }
+
+      if (!/^\d{11}$/.test(document_number)) {
+        Swal.showValidationMessage('El RUC es obligatorio y debe tener 11 dígitos.');
         return false;
       }
 
@@ -163,9 +323,19 @@ export async function promptCustomerEdit(customer = {}) {
         contact_name: contact_name || null,
         company_name: company_name || null,
         contact_phone: contact_phone || null,
-        contact_email: contact_email || null,
+        contact_email: customer.contact_email || null,
         company_address: company_address || null,
-        document_type: document_type || null,
+        precio,
+        rubro: rubro || null,
+        mes: String(mesNumber),
+        link: link || null,
+        usuario: usuario || null,
+        contrasena: contrasena || null,
+        servidor: servidor || null,
+        observacion: observacion || null,
+        fecha_contacto_mes: mesNumber,
+        fecha_contacto_anio: anioNumber,
+        document_type: 'ruc',
         document_number: document_number || null,
       };
     },
@@ -176,94 +346,178 @@ export async function promptCustomerEdit(customer = {}) {
 
 export async function promptCustomerCreate() {
   const empty = {
-    name: '',
     contact_name: '',
     company_name: '',
     contact_phone: '',
-    contact_email: '',
     company_address: '',
-    document_type: '',
+    precio: '',
+    rubro: '',
+    link: '',
+    usuario: '',
+    contrasena: '',
+    servidor: '',
+    observacion: '',
+    fecha_contacto_mes: String(new Date().getMonth() + 1),
+    fecha_contacto_anio: String(new Date().getFullYear()),
     document_number: '',
   };
 
   const html = `
-    <div class="grid gap-3 text-left">
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nombre</label>
-        <input id="sw-cust-name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.name)}" />
-      </div>
+    <div class="w-full max-h-[70vh] overflow-y-auto pr-1 text-left">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Los campos con <span class="font-semibold text-red-500">*</span> son obligatorios.</div>
+      <div class="mt-2">${localAutofillControlMarkup('sw-cust-autofill-create-local')}</div>
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contacto</label>
-          <input id="sw-cust-contact_name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contact_name)}" />
+      <div class="mt-3 grid w-full grid-cols-2 gap-4">
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Comercio <span class="text-red-500">*</span></label>
+          <input id="sw-cust-company_name" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.company_name)}" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Empresa</label>
-          <input id="sw-cust-company_name" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.company_name)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Rubro</label>
+          <input id="sw-cust-rubro" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.rubro)}" />
         </div>
-      </div>
 
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Teléfono</label>
-          <input id="sw-cust-contact_phone" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contact_phone)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contacto <span class="text-red-500">*</span></label>
+          <input id="sw-cust-contact_name" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contact_name)}" />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Email</label>
-          <input id="sw-cust-contact_email" type="email" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contact_email)}" />
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Año <span class="text-red-500">*</span></label>
+          <input id="sw-cust-fecha_contacto_anio" type="number" min="2000" max="2100" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.fecha_contacto_anio)}" />
         </div>
-      </div>
 
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Dirección</label>
-        <input id="sw-cust-company_address" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.company_address)}" />
-      </div>
-
-      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Tipo doc</label>
-          <select id="sw-cust-document_type" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-            <option value="" selected>(opcional)</option>
-            <option value="dni">DNI</option>
-            <option value="ruc">RUC</option>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Celular <span class="text-red-500">*</span></label>
+          <input id="sw-cust-contact_phone" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contact_phone)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Mes <span class="text-red-500">*</span></label>
+          <select id="sw-cust-fecha_contacto_mes" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildContactMonthOptions(empty.fecha_contacto_mes)}
           </select>
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Número doc</label>
-          <input id="sw-cust-document_number" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.document_number)}" />
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Ciudad</label>
+          <input id="sw-cust-company_address" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.company_address)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Link</label>
+          <input id="sw-cust-link" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.link)}" />
+        </div>
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Precio <span class="text-red-500">*</span></label>
+          <input id="sw-cust-precio" type="number" step="0.01" min="0" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.precio)}" />
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Usuario</label>
+          <input id="sw-cust-usuario" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.usuario)}" />
+        </div>
+
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">RUC <span class="text-red-500">*</span></label>
+          <input id="sw-cust-document_number" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" maxlength="11" value="${escapeHtml(empty.document_number)}" />
+          <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Exactamente 11 dígitos numéricos</div>
+        </div>
+        <div class="w-full">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contraseña</label>
+          <input id="sw-cust-contrasena" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(empty.contrasena)}" />
+        </div>
+
+        <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Servidor</label>
+          <select id="sw-cust-servidor" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildCustomerServerOptions(empty.servidor)}
+          </select>
+        </div>
+
+        <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Observación</label>
+          <textarea id="sw-cust-observacion" rows="3" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" placeholder="Observaciones del cliente...">${escapeHtml(empty.observacion)}</textarea>
         </div>
       </div>
+
+      <input id="sw-cust-name" type="hidden" value="" />
+      <input id="sw-cust-contact_email" type="hidden" value="" />
+      <input id="sw-cust-document_type" type="hidden" value="ruc" />
     </div>
   `;
 
   const res = await modalSwal.fire({
-    title: 'Crear cliente',
+    title: 'Agregar Cliente Postventa',
     html,
+    width: '980px',
     focusConfirm: false,
     showCancelButton: true,
     confirmButtonText: 'Crear',
     cancelButtonText: 'Cancelar',
+    didOpen: async () => {
+      const module = await getLocalCustomerAutofillModule();
+      if (!module?.autofillCustomerModalForm) return;
+      await bindLocalAutofillButton('sw-cust-autofill-create-local', () => module.autofillCustomerModalForm());
+    },
     preConfirm: () => {
-      const name = document.getElementById('sw-cust-name')?.value?.trim() ?? '';
       const contact_name = document.getElementById('sw-cust-contact_name')?.value?.trim() ?? '';
       const company_name = document.getElementById('sw-cust-company_name')?.value?.trim() ?? '';
       const contact_phone = document.getElementById('sw-cust-contact_phone')?.value?.trim() ?? '';
-      const contact_email = document.getElementById('sw-cust-contact_email')?.value?.trim() ?? '';
       const company_address = document.getElementById('sw-cust-company_address')?.value?.trim() ?? '';
-      const document_type = document.getElementById('sw-cust-document_type')?.value ?? '';
+      const precioRaw = document.getElementById('sw-cust-precio')?.value?.trim() ?? '';
+      const rubro = document.getElementById('sw-cust-rubro')?.value?.trim() ?? '';
+      const link = document.getElementById('sw-cust-link')?.value?.trim() ?? '';
+      const usuario = document.getElementById('sw-cust-usuario')?.value?.trim() ?? '';
+      const contrasena = document.getElementById('sw-cust-contrasena')?.value?.trim() ?? '';
+      const servidor = document.getElementById('sw-cust-servidor')?.value?.trim() ?? '';
+      const observacion = document.getElementById('sw-cust-observacion')?.value?.trim() ?? '';
+      const fecha_contacto_mes = document.getElementById('sw-cust-fecha_contacto_mes')?.value?.trim() ?? '';
+      const fecha_contacto_anio = document.getElementById('sw-cust-fecha_contacto_anio')?.value?.trim() ?? '';
       const document_number = document.getElementById('sw-cust-document_number')?.value?.trim() ?? '';
+      const precioNormalized = precioRaw.replace(',', '.');
+      const precio = Number.parseFloat(precioNormalized);
 
-      if (!name) {
-        Swal.showValidationMessage('El nombre es requerido.');
+      const name = contact_name || company_name;
+
+      if (!company_name) {
+        Swal.showValidationMessage('El comercio es requerido.');
         return false;
       }
-      if (document_number && !document_type) {
-        Swal.showValidationMessage('El tipo de documento es requerido si envías número de documento.');
+      if (!contact_name) {
+        Swal.showValidationMessage('El contacto es requerido.');
         return false;
       }
-      if (document_type && !document_number) {
-        Swal.showValidationMessage('El número de documento es requerido.');
+      if (!contact_phone) {
+        Swal.showValidationMessage('El celular es requerido.');
+        return false;
+      }
+      if (!precioRaw || Number.isNaN(precio) || precio < 0) {
+        Swal.showValidationMessage('El precio es requerido y debe ser válido.');
+        return false;
+      }
+      if (!/^\d{11}$/.test(document_number)) {
+        Swal.showValidationMessage('El RUC es obligatorio y debe tener 11 dígitos.');
+        return false;
+      }
+
+      if (!fecha_contacto_mes || !fecha_contacto_anio) {
+        Swal.showValidationMessage('Mes y año son obligatorios.');
+        return false;
+      }
+
+      if (servidor && !CUSTOMER_SERVER_OPTIONS.includes(servidor)) {
+        Swal.showValidationMessage('El servidor debe ser ATLANTIS ONLINE, ATLANTIS VIP o ATLANTIS POS.');
+        return false;
+      }
+
+      const mesNumber = Number.parseInt(fecha_contacto_mes, 10);
+      const anioNumber = Number.parseInt(fecha_contacto_anio, 10);
+
+      if (!Number.isInteger(mesNumber) || mesNumber < 1 || mesNumber > 12) {
+        Swal.showValidationMessage('El mes de contacto debe estar entre 1 y 12.');
+        return false;
+      }
+
+      if (!Number.isInteger(anioNumber) || anioNumber < 2000 || anioNumber > 2100) {
+        Swal.showValidationMessage('El año de contacto no es válido.');
         return false;
       }
 
@@ -272,9 +526,19 @@ export async function promptCustomerCreate() {
         contact_name: contact_name || null,
         company_name: company_name || null,
         contact_phone: contact_phone || null,
-        contact_email: contact_email || null,
+        contact_email: null,
         company_address: company_address || null,
-        document_type: document_type || null,
+        precio,
+        rubro: rubro || null,
+        mes: String(mesNumber),
+        link: link || null,
+        usuario: usuario || null,
+        contrasena: contrasena || null,
+        servidor: servidor || null,
+        observacion: observacion || null,
+        fecha_contacto_mes: mesNumber,
+        fecha_contacto_anio: anioNumber,
+        document_type: 'ruc',
         document_number: document_number || null,
       };
     },
@@ -355,6 +619,7 @@ export async function promptContadorEdit(contador = {}, isCreate = false) {
 
   const html = `
     <div class="grid gap-3 text-left">
+      ${isCreate ? localAutofillControlMarkup('sw-cont-autofill-create-local') : ''}
       <div class="grid grid-cols-1 gap-3 ${isCreate ? '' : 'sm:grid-cols-2'}">
         <div${isCreate ? ' style="display: none;"' : ''}>
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nro</label>
@@ -446,8 +711,13 @@ export async function promptContadorEdit(contador = {}, isCreate = false) {
     showCancelButton: true,
     confirmButtonText: isCreate ? 'Crear' : 'Guardar',
     cancelButtonText: 'Cancelar',
-    didOpen: (popup) => {
+    didOpen: async (popup) => {
       initCustomerSearch(popup, contador.customers || []);
+
+      if (!isCreate) return;
+      const module = await getLocalCustomerAutofillModule();
+      if (!module?.autofillContadorCreateModalForm) return;
+      await bindLocalAutofillButton('sw-cont-autofill-create-local', () => module.autofillContadorCreateModalForm());
     },
     preConfirm: () => {
       const nro = document.getElementById('sw-cont-nro')?.value?.trim() ?? '';
@@ -546,6 +816,7 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
 
   const html = `
     <div class="grid gap-3 text-left">
+      ${isCreate ? localAutofillControlMarkup('sw-cert-autofill-create-local') : ''}
       <div>
         <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nombre</label>
         <input id="sw-cert-nombre" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(cert.nombre)}" />
@@ -616,6 +887,12 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
     showCancelButton: true,
     confirmButtonText: isCreate ? 'Crear' : 'Guardar',
     cancelButtonText: 'Cancelar',
+    didOpen: async () => {
+      if (!isCreate) return;
+      const module = await getLocalCustomerAutofillModule();
+      if (!module?.autofillCertificadoCreateModalForm) return;
+      await bindLocalAutofillButton('sw-cert-autofill-create-local', () => module.autofillCertificadoCreateModalForm());
+    },
     preConfirm: () => {
       const nombre = document.getElementById('sw-cert-nombre')?.value?.trim() ?? '';
       const ruc = document.getElementById('sw-cert-ruc')?.value?.trim() ?? '';

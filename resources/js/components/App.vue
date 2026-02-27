@@ -107,13 +107,11 @@
 
           <BacklogBoard v-else-if="isBacklog" />
 
-          <PostventaCustomersTable v-else-if="isPostventaCustomers" />
+          <PostventaCustomersTable v-else-if="isPostventaCustomers || isCustomers" />
 
           <ContadoresTable v-else-if="isPostventaContadores" />
 
           <CertificadosTable v-else-if="isPostventaCertificados" />
-
-          <CustomersTable v-else-if="isCustomers" />
 
           <LostLeadsList v-else-if="isLostLeads" />
 
@@ -151,7 +149,6 @@ const LeadsBoard = defineAsyncComponent(() => import('./LeadsBoard.vue'));
 const LeadsTable = defineAsyncComponent(() => import('./LeadsTable.vue'));
 const LeadsWhatsAppCampaign = defineAsyncComponent(() => import('./LeadsWhatsAppCampaign.vue'));
 const LeadsEmailCampaign = defineAsyncComponent(() => import('./LeadsEmailCampaign.vue'));
-const CustomersTable = defineAsyncComponent(() => import('./CustomersTable.vue'));
 const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
 const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
 const IncidenciasBoard = defineAsyncComponent(() => import('./IncidenciasBoard.vue'));

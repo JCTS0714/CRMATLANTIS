@@ -133,7 +133,6 @@ class ProspectosCsvImporter
             $empresa = $nullish($data['empresa'] ?? null);
             $documento = $digitsOnly($data['documento'] ?? null);
             $observacion = $nullish($data['observacion'] ?? null);
-            $migracion = $parseDate($data['migracion'] ?? null);
 
             if (!$nombre && !$empresa && !$telefono && !$documento) {
                 $skipped++;
@@ -153,6 +152,14 @@ class ProspectosCsvImporter
             $createdAt = $parseDate($data['fecha_creacion'] ?? null) ?? now();
             $contactAt = $parseDate($data['fecha_contacto'] ?? null);
             $updatedAt = $contactAt && $contactAt->greaterThan($createdAt) ? $contactAt : $createdAt;
+            $referenciaLead = match (mb_strtolower((string) $referencia)) {
+                'tik tok', 'tiktok' => 'TIK TOK',
+                'facebook' => 'FACEBOOK',
+                'instagram' => 'INSTAGRAM',
+                'whatsapp', 'whats app' => 'whatsapp',
+                '', null => null,
+                default => 'otros',
+            };
 
             if ($documento && !$docType) {
                 // Documento con longitud no estándar: no lo guardamos para no romper validaciones futuras.
@@ -170,7 +177,8 @@ class ProspectosCsvImporter
                 'document_type' => $docType,
                 'document_number' => $documento,
                 'observacion' => $observacion,
-                'migracion' => $migracion?->toDateString(),
+                'migracion' => $nullish($data['migracion'] ?? null),
+                'referencia' => $referenciaLead,
                 'created_at' => $createdAt,
                 'updated_at' => $updatedAt,
             ];

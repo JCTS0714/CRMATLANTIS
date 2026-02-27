@@ -285,32 +285,6 @@
           </div>
         </li>
 
-        <li v-if="canSeeCustomers">
-          <a
-            href="/customers"
-            title="Clientes"
-            class="flex items-center p-2 rounded-lg group"
-            :class="[
-              collapsed ? 'justify-center' : '',
-              isActive('/customers')
-                ? 'text-white bg-slate-800 border border-slate-700'
-                : 'text-slate-200 hover:bg-slate-800'
-            ]"
-          >
-            <svg
-              class="w-5 h-5"
-              :class="isActive('/customers') ? 'text-white/90' : 'text-slate-300 group-hover:text-white'"
-              aria-hidden="true"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path d="M3 21h14v-8H3v8zM5 10h10v11H5V10zM7 3h6v4H7V3zM3 7h14v2H3V7z"></path>
-            </svg>
-            <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">Clientes</span>
-          </a>
-        </li>
-
         <li v-if="canSeeCalendar">
           <a
             href="/calendar"
@@ -642,7 +616,6 @@ const canSeeRoles = computed(() => hasPermission('menu.roles'));
 const canSeeLeads = computed(() => hasPermission('menu.leads'));
 const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission('menu.leads'));
 const canSeeInbox = computed(() => hasPermission('menu.inbox'));
-const canSeeCustomers = computed(() => hasPermission('menu.customers'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
 

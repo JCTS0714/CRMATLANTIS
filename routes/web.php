@@ -21,6 +21,7 @@ use App\Http\Controllers\Campaign\WhatsAppCampaignController;
 use App\Http\Controllers\Campaign\EmailCampaignController;
 use App\Http\Controllers\EmailUnsubscribeController;
 use App\Http\Controllers\Api\NotificationController as ApiNotificationController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -141,12 +142,18 @@ Route::middleware('auth')->group(function () {
         ->name('espera.reactivate');
 
     Route::middleware('permission:customers.view')->group(function () {
-        Route::get('/customers', function () {
-            return view('dashboard');
+        Route::get('/customers', function (Request $request) {
+            $query = $request->getQueryString();
+            $target = '/postventa/clientes' . ($query ? ('?' . $query) : '');
+
+            return redirect($target);
         })->name('customers.index');
 
         Route::get('/customers/data', [CustomerController::class, 'data'])->name('customers.data');
         Route::get('/customers/search', [CustomerController::class, 'search'])->name('customers.search');
+        Route::get('/customers/{customer}', [CustomerController::class, 'show'])
+            ->whereNumber('customer')
+            ->name('customers.show');
     });
 
     Route::post('/customers', [CustomerController::class, 'store'])
@@ -156,6 +163,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/customers/import', [CustomerController::class, 'importCsv'])
         ->middleware('permission:customers.create')
         ->name('customers.import');
+
+    Route::post('/customers/clear-local', [CustomerController::class, 'clearTableLocal'])
+        ->middleware('permission:customers.delete')
+        ->name('customers.clear-local');
 
     Route::middleware('permission:calendar.view')->group(function () {
         Route::get('/calendar', function () {

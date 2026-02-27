@@ -34,7 +34,7 @@ class RelatedLookupController extends Controller
         if ($id) {
             $item = match ($type) {
                 'lead' => Lead::query()
-                    ->select(['id', 'name', 'company_name', 'document_type', 'document_number'])
+                    ->select(['id', 'name', 'company_name', 'document_type', 'document_number', 'stage_id'])
                     ->find($id),
                 'customer' => Customer::query()
                     ->select(['id', 'name', 'company_name', 'document_type', 'document_number'])
@@ -55,7 +55,7 @@ class RelatedLookupController extends Controller
 
         if ($type === 'lead') {
             $items = Lead::query()
-                ->select(['id', 'name', 'company_name', 'contact_email', 'document_type', 'document_number', 'updated_at', 'archived_at'])
+                ->select(['id', 'name', 'company_name', 'contact_email', 'document_type', 'document_number', 'stage_id', 'updated_at', 'archived_at'])
                 ->whereNull('won_at')
                 ->whereNull('archived_at')
                 ->where(function ($w) use ($q) {
@@ -143,10 +143,17 @@ class RelatedLookupController extends Controller
             $label .= ' ('.$doc.')';
         }
 
-        return [
+        $result = [
             'type' => $type,
             'id' => (int) $model->id,
             'label' => $label,
         ];
+
+        if ($type === 'lead') {
+            $stageId = (int) ($model->stage_id ?? 0);
+            $result['stage_id'] = $stageId > 0 ? $stageId : null;
+        }
+
+        return $result;
     }
 }

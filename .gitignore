@@ -24,3 +24,6 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Local-only testing helpers (never deploy)
+/resources/js/local/*.local.js

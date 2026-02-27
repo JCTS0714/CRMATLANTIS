@@ -49,6 +49,22 @@ const canDeleteEvents = computed(() => {
 const saving = ref(false);
 const calendarRef = ref(null);
 const currentTitle = ref('');
+const leadStagesCache = ref([]);
+
+const isLocalAutofillEnabled = (() => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+})();
+
+let localAutofillModulePromise = null;
+const getLocalAutofillModule = async () => {
+  if (!isLocalAutofillEnabled) return null;
+  if (!localAutofillModulePromise) {
+    localAutofillModulePromise = import('/resources/js/local/customerModalAutofill.local.js').catch(() => null);
+  }
+  return localAutofillModulePromise;
+};
 
 const refetchEvents = () => {
   try {
@@ -109,6 +125,8 @@ const promptEvent = async ({
   reminder_minutes = '',
   related_type = '',
   related_id = '',
+  lead_stage_id = '',
+  meta = null,
   description = '',
   location = '',
   allowDelete = false,
@@ -126,6 +144,7 @@ const promptEvent = async ({
 
   const html = `
     <div class="grid gap-3 text-left">
+      ${!is_existing && isLocalAutofillEnabled ? '<div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300">Solo local: autollenado para pruebas.<button id="sw-ev-autofill-create-local" type="button" class="ml-2 inline-flex items-center rounded-md border border-amber-300 bg-white px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-slate-900 dark:text-amber-300 dark:hover:bg-amber-900/30">Rellenar test</button></div>' : ''}
       <div>
         <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Tipo de evento</label>
         <select id="sw-ev-event_type" class="${inputClass}">
@@ -135,6 +154,13 @@ const promptEvent = async ({
           <option value="customer_payment" ${event_type === 'customer_payment' ? 'selected' : ''}>Fecha de pago</option>
           <option value="certificate_expiry" ${event_type === 'certificate_expiry' ? 'selected' : ''}>Vencimiento de certificado</option>
         </select>
+      </div>
+
+      <div id="sw-ev-lead_stage_wrap" style="display:none;">
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Cambiar estado del lead</label>
+        <select id="sw-ev-lead_stage_id" class="${inputClass}">
+        </select>
+        <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Solo aplica para tipo "Seguimiento de lead".</div>
       </div>
 
       <div>
@@ -187,6 +213,7 @@ const promptEvent = async ({
           <div id="sw-ev-related_hint" class="mt-1 text-xs text-gray-500 dark:text-slate-400">Selecciona un resultado para llenar el vínculo (opcional).</div>
         </div>
       </div>
+
     </div>
   `;
 
@@ -215,8 +242,20 @@ const promptEvent = async ({
       const searchEl = document.getElementById('sw-ev-related_search');
       const idEl = document.getElementById('sw-ev-related_id');
       const resultsEl = document.getElementById('sw-ev-related_results');
+      const leadStageWrapEl = document.getElementById('sw-ev-lead_stage_wrap');
+      const leadStageEl = document.getElementById('sw-ev-lead_stage_id');
+      const autofillButton = document.getElementById('sw-ev-autofill-create-local');
 
-      if (!typeEl || !searchEl || !idEl || !resultsEl || !eventTypeEl || !startEl || !endEl || !reminderEl) return;
+      if (!typeEl || !searchEl || !idEl || !resultsEl || !eventTypeEl || !startEl || !endEl || !reminderEl || !leadStageWrapEl || !leadStageEl) return;
+
+      if (autofillButton) {
+        const module = await getLocalAutofillModule();
+        if (module?.autofillCalendarEventCreateModalForm) {
+          autofillButton.addEventListener('click', () => {
+            module.autofillCalendarEventCreateModalForm();
+          });
+        }
+      }
 
       let debounceTimer = null;
 
@@ -225,9 +264,23 @@ const promptEvent = async ({
         resultsEl.style.display = 'none';
       };
 
+      const syncLeadStageFromLeadItem = (item) => {
+        if (!item || (typeEl.value || '') !== 'lead') return;
+
+        const stageId = Number(item.stage_id ?? 0);
+        if (!Number.isFinite(stageId) || stageId < 1) return;
+
+        const targetValue = String(stageId);
+        const hasOption = Array.from(leadStageEl.options).some((option) => option.value === targetValue);
+        if (hasOption) {
+          leadStageEl.value = targetValue;
+        }
+      };
+
       const setSelected = (item) => {
         idEl.value = item?.id ? String(item.id) : '';
         searchEl.value = item?.label ? String(item.label) : '';
+        syncLeadStageFromLeadItem(item);
         clearResults();
       };
 
@@ -242,10 +295,83 @@ const promptEvent = async ({
         }
       };
 
+      const loadLeadStages = async () => {
+        if (Array.isArray(leadStagesCache.value) && leadStagesCache.value.length > 0) {
+          return leadStagesCache.value;
+        }
+
+        try {
+          const boardResponse = await axios.get('/leads/board-data', { params: { limit: 0 } });
+          const stagesFromBoard = boardResponse?.data?.data?.stages ?? [];
+          if (Array.isArray(stagesFromBoard) && stagesFromBoard.length > 0) {
+            leadStagesCache.value = stagesFromBoard.map((stage) => ({
+              id: Number(stage.id),
+              name: String(stage.name || '').trim(),
+            })).filter((stage) => Number.isFinite(stage.id) && stage.id > 0 && stage.name !== '');
+
+            return leadStagesCache.value;
+          }
+        } catch {
+          // fallback below
+        }
+
+        try {
+          const tableResponse = await axios.get('/leads/data', { params: { per_page: 1 } });
+          const stagesFromTable = tableResponse?.data?.data?.stages ?? [];
+          if (Array.isArray(stagesFromTable) && stagesFromTable.length > 0) {
+            leadStagesCache.value = stagesFromTable.map((stage) => ({
+              id: Number(stage.id),
+              name: String(stage.name || '').trim(),
+            })).filter((stage) => Number.isFinite(stage.id) && stage.id > 0 && stage.name !== '');
+          }
+        } catch {
+          leadStagesCache.value = [];
+        }
+
+        return leadStagesCache.value;
+      };
+
+      const fillLeadStageOptions = async () => {
+        const stages = await loadLeadStages();
+        leadStageEl.innerHTML = '';
+
+        for (const stage of stages) {
+          const option = document.createElement('option');
+          option.value = String(stage.id);
+          option.textContent = stage.name;
+          leadStageEl.appendChild(option);
+        }
+
+        if (!stages.length) {
+          const option = document.createElement('option');
+          option.value = '';
+          option.textContent = 'No hay etapas disponibles';
+          leadStageEl.appendChild(option);
+        }
+
+        leadStageEl.disabled = !stages.length;
+
+        if (lead_stage_id) {
+          leadStageEl.value = String(lead_stage_id);
+        } else if (stages.length > 0) {
+          leadStageEl.value = String(stages[0].id);
+        }
+      };
+
       const applyEventTypeRules = () => {
         const eventType = eventTypeEl.value || 'general';
         const isAllDayType = eventType === 'customer_payment' || eventType === 'certificate_expiry';
         const isLockedAutoEvent = is_existing && isAllDayType;
+        const isLeadFollowup = eventType === 'lead_followup';
+
+        leadStageWrapEl.style.display = isLeadFollowup ? 'block' : 'none';
+        if (!isLeadFollowup) {
+          leadStageEl.value = '';
+        }
+
+        if (isLeadFollowup && !typeEl.value) {
+          typeEl.value = 'lead';
+        }
 
         if (eventType === 'customer_payment') {
           typeEl.value = 'customer';
@@ -316,8 +442,10 @@ const promptEvent = async ({
         if (!t || !Number.isFinite(id) || id < 1) return;
         try {
           const res = await axios.get('/related-lookup', { params: { type: t, id } });
-          if (res?.data?.data?.label) {
-            searchEl.value = res.data.data.label;
+          const item = res?.data?.data ?? null;
+          if (item?.label) {
+            searchEl.value = item.label;
+            syncLeadStageFromLeadItem(item);
           } else {
             searchEl.value = `#${id}`;
           }
@@ -371,6 +499,7 @@ const promptEvent = async ({
         doSearch();
       });
 
+      await fillLeadStageOptions();
       applyEventTypeRules();
       await lookupById();
     },
@@ -398,6 +527,7 @@ const promptEvent = async ({
       const desc = document.getElementById('sw-ev-description')?.value?.trim() ?? '';
       let rt = document.getElementById('sw-ev-related_type')?.value ?? '';
       const rid = document.getElementById('sw-ev-related_id')?.value ?? '';
+      const leadStageRaw = document.getElementById('sw-ev-lead_stage_id')?.value ?? '';
       const isAllDayType = et === 'customer_payment' || et === 'certificate_expiry';
 
       if (et === 'customer_payment' && !rt) {
@@ -430,6 +560,22 @@ const promptEvent = async ({
         return false;
       }
 
+      const leadStageId = Number(leadStageRaw);
+      if (!Number.isFinite(leadStageId) || leadStageId < 1) {
+        Swal.showValidationMessage('Selecciona un estado de lead válido.');
+        return false;
+      }
+
+      if (et === 'lead_followup' && (rt !== 'lead' || !rid)) {
+        Swal.showValidationMessage('Para cambiar estado, debes vincular el evento a un lead.');
+        return false;
+      }
+
+      if (et === 'lead_followup' && !leadStageRaw) {
+        Swal.showValidationMessage('Selecciona una etapa para el lead.');
+        return false;
+      }
+
       const reminderMinutes = rm ? Number(rm) : (isAllDayType ? 1440 : null);
       if (rm && (!Number.isFinite(reminderMinutes) || reminderMinutes < 1)) {
         Swal.showValidationMessage('El recordatorio debe ser un número válido.');
@@ -437,6 +583,13 @@ const promptEvent = async ({
       }
 
       const startValue = isAllDayType ? `${s}T00:00` : s;
+
+      const nextMeta = (meta && typeof meta === 'object' && !Array.isArray(meta)) ? { ...meta } : {};
+      if (et === 'lead_followup') {
+        nextMeta.lead_stage_id = leadStageId;
+      } else {
+        delete nextMeta.lead_stage_id;
+      }
 
       return {
         event_type: et,
@@ -449,6 +602,7 @@ const promptEvent = async ({
         description: desc || null,
         related_type: rt || null,
         related_id: rid ? Number(rid) : null,
+        meta: Object.keys(nextMeta).length > 0 ? nextMeta : null,
       };
     },
   });
@@ -456,6 +610,28 @@ const promptEvent = async ({
   if (res.isDenied) return { action: 'delete' };
   if (res.isConfirmed) return { action: 'save', payload: res.value };
   return null;
+};
+
+const applyLeadStageChangeFromEventPayload = async (payload) => {
+  const eventType = payload?.event_type ?? '';
+  if (eventType !== 'lead_followup') return;
+
+  const relatedType = payload?.related_type ?? '';
+  const relatedId = Number(payload?.related_id ?? 0);
+  const leadStageId = Number(payload?.meta?.lead_stage_id ?? 0);
+
+  if (relatedType !== 'lead' || !Number.isFinite(relatedId) || relatedId < 1) return;
+  if (!Number.isFinite(leadStageId) || leadStageId < 1) return;
+
+  try {
+    await axios.patch(`/leads/${relatedId}/move-stage`, { stage_id: leadStageId });
+    window.dispatchEvent(new CustomEvent('leads:stage-changed-from-calendar', {
+      detail: { leadId: relatedId, stageId: leadStageId },
+    }));
+    toastSuccess('Estado del lead actualizado');
+  } catch (e) {
+    toastError(e?.response?.data?.message ?? 'Evento guardado, pero no se pudo cambiar el estado del lead.');
+  }
 };
 
 const normalizeRelatedType = (value) => {
@@ -546,6 +722,7 @@ const calendarOptions = computed(() => ({
     try {
       const response = await axios.post('/calendar/events', payload);
       const newEvent = response.data?.data || response.data;
+      await applyLeadStageChangeFromEventPayload(payload);
       
       toastSuccess('Evento creado');
       arg.view.calendar.refetchEvents();
@@ -582,6 +759,8 @@ const calendarOptions = computed(() => ({
       description: ext.description ?? '',
       related_type: normalizeRelatedType(ext.related_type) || '',
       related_id: ext.related_id ?? '',
+      lead_stage_id: ext?.meta?.lead_stage_id ?? '',
+      meta: ext?.meta ?? null,
       allowDelete: canDeleteEvents.value,
     });
 
@@ -617,6 +796,7 @@ const calendarOptions = computed(() => ({
     saving.value = true;
     try {
       await axios.put(`/calendar/events/${ev.id}`, payload);
+      await applyLeadStageChangeFromEventPayload(payload);
       toastSuccess('Evento actualizado');
       clickInfo.view.calendar.refetchEvents();
       
@@ -703,6 +883,7 @@ const createEventQuick = async () => {
   try {
     const response = await axios.post('/calendar/events', payload);
     const newEvent = response.data?.data || response.data;
+    await applyLeadStageChangeFromEventPayload(payload);
     
     toastSuccess('Evento creado');
     refetchEvents();
@@ -775,6 +956,7 @@ const maybePrefillFromUrl = async () => {
   try {
     const response = await axios.post('/calendar/events', payload);
     const newEvent = response.data?.data || response.data;
+    await applyLeadStageChangeFromEventPayload(payload);
     
     toastSuccess('Evento creado');
     refetchEvents();

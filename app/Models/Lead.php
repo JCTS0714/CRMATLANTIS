@@ -24,6 +24,7 @@ class Lead extends Model
         'document_number',
         'observacion',
         'migracion',
+        'referencia',
         'won_at',
         'archived_at',
         'position',
@@ -32,7 +33,6 @@ class Lead extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'won_at' => 'datetime',
-        'migracion' => 'date',
         'archived_at' => 'datetime',
         'position' => 'integer',
     ];

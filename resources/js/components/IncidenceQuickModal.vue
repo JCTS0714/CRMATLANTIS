@@ -103,6 +103,14 @@
 
             <div class="mt-5 flex items-center justify-end gap-2">
               <button
+                v-if="isLocalAutofillEnabled"
+                type="button"
+                class="inline-flex items-center rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-950/20 dark:text-amber-300 dark:hover:bg-amber-900/30"
+                @click="fillIncidenceForTest"
+              >
+                Rellenar test
+              </button>
+              <button
                 type="button"
                 class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                 @click="hide"
@@ -133,6 +141,21 @@ import { toastError, toastSuccess } from '../ui/alerts';
 const open = ref(false);
 const saving = ref(false);
 const error = ref('');
+
+const isLocalAutofillEnabled = (() => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+})();
+
+let localAutofillModulePromise = null;
+const getLocalAutofillModule = async () => {
+  if (!isLocalAutofillEnabled) return null;
+  if (!localAutofillModulePromise) {
+    localAutofillModulePromise = import('/resources/js/local/customerModalAutofill.local.js').catch(() => null);
+  }
+  return localAutofillModulePromise;
+};
 
 const form = ref({
   title: '',
@@ -266,6 +289,11 @@ const submit = async () => {
   } finally {
     saving.value = false;
   }
+};
+
+const fillIncidenceForTest = async () => {
+  const module = await getLocalAutofillModule();
+  module?.autofillIncidenceQuickForm?.(form);
 };
 
 const show = async (detail = {}) => {

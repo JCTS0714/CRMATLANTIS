@@ -24,7 +24,23 @@
     <td class="px-4 py-3">{{ lead.document_type ?? '' }}</td>
     <td class="px-4 py-3">{{ lead.document_number ?? '' }}</td>
     <td class="px-4 py-3">{{ lead.customer_id ?? '' }}</td>
-    <td class="px-4 py-3">{{ lead.created_by ?? '' }}</td>
+    <td class="px-4 py-3">
+      <select
+        class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        :value="lead.stage_id ?? ''"
+        :disabled="isMoving || !Array.isArray(stages) || stages.length === 0"
+        @change="handleStageChange"
+      >
+        <option
+          v-for="stage in stages"
+          :key="stage.id"
+          :value="stage.id"
+        >
+          {{ stage.name }}
+        </option>
+      </select>
+    </td>
+    <td class="px-4 py-3">{{ lead.created_by_name || lead.created_by || '' }}</td>
     <td class="px-4 py-3">{{ formatDateTime(lead.won_at) }}</td>
     <td class="px-4 py-3">{{ formatDateTime(lead.created_at) }}</td>
     <td class="px-4 py-3">{{ formatDateTime(lead.updated_at) }}</td>
@@ -32,11 +48,20 @@
 </template>
 
 <script setup>
+const emit = defineEmits(['change-stage']);
 
 const props = defineProps({
   lead: {
     type: Object,
     required: true
+  },
+  stages: {
+    type: Array,
+    default: () => []
+  },
+  isMoving: {
+    type: Boolean,
+    default: false
   }
 });
 
@@ -76,5 +101,16 @@ const goToCalendar = () => {
   }
 
   window.location.assign(`/calendar?${params.toString()}`);
+};
+
+const handleStageChange = (event) => {
+  const selectedStageId = Number(event.target.value);
+  if (!Number.isFinite(selectedStageId) || selectedStageId <= 0) return;
+  if (selectedStageId === Number(props.lead?.stage_id)) return;
+
+  emit('change-stage', {
+    leadId: props.lead?.id,
+    stageId: selectedStageId,
+  });
 };
 </script>

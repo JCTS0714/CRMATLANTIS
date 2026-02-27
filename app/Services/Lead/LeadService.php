@@ -44,6 +44,7 @@ class LeadService
                 'currency' => $data['currency'] ?? 'PEN',
                 'observacion' => $data['observacion'] ?? null,
                 'migracion' => $data['migracion'] ?? null,
+                'referencia' => $data['referencia'] ?? null,
                 'contact_name' => $data['contact_name'] ?? null,
                 'contact_phone' => $data['contact_phone'] ?? null,
                 'contact_email' => $data['contact_email'] ?? null,
@@ -81,6 +82,9 @@ class LeadService
         }
         if (array_key_exists('migracion', $data)) {
             $updateData['migracion'] = $data['migracion'];
+        }
+        if (array_key_exists('referencia', $data)) {
+            $updateData['referencia'] = $data['referencia'];
         }
         if (array_key_exists('contact_name', $data)) {
             $updateData['contact_name'] = $data['contact_name'];

@@ -14,13 +14,26 @@ class CustomerService
     {
         return Customer::create([
             'name' => $data['name'],
+            'csv_numero' => $data['csv_numero'] ?? null,
             'contact_name' => $data['contact_name'] ?? null,
             'contact_phone' => $data['contact_phone'] ?? null,
             'contact_email' => $data['contact_email'] ?? null,
             'company_name' => $data['company_name'] ?? null,
             'company_address' => $data['company_address'] ?? null,
+            'precio' => $data['precio'] ?? null,
+            'rubro' => $data['rubro'] ?? null,
+            'mes' => $data['mes'] ?? null,
+            'link' => $data['link'] ?? null,
+            'usuario' => $data['usuario'] ?? null,
+            'contrasena' => $data['contrasena'] ?? null,
+            'servidor' => $data['servidor'] ?? null,
+            'fecha_creacion' => $data['fecha_creacion'] ?? null,
+            'fecha_contacto' => $data['fecha_contacto'] ?? null,
+            'fecha_contacto_mes' => $data['fecha_contacto_mes'] ?? null,
+            'fecha_contacto_anio' => $data['fecha_contacto_anio'] ?? null,
             'document_type' => $data['document_type'] ?? null,
             'document_number' => $data['document_number'] ?? null,
+            'observacion' => $data['observacion'] ?? null,
         ]);
     }
 
@@ -37,6 +50,9 @@ class CustomerService
         if (array_key_exists('contact_name', $data)) {
             $updateData['contact_name'] = $data['contact_name'];
         }
+        if (array_key_exists('csv_numero', $data)) {
+            $updateData['csv_numero'] = $data['csv_numero'];
+        }
         if (array_key_exists('contact_phone', $data)) {
             $updateData['contact_phone'] = $data['contact_phone'];
         }
@@ -49,11 +65,47 @@ class CustomerService
         if (array_key_exists('company_address', $data)) {
             $updateData['company_address'] = $data['company_address'];
         }
+        if (array_key_exists('precio', $data)) {
+            $updateData['precio'] = $data['precio'];
+        }
+        if (array_key_exists('rubro', $data)) {
+            $updateData['rubro'] = $data['rubro'];
+        }
+        if (array_key_exists('mes', $data)) {
+            $updateData['mes'] = $data['mes'];
+        }
+        if (array_key_exists('link', $data)) {
+            $updateData['link'] = $data['link'];
+        }
+        if (array_key_exists('usuario', $data)) {
+            $updateData['usuario'] = $data['usuario'];
+        }
+        if (array_key_exists('contrasena', $data)) {
+            $updateData['contrasena'] = $data['contrasena'];
+        }
+        if (array_key_exists('servidor', $data)) {
+            $updateData['servidor'] = $data['servidor'];
+        }
+        if (array_key_exists('fecha_creacion', $data)) {
+            $updateData['fecha_creacion'] = $data['fecha_creacion'];
+        }
+        if (array_key_exists('fecha_contacto', $data)) {
+            $updateData['fecha_contacto'] = $data['fecha_contacto'];
+        }
+        if (array_key_exists('fecha_contacto_mes', $data)) {
+            $updateData['fecha_contacto_mes'] = $data['fecha_contacto_mes'];
+        }
+        if (array_key_exists('fecha_contacto_anio', $data)) {
+            $updateData['fecha_contacto_anio'] = $data['fecha_contacto_anio'];
+        }
         if (array_key_exists('document_type', $data)) {
             $updateData['document_type'] = $data['document_type'];
         }
         if (array_key_exists('document_number', $data)) {
             $updateData['document_number'] = $data['document_number'];
+        }
+        if (array_key_exists('observacion', $data)) {
+            $updateData['observacion'] = $data['observacion'];
         }
 
         $customer->update($updateData);
@@ -75,6 +127,11 @@ class CustomerService
                     ->orWhere('contact_email', 'like', "%{$query}%")
                     ->orWhere('contact_phone', 'like', "%{$query}%")
                     ->orWhere('company_name', 'like', "%{$query}%")
+                    ->orWhere('rubro', 'like', "%{$query}%")
+                    ->orWhere('mes', 'like', "%{$query}%")
+                    ->orWhere('usuario', 'like', "%{$query}%")
+                    ->orWhere('servidor', 'like', "%{$query}%")
+                    ->orWhere('csv_numero', 'like', "%{$query}%")
                     ->orWhere('document_number', 'like', "%{$query}%");
             });
         }

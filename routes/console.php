@@ -586,15 +586,29 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     };
 
     $idx = [
+        'id' => $findIndex(['id']),
+        'numero' => $findIndex(['n°', 'nº', 'nro', 'nro.', '#']),
+        'tipo' => $findIndex(['tipo', 'tipo documento', 'document_type']),
+        'comercio' => $findIndex(['comercio', 'comercio(s)', 'comercios']),
+        'celular' => $findIndex(['celular', 'teléfono', 'telefono', 'movil', 'telf']),
+        'precio' => $findIndex(['precio', 'post_precio']),
+        'rubro' => $findIndex(['rubro', 'post_rubro']),
+        'mes' => $findIndex(['mes', 'post_mes']),
+        'anio' => $findIndex(['anio', 'año', 'ano', 'post_ano']),
         'nombre' => $findIndex(['nombre', 'Nombre', 'cliente', 'nombre cliente', 'nombrecliente']),
         'empresa' => $findIndex(['empresa', 'Empresa', 'comercio', 'comercio(s)', 'comercios']),
         'documento' => $findIndex(['documento', 'Documento', 'doc', 'dni', 'ruc']),
         'telefono' => $findIndex(['telefono', 'Teléfono', 'celular', 'movil', 'telf']),
-        'correo' => $findIndex(['correo', 'Correo', 'email', 'e-mail', 'usuario', 'mail']),
+        'correo' => $findIndex(['correo', 'Correo', 'email', 'e-mail', 'mail']),
+        'observacion' => $findIndex(['observacion', 'observación', 'motivo']),
+        'link' => $findIndex(['link', 'Link', 'enlace', 'url', 'post_link']),
+        'usuario' => $findIndex(['usuario', 'Usuario', 'user', 'login', 'post_usuario']),
+        'contrasena' => $findIndex(['contrasena', 'contraseña', 'password', 'clave', 'post_contrasena']),
+        'servidor' => $findIndex(['servidor', 'Servidor', 'server']),
         'ciudad' => $findIndex(['ciudad', 'Ciudad']),
         'referencia' => $findIndex(['referencia', 'Referencia']),
-        'fecha_contacto' => $findIndex(['fecha_contacto', 'fecha contacto', 'f. contacto', 'fcontacto']),
-        'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'created_at', 'creado_en', 'fechacreacion']),
+        'fecha_contacto' => $findIndex(['fecha_contacto', 'fecha contacto', 'f. contacto', 'f contacto', 'fcontacto']),
+        'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'f. creacion', 'f creacion', 'created_at', 'creado_en', 'fechacreacion']),
     ];
 
     $clean = function ($v): ?string {
@@ -610,30 +624,92 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $v = preg_replace('/\D+/', '', (string) $value);
         $v = is_string($v) ? trim($v) : '';
         if ($v === '') return null;
-
-        $placeholders = ['55555555', '00000000', '12345678', '99999999', '11111111', '22222222'];
-        if (in_array($v, $placeholders, true)) return null;
-
         return $v;
     };
 
-    $inferDocumentType = function (?string $documentNumber): ?string {
-        if (!$documentNumber) return null;
-        $len = strlen($documentNumber);
-        if ($len === 8) return 'dni';
-        if ($len === 11) return 'ruc';
+    $resolveDocumentType = function (?string $tipoRaw, ?string $documentNumber): ?string {
+        $tipo = mb_strtolower(trim((string) $tipoRaw), 'UTF-8');
+        if ($tipo === 'dni') return 'dni';
+        if ($tipo === 'ruc') return 'ruc';
+
+        if ($documentNumber) {
+            $len = strlen($documentNumber);
+            if ($len === 8) return 'dni';
+            if ($len === 11) return 'ruc';
+        }
+
         return null;
     };
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
         if ($s === '') return null;
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $s, $m) === 1) {
+            try {
+                return Carbon::createFromFormat('d/m/Y H:i:s', sprintf('%02d/%02d/%04d 00:00:00', (int) $m[1], (int) $m[2], (int) $m[3]))
+                    ->toDateTimeString();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $s, $m) === 1) {
+            try {
+                return Carbon::createFromFormat('d-m-Y H:i:s', sprintf('%02d-%02d-%04d 00:00:00', (int) $m[1], (int) $m[2], (int) $m[3]))
+                    ->toDateTimeString();
+            } catch (\Throwable $e) {
+            }
+        }
+
         try {
             return Carbon::parse($s)->toDateTimeString();
         } catch (\Throwable $e) {
             return null;
         }
     };
+
+    $parseDate = function (?string $s): ?string {
+        $s = $s ? trim($s) : '';
+        if ($s === '') return null;
+
+        if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $s, $m) === 1) {
+            try {
+                return Carbon::createFromFormat('d/m/Y', sprintf('%02d/%02d/%04d', (int) $m[1], (int) $m[2], (int) $m[3]))
+                    ->toDateString();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        if (preg_match('/^(\d{1,2})-(\d{1,2})-(\d{4})$/', $s, $m) === 1) {
+            try {
+                return Carbon::createFromFormat('d-m-Y', sprintf('%02d-%02d-%04d', (int) $m[1], (int) $m[2], (int) $m[3]))
+                    ->toDateString();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        try {
+            return Carbon::parse($s)->toDateString();
+        } catch (\Throwable $e) {
+            return null;
+        }
+    };
+
+    $monthMap = [
+        'enero' => 1,
+        'febrero' => 2,
+        'marzo' => 3,
+        'abril' => 4,
+        'mayo' => 5,
+        'junio' => 6,
+        'julio' => 7,
+        'agosto' => 8,
+        'septiembre' => 9,
+        'setiembre' => 9,
+        'octubre' => 10,
+        'noviembre' => 11,
+        'diciembre' => 12,
+    ];
 
     $rowNumber = 1;
     $created = 0;
@@ -650,21 +726,40 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
-        $nombre = $clean($get($idx['nombre']));
-        $empresa = $clean($get($idx['empresa']));
-        $telefono = $clean($get($idx['telefono']));
+        $comercio = $clean($get($idx['comercio']));
+        $csvNumeroRaw = $clean($get($idx['id'])) ?? $clean($get($idx['numero']));
+        $csvNumero = is_numeric($csvNumeroRaw) ? (int) $csvNumeroRaw : null;
+        $nombre = $clean($get($idx['nombre'])) ?? $comercio;
+        $empresa = $clean($get($idx['empresa'])) ?? $comercio;
+        $telefono = $clean($get($idx['celular'])) ?? $clean($get($idx['telefono']));
         $correo = $clean($get($idx['correo']));
+        $observacion = $clean($get($idx['observacion']));
+        $link = $clean($get($idx['link']));
+        $usuario = $clean($get($idx['usuario']));
+        $contrasena = $clean($get($idx['contrasena']));
+        $servidor = $clean($get($idx['servidor']));
         $documento = $digitsOnly($get($idx['documento']));
-        $docType = $inferDocumentType($documento);
+        $tipoDocumento = $clean($get($idx['tipo']));
+        $docType = $resolveDocumentType($tipoDocumento, $documento);
+        $rubro = $clean($get($idx['rubro']));
+        $mesTexto = $clean($get($idx['mes']));
+        $anioTexto = $clean($get($idx['anio']));
+        $precioRaw = $clean($get($idx['precio']));
+        $precio = null;
+        if ($precioRaw !== null) {
+            $precioNormalized = str_replace(',', '.', preg_replace('/[^\d,\.\-]/', '', $precioRaw) ?? $precioRaw);
+            if (is_numeric($precioNormalized)) {
+                $precio = round((float) $precioNormalized, 2);
+            }
+        }
 
         if (!$nombre && !$empresa && !$telefono && !$correo && !$documento) {
             $skipped++;
             continue;
         }
 
-        if ($documento && !$docType) {
-            // Documento con longitud no estándar
-            $documento = null;
+        if ($documento && strlen($documento) > 20) {
+            $documento = mb_substr($documento, 0, 20);
         }
 
         $ciudad = $clean($get($idx['ciudad']));
@@ -678,16 +773,69 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $createdAt = $parseDateTime($clean($get($idx['fecha_creacion']))) ?? now()->toDateTimeString();
         $contactAt = $parseDateTime($clean($get($idx['fecha_contacto'])));
         $updatedAt = $contactAt && $contactAt > $createdAt ? $contactAt : $createdAt;
+        $fechaCreacion = $parseDate($clean($get($idx['fecha_creacion'])));
+        $fechaContacto = $parseDate($clean($get($idx['fecha_contacto'])));
+        $fechaContactoMes = null;
+        $fechaContactoAnio = null;
+        if ($fechaContacto) {
+            try {
+                $contactDate = Carbon::parse($fechaContacto);
+                $fechaContactoMes = (int) $contactDate->format('n');
+                $fechaContactoAnio = (int) $contactDate->format('Y');
+            } catch (\Throwable $e) {
+                $fechaContactoMes = null;
+                $fechaContactoAnio = null;
+            }
+        }
+        if ($mesTexto) {
+            $mesNormalizado = mb_strtolower(trim((string) $mesTexto), 'UTF-8');
+            $mesPost = $monthMap[$mesNormalizado] ?? null;
+            if (!$mesPost) {
+                $mesNumero = (int) preg_replace('/\D+/', '', $mesNormalizado);
+                if ($mesNumero >= 1 && $mesNumero <= 12) {
+                    $mesPost = $mesNumero;
+                }
+            }
+            if ($mesPost) {
+                $fechaContactoMes = $mesPost;
+            }
+        }
+        if ($anioTexto) {
+            $anioNumero = (int) preg_replace('/\D+/', '', (string) $anioTexto);
+            if ($anioNumero >= 1900 && $anioNumero <= 3000) {
+                $fechaContactoAnio = $anioNumero;
+            }
+        }
+        if (!$fechaContactoAnio && $fechaCreacion) {
+            try {
+                $fechaContactoAnio = (int) Carbon::parse($fechaCreacion)->format('Y');
+            } catch (\Throwable $e) {
+                $fechaContactoAnio = null;
+            }
+        }
 
         $payload = [
             'name' => $nombre ?? $empresa ?? ($telefono ? "Cliente {$telefono}" : 'Cliente'),
+            'csv_numero' => $csvNumero,
             'contact_name' => $nombre,
             'contact_phone' => $telefono,
             'contact_email' => $correo,
             'company_name' => $empresa,
             'company_address' => $companyAddress,
+            'precio' => $precio,
+            'rubro' => $rubro,
+            'mes' => $mesTexto,
+            'link' => $link,
+            'usuario' => $usuario,
+            'contrasena' => $contrasena,
+            'servidor' => $servidor,
+            'fecha_creacion' => $fechaCreacion,
+            'fecha_contacto' => $fechaContacto,
+            'fecha_contacto_mes' => $fechaContactoMes,
+            'fecha_contacto_anio' => $fechaContactoAnio,
             'document_type' => $docType,
             'document_number' => $documento,
+            'observacion' => $observacion,
         ];
 
         if ($dryRun) {
@@ -703,7 +851,21 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
                     'document_number' => $documento,
                 ]);
             } else {
-                $customer = new Customer();
+                $fallbackName = $empresa ?? $nombre;
+
+                if ($fallbackName && $telefono) {
+                    $customer = Customer::query()->firstOrNew([
+                        'company_name' => $fallbackName,
+                        'contact_phone' => $telefono,
+                    ]);
+                } elseif ($fallbackName && $usuario) {
+                    $customer = Customer::query()->firstOrNew([
+                        'company_name' => $fallbackName,
+                        'usuario' => $usuario,
+                    ]);
+                } else {
+                    $customer = new Customer();
+                }
             }
 
             $isNew = !$customer->exists;

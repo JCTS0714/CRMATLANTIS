@@ -11,13 +11,35 @@ class Customer extends Model
 {
     protected $fillable = [
         'name',
+        'csv_numero',
         'contact_name',
         'contact_phone',
         'contact_email',
         'company_name',
         'company_address',
+        'precio',
+        'rubro',
+        'mes',
+        'link',
+        'usuario',
+        'contrasena',
+        'servidor',
+        'fecha_creacion',
+        'fecha_contacto',
+        'fecha_contacto_mes',
+        'fecha_contacto_anio',
         'document_type',
         'document_number',
+        'observacion',
+    ];
+
+    protected $casts = [
+        'csv_numero' => 'integer',
+        'precio' => 'decimal:2',
+        'fecha_creacion' => 'date',
+        'fecha_contacto' => 'date',
+        'fecha_contacto_mes' => 'integer',
+        'fecha_contacto_anio' => 'integer',
     ];
 
     // ==================== RELATIONSHIPS ====================
@@ -62,6 +84,8 @@ class Customer extends Model
                 ->orWhere('contact_name', 'like', $like)
                 ->orWhere('contact_email', 'like', $like)
                 ->orWhere('contact_phone', 'like', $like)
+                ->orWhere('usuario', 'like', $like)
+                ->orWhere('servidor', 'like', $like)
                 ->orWhere('document_number', 'like', $like);
         });
     }

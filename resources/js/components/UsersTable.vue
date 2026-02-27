@@ -207,6 +207,14 @@
           * Campos obligatorios
         </div>
         <div class="flex items-center gap-3">
+          <BaseButton
+            v-if="!editingUser && isLocalAutofillEnabled"
+            variant="secondary"
+            size="sm"
+            @click="fillUserCreateForTest"
+          >
+            Rellenar test
+          </BaseButton>
           <BaseButton 
             variant="secondary" 
             size="sm"
@@ -291,6 +299,21 @@ const saving = ref(false);
 const showCreateModal = ref(false);
 const userModal = ref(null);
 const roleOptions = ref(['employee']);
+
+const isLocalAutofillEnabled = (() => {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
+})();
+
+let localAutofillModulePromise = null;
+const getLocalAutofillModule = async () => {
+  if (!isLocalAutofillEnabled) return null;
+  if (!localAutofillModulePromise) {
+    localAutofillModulePromise = import('/resources/js/local/customerModalAutofill.local.js').catch(() => null);
+  }
+  return localAutofillModulePromise;
+};
 
 const userForm = ref({
   name: '',
@@ -442,6 +465,12 @@ const handlePhotoChange = (e) => {
     photoPreview.value = ev.target.result;
   };
   reader.readAsDataURL(file);
+};
+
+const fillUserCreateForTest = async () => {
+  if (editingUser.value) return;
+  const module = await getLocalAutofillModule();
+  module?.autofillUserCreateForm?.(userForm, roleOptions.value);
 };
 
 const loadRoleOptions = async () => {

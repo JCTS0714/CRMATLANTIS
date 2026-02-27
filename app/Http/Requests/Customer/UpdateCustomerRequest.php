@@ -10,20 +10,33 @@ class UpdateCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('customers.edit') ?? false;
+        return $this->user()?->can('customers.update') ?? false;
     }
 
     public function rules(): array
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'csv_numero' => ['nullable', 'integer', 'min:1'],
             'contact_name' => ['nullable', 'string', 'max:255'],
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
             'company_address' => ['nullable', 'string', 'max:255'],
-            'document_type' => ['nullable', 'string', Rule::in(['dni', 'ruc'])],
+            'precio' => ['nullable', 'numeric', 'min:0'],
+            'rubro' => ['nullable', 'string', 'max:255'],
+            'mes' => ['nullable', 'string', 'max:40'],
+            'link' => ['nullable', 'string', 'max:512'],
+            'usuario' => ['nullable', 'string', 'max:150'],
+            'contrasena' => ['nullable', 'string', 'max:255'],
+            'servidor' => ['nullable', 'string', Rule::in(['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'])],
+            'fecha_creacion' => ['nullable', 'date'],
+            'fecha_contacto' => ['nullable', 'date'],
+            'fecha_contacto_mes' => ['nullable', 'integer', 'between:1,12', 'required_with:fecha_contacto_anio'],
+            'fecha_contacto_anio' => ['nullable', 'integer', 'between:2000,2100', 'required_with:fecha_contacto_mes'],
+            'document_type' => ['nullable', 'string', Rule::in(['dni', 'ruc', 'otro'])],
             'document_number' => ['nullable', 'string', 'max:20'],
+            'observacion' => ['nullable', 'string', 'max:2000'],
         ];
     }
 
@@ -31,8 +44,14 @@ class UpdateCustomerRequest extends FormRequest
     {
         return [
             'name.required' => 'El nombre es requerido.',
+            'csv_numero.integer' => 'El N° debe ser numérico.',
             'contact_email.email' => 'El email debe ser válido.',
-            'document_type.in' => 'El tipo de documento debe ser DNI o RUC.',
+            'document_type.in' => 'El tipo de documento debe ser DNI, RUC u OTRO.',
+            'servidor.in' => 'El servidor debe ser ATLANTIS ONLINE, ATLANTIS VIP, ATLANTIS POS, ATLANTIS FAST o LORITO.',
+            'fecha_contacto_mes.required_with' => 'Debes completar mes y año de contacto.',
+            'fecha_contacto_anio.required_with' => 'Debes completar mes y año de contacto.',
+            'fecha_contacto_mes.between' => 'El mes de contacto debe estar entre 1 y 12.',
+            'fecha_contacto_anio.between' => 'El año de contacto no es válido.',
         ];
     }
 
