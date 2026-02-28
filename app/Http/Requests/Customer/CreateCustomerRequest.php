@@ -29,6 +29,7 @@ class CreateCustomerRequest extends FormRequest
             'usuario' => ['nullable', 'string', 'max:150'],
             'contrasena' => ['nullable', 'string', 'max:255'],
             'servidor' => ['nullable', 'string', Rule::in(['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'])],
+            'menbresia' => ['nullable', 'string', Rule::in(['Mensual', 'Trimestral', 'Semestral', 'Anual'])],
             'fecha_creacion' => ['nullable', 'date'],
             'fecha_contacto' => ['nullable', 'date'],
             'fecha_contacto_mes' => ['nullable', 'integer', 'between:1,12', 'required_with:fecha_contacto_anio'],

@@ -75,6 +75,7 @@ function escapeHtml(value) {
 }
 
 const CUSTOMER_SERVER_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+const CUSTOMER_MENBRESIA_OPTIONS = ['Mensual', 'Trimestral', 'Semestral', 'Anual'];
 const CONTACT_MONTH_OPTIONS = [
   { value: 1, label: 'Enero' },
   { value: 2, label: 'Febrero' },
@@ -136,6 +137,18 @@ function buildCustomerServerOptions(selectedValue = '') {
   const options = [
     `<option value="" ${selected ? '' : 'selected'}>(opcional)</option>`,
     ...CUSTOMER_SERVER_OPTIONS.map((option) =>
+      `<option value="${option}" ${selected === option ? 'selected' : ''}>${option}</option>`
+    ),
+  ];
+
+  return options.join('');
+}
+
+function buildCustomerMenbresiaOptions(selectedValue = '') {
+  const selected = String(selectedValue ?? '').trim();
+  const options = [
+    `<option value="" ${selected ? '' : 'selected'}>(opcional)</option>`,
+    ...CUSTOMER_MENBRESIA_OPTIONS.map((option) =>
       `<option value="${option}" ${selected === option ? 'selected' : ''}>${option}</option>`
     ),
   ];
@@ -231,6 +244,13 @@ export async function promptCustomerEdit(customer = {}) {
         </div>
 
         <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Menbresia</label>
+          <select id="sw-cust-menbresia" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildCustomerMenbresiaOptions(customer.menbresia)}
+          </select>
+        </div>
+
+        <div class="w-full col-span-2">
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Observación</label>
           <textarea id="sw-cust-observacion" rows="3" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" placeholder="Observaciones del cliente...">${escapeHtml(normalizedObservacion)}</textarea>
         </div>
@@ -261,6 +281,7 @@ export async function promptCustomerEdit(customer = {}) {
       const usuario = document.getElementById('sw-cust-usuario')?.value?.trim() ?? '';
       const contrasena = document.getElementById('sw-cust-contrasena')?.value?.trim() ?? '';
       const servidor = document.getElementById('sw-cust-servidor')?.value?.trim() ?? '';
+      const menbresia = document.getElementById('sw-cust-menbresia')?.value?.trim() ?? '';
       const observacion = document.getElementById('sw-cust-observacion')?.value?.trim() ?? '';
       const fecha_contacto_mes = document.getElementById('sw-cust-fecha_contacto_mes')?.value?.trim() ?? '';
       const fecha_contacto_anio = document.getElementById('sw-cust-fecha_contacto_anio')?.value?.trim() ?? '';
@@ -292,6 +313,11 @@ export async function promptCustomerEdit(customer = {}) {
 
       if (servidor && !CUSTOMER_SERVER_OPTIONS.includes(servidor)) {
         Swal.showValidationMessage('El servidor debe ser ATLANTIS ONLINE, ATLANTIS VIP o ATLANTIS POS.');
+        return false;
+      }
+
+      if (menbresia && !CUSTOMER_MENBRESIA_OPTIONS.includes(menbresia)) {
+        Swal.showValidationMessage('La menbresia debe ser Mensual, Anual, Trimestral o Semestral.');
         return false;
       }
 
@@ -332,6 +358,7 @@ export async function promptCustomerEdit(customer = {}) {
         usuario: usuario || null,
         contrasena: contrasena || null,
         servidor: servidor || null,
+        menbresia: menbresia || null,
         observacion: observacion || null,
         fecha_contacto_mes: mesNumber,
         fecha_contacto_anio: anioNumber,
@@ -356,6 +383,7 @@ export async function promptCustomerCreate() {
     usuario: '',
     contrasena: '',
     servidor: '',
+    menbresia: 'Mensual',
     observacion: '',
     fecha_contacto_mes: String(new Date().getMonth() + 1),
     fecha_contacto_anio: String(new Date().getFullYear()),
@@ -433,6 +461,13 @@ export async function promptCustomerCreate() {
         </div>
 
         <div class="w-full col-span-2">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Menbresia</label>
+          <select id="sw-cust-menbresia" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildCustomerMenbresiaOptions(empty.menbresia)}
+          </select>
+        </div>
+
+        <div class="w-full col-span-2">
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Observación</label>
           <textarea id="sw-cust-observacion" rows="3" class="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" placeholder="Observaciones del cliente...">${escapeHtml(empty.observacion)}</textarea>
         </div>
@@ -468,6 +503,7 @@ export async function promptCustomerCreate() {
       const usuario = document.getElementById('sw-cust-usuario')?.value?.trim() ?? '';
       const contrasena = document.getElementById('sw-cust-contrasena')?.value?.trim() ?? '';
       const servidor = document.getElementById('sw-cust-servidor')?.value?.trim() ?? '';
+      const menbresia = document.getElementById('sw-cust-menbresia')?.value?.trim() ?? '';
       const observacion = document.getElementById('sw-cust-observacion')?.value?.trim() ?? '';
       const fecha_contacto_mes = document.getElementById('sw-cust-fecha_contacto_mes')?.value?.trim() ?? '';
       const fecha_contacto_anio = document.getElementById('sw-cust-fecha_contacto_anio')?.value?.trim() ?? '';
@@ -508,6 +544,11 @@ export async function promptCustomerCreate() {
         return false;
       }
 
+      if (menbresia && !CUSTOMER_MENBRESIA_OPTIONS.includes(menbresia)) {
+        Swal.showValidationMessage('La menbresia debe ser Mensual, Anual, Trimestral o Semestral.');
+        return false;
+      }
+
       const mesNumber = Number.parseInt(fecha_contacto_mes, 10);
       const anioNumber = Number.parseInt(fecha_contacto_anio, 10);
 
@@ -535,6 +576,7 @@ export async function promptCustomerCreate() {
         usuario: usuario || null,
         contrasena: contrasena || null,
         servidor: servidor || null,
+        menbresia: menbresia || null,
         observacion: observacion || null,
         fecha_contacto_mes: mesNumber,
         fecha_contacto_anio: anioNumber,

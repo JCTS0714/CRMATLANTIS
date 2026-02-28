@@ -24,6 +24,7 @@ class Customer extends Model
         'usuario',
         'contrasena',
         'servidor',
+        'menbresia',
         'fecha_creacion',
         'fecha_contacto',
         'fecha_contacto_mes',
@@ -86,6 +87,7 @@ class Customer extends Model
                 ->orWhere('contact_phone', 'like', $like)
                 ->orWhere('usuario', 'like', $like)
                 ->orWhere('servidor', 'like', $like)
+                ->orWhere('menbresia', 'like', $like)
                 ->orWhere('document_number', 'like', $like);
         });
     }

@@ -26,12 +26,30 @@ class CustomerController extends Controller
         $perPage = (int) $request->query('per_page', 15);
         $perPage = max(5, min(100, $perPage));
 
-        $result = $this->customerService->search($q, $perPage);
+        $filters = [
+            'servidor' => trim((string) $request->query('servidor', '')),
+            'menbresia' => trim((string) $request->query('menbresia', '')),
+            'rubro' => trim((string) $request->query('rubro', '')),
+            'document_type' => trim((string) $request->query('document_type', '')),
+            'fecha_contacto_mes' => $request->query('fecha_contacto_mes'),
+            'fecha_contacto_anio' => $request->query('fecha_contacto_anio'),
+        ];
+
+        $filters['fecha_contacto_mes'] = is_numeric($filters['fecha_contacto_mes'])
+            ? (int) $filters['fecha_contacto_mes']
+            : null;
+
+        $filters['fecha_contacto_anio'] = is_numeric($filters['fecha_contacto_anio'])
+            ? (int) $filters['fecha_contacto_anio']
+            : null;
+
+        $result = $this->customerService->search($q, $perPage, $filters);
 
         return response()->json(array_merge($result, [
             'filters' => [
                 'q' => $q,
                 'per_page' => $perPage,
+                ...$filters,
             ],
         ]));
     }
@@ -110,6 +128,7 @@ class CustomerController extends Controller
             'usuario' => $validated['usuario'] ?? null,
             'contrasena' => $validated['contrasena'] ?? null,
             'servidor' => $validated['servidor'] ?? null,
+            'menbresia' => $validated['menbresia'] ?? null,
             'fecha_creacion' => $validated['fecha_creacion'] ?? now()->toDateString(),
             'fecha_contacto' => $validated['fecha_contacto'] ?? null,
             'fecha_contacto_mes' => $validated['fecha_contacto_mes'] ?? null,

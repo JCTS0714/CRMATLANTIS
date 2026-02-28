@@ -24,6 +24,14 @@
 
         <button
           type="button"
+          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          {{ showAdvancedFilters ? 'Ocultar filtros' : 'Filtros avanzados' }}
+        </button>
+
+        <button
+          type="button"
           class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-60"
           :disabled="creating"
           @click="createCustomer"
@@ -55,10 +63,70 @@
       </div>
     </div>
 
+    <div v-if="showAdvancedFilters" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Servidor</label>
+          <select v-model="advancedFilters.servidor" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in serverOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Menbresia</label>
+          <select v-model="advancedFilters.menbresia" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todas</option>
+            <option v-for="option in menbresiaOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Tipo documento</label>
+          <select v-model="advancedFilters.document_type" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in documentTypeOptions" :key="option" :value="option">{{ option.toUpperCase() }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Rubro</label>
+          <input v-model="advancedFilters.rubro" type="text" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Ej. restaurante" />
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Mes contacto</label>
+          <select v-model="advancedFilters.fecha_contacto_mes" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Año contacto</label>
+          <input v-model="advancedFilters.fecha_contacto_anio" type="number" min="2000" max="2100" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="2026" />
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2">
+        <button type="button" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" @click="applyAdvancedFilters">
+          Aplicar filtros
+        </button>
+        <button type="button" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="!hasActiveAdvancedFilters" @click="clearAdvancedFilters">
+          Limpiar
+        </button>
+      </div>
+    </div>
+
     <div
       ref="tableScrollRef"
-      class="overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      class="relative overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      :class="{ 'table-updated-flash': tableJustUpdated }"
     >
+      <div v-show="loading" class="search-loading-track">
+        <div class="search-loading-bar"></div>
+      </div>
+
       <table ref="tableRef" class="min-w-full text-left text-sm text-slate-700 dark:text-slate-200">
         <colgroup>
           <col
@@ -87,7 +155,7 @@
             <th class="px-4 py-3">Acciones</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody class="transition-opacity duration-200" :class="{ 'opacity-55': loading }">
           <tr
             v-for="(c, index) in customers"
             :key="c.id"
@@ -181,7 +249,7 @@
 
 <script setup>
 import axios from 'axios';
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { confirmDialog, promptCustomerCreate, promptCustomerEdit, toastError, toastSuccess } from '../ui/alerts';
 import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
 import { useColumnVisibility } from '../composables/useColumnVisibility';
@@ -190,6 +258,7 @@ import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScr
 const customers = ref([]);
 const loading = ref(false);
 const creating = ref(false);
+const tableJustUpdated = ref(false);
 
 const importInput = ref(null);
 const importing = ref(false);
@@ -206,6 +275,36 @@ const deletingIds = ref(new Set());
 
 const searchInput = ref('');
 let searchTimeout = null;
+const showAdvancedFilters = ref(false);
+
+const advancedFilters = ref({
+  servidor: '',
+  menbresia: '',
+  rubro: '',
+  document_type: '',
+  fecha_contacto_mes: '',
+  fecha_contacto_anio: '',
+});
+
+const serverOptions = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+const menbresiaOptions = ['Mensual', 'Trimestral', 'Semestral', 'Anual'];
+const documentTypeOptions = ['dni', 'ruc', 'otro'];
+const monthOptions = [
+  { value: 1, label: 'Enero' },
+  { value: 2, label: 'Febrero' },
+  { value: 3, label: 'Marzo' },
+  { value: 4, label: 'Abril' },
+  { value: 5, label: 'Mayo' },
+  { value: 6, label: 'Junio' },
+  { value: 7, label: 'Julio' },
+  { value: 8, label: 'Agosto' },
+  { value: 9, label: 'Septiembre' },
+  { value: 10, label: 'Octubre' },
+  { value: 11, label: 'Noviembre' },
+  { value: 12, label: 'Diciembre' },
+];
+
+const hasActiveAdvancedFilters = computed(() => Object.values(advancedFilters.value).some((value) => String(value).trim() !== ''));
 
 const pagination = ref({
   current_page: 1,
@@ -254,6 +353,19 @@ const {
   refreshStickyScroll,
 } = useStickyHorizontalScroll({ tableRef });
 
+const buildAdvancedParams = () => {
+  const params = {};
+
+  if (advancedFilters.value.servidor) params.servidor = advancedFilters.value.servidor;
+  if (advancedFilters.value.menbresia) params.menbresia = advancedFilters.value.menbresia;
+  if (advancedFilters.value.rubro) params.rubro = advancedFilters.value.rubro;
+  if (advancedFilters.value.document_type) params.document_type = advancedFilters.value.document_type;
+  if (advancedFilters.value.fecha_contacto_mes) params.fecha_contacto_mes = advancedFilters.value.fecha_contacto_mes;
+  if (advancedFilters.value.fecha_contacto_anio) params.fecha_contacto_anio = advancedFilters.value.fecha_contacto_anio;
+
+  return params;
+};
+
 const fetchCustomers = async (page = 1) => {
   loading.value = true;
   try {
@@ -262,14 +374,36 @@ const fetchCustomers = async (page = 1) => {
         q: searchInput.value || '',
         per_page: pagination.value.per_page,
         page,
+        ...buildAdvancedParams(),
       },
     });
 
     customers.value = data.customers || [];
     pagination.value = { ...pagination.value, ...(data.pagination || {}) };
+
+    tableJustUpdated.value = true;
+    setTimeout(() => {
+      tableJustUpdated.value = false;
+    }, 220);
   } finally {
     loading.value = false;
   }
+};
+
+const applyAdvancedFilters = async () => {
+  await fetchCustomers(1);
+};
+
+const clearAdvancedFilters = async () => {
+  advancedFilters.value = {
+    servidor: '',
+    menbresia: '',
+    rubro: '',
+    document_type: '',
+    fecha_contacto_mes: '',
+    fecha_contacto_anio: '',
+  };
+  await fetchCustomers(1);
 };
 
 const getRowNumber = (index) => {
@@ -499,3 +633,45 @@ onBeforeUnmount(() => {
   if (searchTimeout) clearTimeout(searchTimeout);
 });
 </script>
+
+<style scoped>
+.search-loading-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  overflow: hidden;
+  background: transparent;
+  z-index: 10;
+}
+
+.search-loading-bar {
+  width: 35%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, #38bdf8 40%, transparent 100%);
+  animation: table-search-slide 0.85s ease-in-out infinite;
+}
+
+.table-updated-flash {
+  animation: table-flash 220ms ease-out;
+}
+
+@keyframes table-search-slide {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+@keyframes table-flash {
+  from {
+    box-shadow: inset 0 0 0 9999px rgba(56, 189, 248, 0.08);
+  }
+  to {
+    box-shadow: inset 0 0 0 9999px rgba(56, 189, 248, 0);
+  }
+}
+</style>

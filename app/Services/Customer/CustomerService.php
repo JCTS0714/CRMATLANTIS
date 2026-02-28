@@ -27,6 +27,7 @@ class CustomerService
             'usuario' => $data['usuario'] ?? null,
             'contrasena' => $data['contrasena'] ?? null,
             'servidor' => $data['servidor'] ?? null,
+            'menbresia' => $data['menbresia'] ?? null,
             'fecha_creacion' => $data['fecha_creacion'] ?? null,
             'fecha_contacto' => $data['fecha_contacto'] ?? null,
             'fecha_contacto_mes' => $data['fecha_contacto_mes'] ?? null,
@@ -86,6 +87,9 @@ class CustomerService
         if (array_key_exists('servidor', $data)) {
             $updateData['servidor'] = $data['servidor'];
         }
+        if (array_key_exists('menbresia', $data)) {
+            $updateData['menbresia'] = $data['menbresia'];
+        }
         if (array_key_exists('fecha_creacion', $data)) {
             $updateData['fecha_creacion'] = $data['fecha_creacion'];
         }
@@ -116,7 +120,7 @@ class CustomerService
     /**
      * Search customers with filters
      */
-    public function search(string $query, int $perPage = 15): array
+    public function search(string $query, int $perPage = 15, array $filters = []): array
     {
         $queryBuilder = Customer::query();
 
@@ -131,9 +135,40 @@ class CustomerService
                     ->orWhere('mes', 'like', "%{$query}%")
                     ->orWhere('usuario', 'like', "%{$query}%")
                     ->orWhere('servidor', 'like', "%{$query}%")
+                    ->orWhere('menbresia', 'like', "%{$query}%")
                     ->orWhere('csv_numero', 'like', "%{$query}%")
                     ->orWhere('document_number', 'like', "%{$query}%");
             });
+        }
+
+        $servidor = trim((string) ($filters['servidor'] ?? ''));
+        if ($servidor !== '') {
+            $queryBuilder->where('servidor', $servidor);
+        }
+
+        $menbresia = trim((string) ($filters['menbresia'] ?? ''));
+        if ($menbresia !== '') {
+            $queryBuilder->where('menbresia', $menbresia);
+        }
+
+        $rubro = trim((string) ($filters['rubro'] ?? ''));
+        if ($rubro !== '') {
+            $queryBuilder->where('rubro', 'like', "%{$rubro}%");
+        }
+
+        $documentType = trim((string) ($filters['document_type'] ?? ''));
+        if ($documentType !== '') {
+            $queryBuilder->where('document_type', $documentType);
+        }
+
+        $contactMonth = (int) ($filters['fecha_contacto_mes'] ?? 0);
+        if ($contactMonth >= 1 && $contactMonth <= 12) {
+            $queryBuilder->where('fecha_contacto_mes', $contactMonth);
+        }
+
+        $contactYear = (int) ($filters['fecha_contacto_anio'] ?? 0);
+        if ($contactYear >= 2000 && $contactYear <= 2100) {
+            $queryBuilder->where('fecha_contacto_anio', $contactYear);
         }
 
         $paginator = $queryBuilder
