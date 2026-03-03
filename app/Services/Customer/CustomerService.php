@@ -241,7 +241,7 @@ class CustomerService
         foreach ($customersData as $index => $data) {
             try {
                 // Check if customer exists by document
-                if (!empty($data['document_type']) && !empty($data['document_number'])) {
+                if (!empty($data['document_type']) && !empty($data['document_number']) && strtolower((string) $data['document_type']) !== 'ruc') {
                     $exists = $this->findByDocument($data['document_type'], $data['document_number']);
                     if ($exists) {
                         $skipped++;

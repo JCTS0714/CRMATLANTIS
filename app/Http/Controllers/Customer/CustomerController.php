@@ -99,7 +99,7 @@ class CustomerController extends Controller
             ], 422);
         }
 
-        if ($documentType && $documentNumber) {
+        if ($documentType && $documentNumber && strtolower($documentType) !== 'ruc') {
             $exists = Customer::query()
                 ->where('document_type', $documentType)
                 ->where('document_number', $documentNumber)

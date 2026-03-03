@@ -80,7 +80,7 @@ class UpdateCustomerRequest extends FormRequest
             }
 
             // Check for duplicate document (excluding current customer)
-            if ($documentType && $documentNumber) {
+            if ($documentType && $documentNumber && strtolower($documentType) !== 'ruc') {
                 $customer = $this->route('customer');
                 
                 $exists = Customer::query()
