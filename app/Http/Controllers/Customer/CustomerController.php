@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
 {
@@ -29,6 +30,7 @@ class CustomerController extends Controller
         $filters = [
             'servidor' => trim((string) $request->query('servidor', '')),
             'menbresia' => trim((string) $request->query('menbresia', '')),
+            'estado' => trim((string) $request->query('estado', '')),
             'rubro' => trim((string) $request->query('rubro', '')),
             'document_type' => trim((string) $request->query('document_type', '')),
             'fecha_contacto_mes' => $request->query('fecha_contacto_mes'),
@@ -129,6 +131,7 @@ class CustomerController extends Controller
             'contrasena' => $validated['contrasena'] ?? null,
             'servidor' => $validated['servidor'] ?? null,
             'menbresia' => $validated['menbresia'] ?? null,
+            'estado' => $validated['estado'] ?? 'activo',
             'fecha_creacion' => $validated['fecha_creacion'] ?? now()->toDateString(),
             'fecha_contacto' => $validated['fecha_contacto'] ?? null,
             'fecha_contacto_mes' => $validated['fecha_contacto_mes'] ?? null,
@@ -152,6 +155,22 @@ class CustomerController extends Controller
             'message' => 'Cliente eliminado.',
         ]);
     }
+
+    public function updateStatus(Request $request, Customer $customer): JsonResponse
+    {
+        $validated = $request->validate([
+            'estado' => ['required', 'string', Rule::in(['activo', 'retirado', 'eliminado'])],
+        ]);
+
+        $customer->estado = $validated['estado'];
+        $customer->save();
+
+        return response()->json([
+            'message' => 'Estado del cliente actualizado.',
+            'data' => CustomerResponseDto::fromModel($customer->fresh())->toArray(),
+        ]);
+    }
+
     public function search(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));

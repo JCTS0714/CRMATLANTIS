@@ -6,7 +6,7 @@
           v-model="searchInput"
           type="text"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          placeholder="Buscar contador (nro, comercio, nombre, usuario, servidor…)"
+          placeholder="Buscar contador (contador, empresa, contacto, teléfono, usuario, servidor…)"
         />
       </div>
 
@@ -23,6 +23,16 @@
           <input type="file" class="hidden" accept=".csv,.txt,text/csv" @change="onImportFileChange" />
           Importar CSV
         </label>
+
+        <button
+          v-if="isLocalOnlyActionEnabled"
+          type="button"
+          class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
+          :disabled="clearingLocal || loading"
+          @click="clearTableLocal"
+        >
+          Limpiar tabla (local)
+        </button>
 
         <TableColumnsDropdown
           :columns="columns"
@@ -51,12 +61,15 @@
         </colgroup>
         <thead class="bg-slate-50 text-xs uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-200">
           <tr>
-            <th class="px-4 py-3">Nro</th>
-            <th class="px-4 py-3">Comercio</th>
-            <th class="px-4 py-3">Nombre</th>
-            <th class="px-4 py-3">Cliente</th>
+            <th class="px-4 py-3">Contador</th>
+            <th class="px-4 py-3">Empresa</th>
+            <th class="px-4 py-3">Contacto</th>
+            <th class="px-4 py-3">Teléfono</th>
             <th class="px-4 py-3">Usuario</th>
+            <th class="px-4 py-3">Contraseña</th>
             <th class="px-4 py-3">Servidor</th>
+            <th class="px-4 py-3">Estado empresa</th>
+            <th class="px-4 py-3">Link</th>
             <th class="px-4 py-3">Acciones</th>
           </tr>
         </thead>
@@ -66,12 +79,26 @@
             :key="c.id"
             class="border-t border-slate-200 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800"
           >
-            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ c.nro || '—' }}</td>
+            <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">{{ c.nom_contador || '—' }}</td>
             <td class="px-4 py-3">{{ c.comercio || '—' }}</td>
-            <td class="px-4 py-3">{{ c.nom_contador || '—' }}</td>
-            <td class="px-4 py-3">{{ c.customer?.name || '—' }}</td>
+            <td class="px-4 py-3">{{ c.titular_tlf || '—' }}</td>
+            <td class="px-4 py-3">{{ c.telefono || '—' }}</td>
             <td class="px-4 py-3">{{ c.usuario || '—' }}</td>
+            <td class="px-4 py-3">{{ c.contrasena || '—' }}</td>
             <td class="px-4 py-3">{{ c.servidor || '—' }}</td>
+            <td class="px-4 py-3">{{ c.estado_empresa || c.customer?.estado || 'activo' }}</td>
+            <td class="px-4 py-3">
+              <a
+                v-if="c.link"
+                :href="normalizeLink(c.link)"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="text-sky-600 hover:underline dark:text-sky-400"
+              >
+                {{ c.link }}
+              </a>
+              <span v-else>—</span>
+            </td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
@@ -147,6 +174,10 @@ let searchTimeout = null;
 
 const importing = ref(false);
 const importStatus = ref('');
+const clearingLocal = ref(false);
+
+const isLocalOnlyActionEnabled =
+  import.meta.env.DEV || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
 const pagination = ref({
   current_page: 1,
@@ -158,12 +189,15 @@ const pagination = ref({
 });
 
 const columns = [
-  { key: 'nro', label: 'Nro' },
-  { key: 'comercio', label: 'Comercio' },
-  { key: 'nom_contador', label: 'Nombre' },
-  { key: 'customer', label: 'Cliente' },
+  { key: 'nom_contador', label: 'Contador' },
+  { key: 'comercio', label: 'Empresa' },
+  { key: 'titular_tlf', label: 'Contacto' },
+  { key: 'telefono', label: 'Teléfono' },
   { key: 'usuario', label: 'Usuario' },
+  { key: 'contrasena', label: 'Contraseña' },
   { key: 'servidor', label: 'Servidor' },
+  { key: 'estado', label: 'Estado empresa' },
+  { key: 'link', label: 'Link' },
   { key: 'actions', label: 'Acciones' },
 ];
 
@@ -211,6 +245,13 @@ const goToPage = (page) => {
   fetchRows(p);
 };
 
+const normalizeLink = (value) => {
+  const raw = String(value ?? '').trim();
+  if (!raw) return '#';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
+};
+
 const onImportFileChange = async (event) => {
   const file = event?.target?.files?.[0];
   if (event?.target) event.target.value = '';
@@ -239,6 +280,31 @@ const onImportFileChange = async (event) => {
   }
 };
 
+const clearTableLocal = async () => {
+  const ok = await confirmDialog({
+    title: 'Limpiar tabla de contadores',
+    text: 'Se eliminarán todos los registros de contadores (solo local).',
+    confirmText: 'Limpiar',
+    cancelText: 'Cancelar',
+    icon: 'warning',
+  });
+  if (!ok) return;
+
+  clearingLocal.value = true;
+  try {
+    const { data } = await axios.post('/postventa/contadores/clear-local');
+    const deleted = Number(data?.deleted ?? 0);
+    importStatus.value = `Tabla limpiada en local. Registros eliminados: ${deleted}.`;
+    toastSuccess(`Tabla limpiada (${deleted} registros)`);
+    fetchRows(1);
+  } catch (e) {
+    const msg = e?.response?.data?.message ?? 'No se pudo limpiar la tabla en local.';
+    toastError(msg);
+  } finally {
+    clearingLocal.value = false;
+  }
+};
+
 const createContador = async () => {
   const payload = await promptContadorCreate();
   if (!payload) return;
@@ -262,19 +328,15 @@ const editContador = async (c) => {
   try {
     const res = await axios.put(`/postventa/contadores/${c.id}`, payload);
     const updated = res?.data?.data;
-
-    const customers = Array.isArray(updated?.customers)
-      ? updated.customers.map((customerItem) => ({
-          id: customerItem.id,
-          name: customerItem.name,
-        }))
-      : [];
-    const customer = customers[0] ?? null;
+    const customer = Array.isArray(updated?.customers) && updated.customers.length > 0
+      ? updated.customers[0]
+      : (updated?.customer ?? null);
 
     Object.assign(c, {
       ...payload,
+      comercio: updated?.comercio ?? c.comercio,
       customer,
-      customers,
+      customers: customer ? [customer] : [],
     });
 
     toastSuccess('Contador actualizado');

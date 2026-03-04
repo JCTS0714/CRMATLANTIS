@@ -25,6 +25,7 @@ class Customer extends Model
         'contrasena',
         'servidor',
         'menbresia',
+        'estado',
         'fecha_creacion',
         'fecha_contacto',
         'fecha_contacto_mes',

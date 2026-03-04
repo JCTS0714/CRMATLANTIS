@@ -28,6 +28,7 @@ class CustomerService
             'contrasena' => $data['contrasena'] ?? null,
             'servidor' => $data['servidor'] ?? null,
             'menbresia' => $data['menbresia'] ?? null,
+            'estado' => $data['estado'] ?? 'activo',
             'fecha_creacion' => $data['fecha_creacion'] ?? null,
             'fecha_contacto' => $data['fecha_contacto'] ?? null,
             'fecha_contacto_mes' => $data['fecha_contacto_mes'] ?? null,
@@ -90,6 +91,9 @@ class CustomerService
         if (array_key_exists('menbresia', $data)) {
             $updateData['menbresia'] = $data['menbresia'];
         }
+        if (array_key_exists('estado', $data)) {
+            $updateData['estado'] = $data['estado'];
+        }
         if (array_key_exists('fecha_creacion', $data)) {
             $updateData['fecha_creacion'] = $data['fecha_creacion'];
         }
@@ -136,6 +140,7 @@ class CustomerService
                     ->orWhere('usuario', 'like', "%{$query}%")
                     ->orWhere('servidor', 'like', "%{$query}%")
                     ->orWhere('menbresia', 'like', "%{$query}%")
+                    ->orWhere('estado', 'like', "%{$query}%")
                     ->orWhere('csv_numero', 'like', "%{$query}%")
                     ->orWhere('document_number', 'like', "%{$query}%");
             });
@@ -149,6 +154,11 @@ class CustomerService
         $menbresia = trim((string) ($filters['menbresia'] ?? ''));
         if ($menbresia !== '') {
             $queryBuilder->where('menbresia', $menbresia);
+        }
+
+        $estado = trim((string) ($filters['estado'] ?? ''));
+        if ($estado !== '') {
+            $queryBuilder->where('estado', $estado);
         }
 
         $rubro = trim((string) ($filters['rubro'] ?? ''));

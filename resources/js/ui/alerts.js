@@ -144,6 +144,18 @@ function buildCustomerServerOptions(selectedValue = '') {
   return options.join('');
 }
 
+function buildContadorServerOptions(selectedValue = '') {
+  const selected = String(selectedValue ?? '').trim();
+  const options = [
+    `<option value="" ${selected ? '' : 'selected'}>(opcional)</option>`,
+    ...CUSTOMER_SERVER_OPTIONS.map((option) =>
+      `<option value="${option}" ${selected === option ? 'selected' : ''}>${option}</option>`
+    ),
+  ];
+
+  return options.join('');
+}
+
 function buildCustomerMenbresiaOptions(selectedValue = '') {
   const selected = String(selectedValue ?? '').trim();
   const options = [
@@ -647,7 +659,6 @@ export async function promptContadorCreate() {
     nom_contador: '',
     titular_tlf: '',
     telefono: '',
-    telefono_actu: '',
     link: '',
     usuario: '',
     contrasena: '',
@@ -657,92 +668,85 @@ export async function promptContadorCreate() {
 }
 
 export async function promptContadorEdit(contador = {}, isCreate = false) {
-  const customerId = contador?.customer?.id ?? '';
+  const selectedCustomer = contador?.customer ?? null;
+  const selectedCustomerText = selectedCustomer
+    ? `${selectedCustomer.name}${selectedCustomer.company_name ? ` - ${selectedCustomer.company_name}` : ''}`
+    : '';
 
   const html = `
     <div class="grid gap-3 text-left">
+      <div class="text-xs text-gray-500 dark:text-slate-400">Todos los campos son obligatorios <span class="font-semibold text-red-500">*</span>.</div>
       ${isCreate ? localAutofillControlMarkup('sw-cont-autofill-create-local') : ''}
       <div class="grid grid-cols-1 gap-3 ${isCreate ? '' : 'sm:grid-cols-2'}">
         <div${isCreate ? ' style="display: none;"' : ''}>
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nro</label>
           <input id="sw-cont-nro" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.nro)}"${!isCreate ? ' readonly' : ''} />
         </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Comercio</label>
-          <input id="sw-cont-comercio" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.comercio)}" />
+        <div class="${isCreate ? '' : ''}">
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Empresa <span class="text-red-500">*</span></label>
+          <div class="relative">
+            <input
+              id="sw-cont-company-search"
+              type="text"
+              class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 pr-9 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+              placeholder="Buscar empresa por nombre, empresa o documento..."
+              autocomplete="off"
+              value="${escapeHtml(selectedCustomerText)}"
+            />
+            <button id="sw-cont-clear-customer" type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-slate-500 dark:hover:text-slate-300">✕</button>
+            <div id="sw-cont-company-dropdown" class="absolute z-50 mt-1 hidden max-h-48 w-full overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-slate-700 dark:bg-slate-900"></div>
+          </div>
+          <input id="sw-cont-customer-id" type="hidden" value="${selectedCustomer?.id ?? ''}" />
+          <div id="sw-cont-selected-customer" class="mt-2 ${selectedCustomer ? '' : 'hidden'} rounded border border-blue-200 bg-blue-50 p-2 text-sm dark:border-blue-800 dark:bg-blue-900/30">
+            ${selectedCustomer
+              ? `<strong>${escapeHtml(selectedCustomer.name)}</strong>${selectedCustomer.company_name ? ` - ${escapeHtml(selectedCustomer.company_name)}` : ''}<br><small class="text-gray-600 dark:text-slate-400">${escapeHtml(selectedCustomer.document_number || 'Sin documento')}</small>`
+              : ''}
+          </div>
+          <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">La empresa es única: no puede asignarse a más de un contador.</div>
         </div>
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Nombre del contador</label>
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contador <span class="text-red-500">*</span></label>
         <input id="sw-cont-nom_contador" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.nom_contador)}" />
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Titular tlf</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contacto <span class="text-red-500">*</span></label>
           <input id="sw-cont-titular_tlf" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.titular_tlf)}" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Teléfono</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Teléfono <span class="text-red-500">*</span></label>
           <input id="sw-cont-telefono" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.telefono)}" />
         </div>
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Teléfono act.</label>
-          <input id="sw-cont-telefono_actu" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.telefono_actu)}" />
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Servidor</label>
-          <input id="sw-cont-servidor" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.servidor)}" />
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Servidor <span class="text-red-500">*</span></label>
+          <select id="sw-cont-servidor" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+            ${buildContadorServerOptions(contador.servidor)}
+          </select>
         </div>
       </div>
 
       <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Link</label>
+        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Link <span class="text-red-500">*</span></label>
         <input id="sw-cont-link" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.link)}" />
       </div>
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Usuario</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Usuario <span class="text-red-500">*</span></label>
           <input id="sw-cont-usuario" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.usuario)}" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contraseña</label>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Contraseña <span class="text-red-500">*</span></label>
           <input id="sw-cont-contrasena" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(contador.contrasena)}" />
         </div>
       </div>
 
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-2">Clientes</label>
-        <div id="sw-customers-container">
-          <div class="customer-search-group mb-3" data-index="0">
-            <div class="flex gap-2">
-              <div class="flex-1 relative">
-                <input 
-                  type="text" 
-                  class="customer-search-input w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" 
-                  placeholder="Buscar cliente por nombre, empresa o documento..." 
-                  autocomplete="off"
-                />
-                <div class="customer-dropdown absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg hidden max-h-48 overflow-y-auto"></div>
-                <input type="hidden" class="customer-id-input" />
-              </div>
-              <button type="button" class="add-customer-btn px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-              </button>
-              <button type="button" class="remove-customer-btn px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 hidden">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              </button>
-            </div>
-            <div class="selected-customer mt-2 hidden p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded text-sm"></div>
-          </div>
-        </div>
-        <div class="mt-1 text-xs text-gray-500 dark:text-slate-400">Busca y selecciona los clientes para asignar al contador.</div>
-      </div>
     </div>
   `;
 
@@ -754,7 +758,7 @@ export async function promptContadorEdit(contador = {}, isCreate = false) {
     confirmButtonText: isCreate ? 'Crear' : 'Guardar',
     cancelButtonText: 'Cancelar',
     didOpen: async (popup) => {
-      initCustomerSearch(popup, contador.customers || []);
+      initCustomerSearch(popup);
 
       if (!isCreate) return;
       const module = await getLocalCustomerAutofillModule();
@@ -763,51 +767,70 @@ export async function promptContadorEdit(contador = {}, isCreate = false) {
     },
     preConfirm: () => {
       const nro = document.getElementById('sw-cont-nro')?.value?.trim() ?? '';
-      const comercio = document.getElementById('sw-cont-comercio')?.value?.trim() ?? '';
+      const customerId = document.getElementById('sw-cont-customer-id')?.value?.trim() ?? '';
       const nom_contador = document.getElementById('sw-cont-nom_contador')?.value?.trim() ?? '';
       const titular_tlf = document.getElementById('sw-cont-titular_tlf')?.value?.trim() ?? '';
       const telefono = document.getElementById('sw-cont-telefono')?.value?.trim() ?? '';
-      const telefono_actu = document.getElementById('sw-cont-telefono_actu')?.value?.trim() ?? '';
       const servidor = document.getElementById('sw-cont-servidor')?.value?.trim() ?? '';
       const link = document.getElementById('sw-cont-link')?.value?.trim() ?? '';
       const usuario = document.getElementById('sw-cont-usuario')?.value?.trim() ?? '';
       const contrasena = document.getElementById('sw-cont-contrasena')?.value?.trim() ?? '';
 
-      // Obtener IDs de clientes seleccionados
-      const customerIds = [];
-      document.querySelectorAll('.customer-id-input').forEach(input => {
-        const id = input.value?.trim();
-        if (id && !customerIds.includes(parseInt(id))) {
-          customerIds.push(parseInt(id));
-        }
-      });
+      if (!customerId) {
+        Swal.showValidationMessage('Selecciona una Empresa válida.');
+        return false;
+      }
 
-      if (isCreate) {
-        // En modo crear, solo requerir comercio o nombre del contador
-        if (!comercio && !nom_contador) {
-          Swal.showValidationMessage('Completa al menos Comercio o Nombre del contador.');
-          return false;
-        }
-      } else {
-        // En modo editar, mantener la validación original
-        if (!nro && !comercio && !nom_contador) {
-          Swal.showValidationMessage('Completa al menos Nro, Comercio o Nombre del contador.');
-          return false;
-        }
+      if (!nom_contador) {
+        Swal.showValidationMessage('El contador es requerido.');
+        return false;
+      }
+
+      if (!titular_tlf) {
+        Swal.showValidationMessage('El contacto es requerido.');
+        return false;
+      }
+
+      if (!telefono) {
+        Swal.showValidationMessage('El teléfono es requerido.');
+        return false;
+      }
+
+      if (!servidor) {
+        Swal.showValidationMessage('El servidor es requerido.');
+        return false;
+      }
+
+      if (!link) {
+        Swal.showValidationMessage('El link es requerido.');
+        return false;
+      }
+
+      if (!usuario) {
+        Swal.showValidationMessage('El usuario es requerido.');
+        return false;
+      }
+
+      if (!contrasena) {
+        Swal.showValidationMessage('La contraseña es requerida.');
+        return false;
+      }
+
+      if (servidor && !CUSTOMER_SERVER_OPTIONS.includes(servidor)) {
+        Swal.showValidationMessage('Servidor inválido. Usa una opción de la lista.');
+        return false;
       }
 
       return {
         nro: nro || null,
-        comercio: comercio || null,
         nom_contador: nom_contador || null,
         titular_tlf: titular_tlf || null,
         telefono: telefono || null,
-        telefono_actu: telefono_actu || null,
-        servidor: servidor || null,
-        link: link || null,
-        usuario: usuario || null,
-        contrasena: contrasena || null,
-        customer_ids: customerIds,
+        servidor,
+        link,
+        usuario,
+        contrasena,
+        customer_id: Number.parseInt(customerId, 10),
       };
     },
   });
@@ -975,152 +998,92 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
   return res.isConfirmed ? res.value : null;
 }
 
-// Función para inicializar la búsqueda de clientes
-function initCustomerSearch(popup, existingCustomers = []) {
-  const container = popup.querySelector('#sw-customers-container');
-  let customerCounter = 0;
-  
-  // Pre-llenar con clientes existentes
-  if (existingCustomers.length > 0) {
-    container.innerHTML = ''; // Limpiar
-    existingCustomers.forEach((customer, index) => {
-      addCustomerSearchGroup(container, customer, index);
-      customerCounter = index + 1;
-    });
-    updateRemoveButtons();
+function initCustomerSearch(popup) {
+  const input = popup.querySelector('#sw-cont-company-search');
+  const dropdown = popup.querySelector('#sw-cont-company-dropdown');
+  const hiddenInput = popup.querySelector('#sw-cont-customer-id');
+  const selectedDiv = popup.querySelector('#sw-cont-selected-customer');
+  const clearButton = popup.querySelector('#sw-cont-clear-customer');
+
+  if (!input || !dropdown || !hiddenInput || !selectedDiv || !clearButton) {
+    return;
   }
 
-  // Event listeners para agregar/quitar campos
-  container.addEventListener('click', (e) => {
-    if (e.target.closest('.add-customer-btn')) {
-      addCustomerSearchGroup(container, null, customerCounter++);
-      updateRemoveButtons();
-    } else if (e.target.closest('.remove-customer-btn')) {
-      e.target.closest('.customer-search-group').remove();
-      updateRemoveButtons();
-    }
-  });
-
-  // Event listener para búsqueda
   let searchTimeout;
-  container.addEventListener('input', (e) => {
-    if (e.target.classList.contains('customer-search-input')) {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => searchCustomers(e.target), 300);
-    }
-  });
 
-  // Cerrar dropdowns al hacer clic fuera
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.customer-search-group')) {
-      popup.querySelectorAll('.customer-dropdown').forEach(dropdown => {
-        dropdown.classList.add('hidden');
-      });
-    }
-  });
+  input.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
 
-  function addCustomerSearchGroup(container, customer = null, index = 0) {
-    const group = document.createElement('div');
-    group.className = 'customer-search-group mb-3';
-    group.setAttribute('data-index', index);
-    
-    const customerName = customer ? `${customer.name}${customer.company_name ? ' - ' + customer.company_name : ''}` : '';
-    const customerId = customer ? customer.id : '';
-    
-    group.innerHTML = `
-      <div class="flex gap-2">
-        <div class="flex-1 relative">
-          <input 
-            type="text" 
-            class="customer-search-input w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" 
-            placeholder="Buscar cliente por nombre, empresa o documento..." 
-            autocomplete="off"
-            value="${escapeHtml(customerName)}"
-          />
-          <div class="customer-dropdown absolute z-50 w-full mt-1 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-lg shadow-lg hidden max-h-48 overflow-y-auto"></div>
-          <input type="hidden" class="customer-id-input" value="${customerId}" />
-        </div>
-        <button type="button" class="add-customer-btn px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 focus:ring-4 focus:ring-green-300">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-        </button>
-        <button type="button" class="remove-customer-btn px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 focus:ring-4 focus:ring-red-300 hidden">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-        </button>
-      </div>
-      <div class="selected-customer mt-2 ${customer ? '' : 'hidden'} p-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded text-sm">
-        ${customer ? `<strong>${escapeHtml(customer.name)}</strong>${customer.company_name ? ' - ' + escapeHtml(customer.company_name) : ''}<br><small class="text-gray-600">${customer.document_number || 'Sin documento'}</small>` : ''}
-      </div>
-    `;
-    
-    container.appendChild(group);
-  }
-
-  function updateRemoveButtons() {
-    const groups = container.querySelectorAll('.customer-search-group');
-    groups.forEach((group, index) => {
-      const removeBtn = group.querySelector('.remove-customer-btn');
-      removeBtn.classList.toggle('hidden', groups.length === 1);
-    });
-  }
-
-  async function searchCustomers(input) {
     const query = input.value.trim();
-    const dropdown = input.nextElementSibling;
-    
+    hiddenInput.value = '';
+    selectedDiv.classList.add('hidden');
+
     if (query.length < 2) {
       dropdown.classList.add('hidden');
       return;
     }
 
+    searchTimeout = setTimeout(async () => {
+      await searchCustomers(query);
+    }, 300);
+  });
+
+  clearButton.addEventListener('click', () => {
+    input.value = '';
+    hiddenInput.value = '';
+    selectedDiv.classList.add('hidden');
+    dropdown.classList.add('hidden');
+    input.focus();
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('#sw-cont-company-search') && !event.target.closest('#sw-cont-company-dropdown')) {
+      dropdown.classList.add('hidden');
+    }
+  });
+
+  async function searchCustomers(query) {
     try {
       const response = await fetch(`/customers/search?q=${encodeURIComponent(query)}`);
       const data = await response.json();
-      
       dropdown.innerHTML = '';
-      
-      if (data.customers && data.customers.length > 0) {
-        data.customers.forEach(customer => {
-          const item = document.createElement('div');
-          item.className = 'p-3 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer border-b border-gray-100 dark:border-slate-700 last:border-b-0';
+
+      if (Array.isArray(data.customers) && data.customers.length > 0) {
+        data.customers.forEach((customer) => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'block w-full border-b border-gray-100 p-3 text-left last:border-b-0 hover:bg-gray-50 dark:border-slate-700 dark:hover:bg-slate-800';
           item.innerHTML = `
             <div class="font-medium text-gray-900 dark:text-slate-100">${escapeHtml(customer.name)}</div>
             ${customer.company_name ? `<div class="text-sm text-gray-600 dark:text-slate-400">${escapeHtml(customer.company_name)}</div>` : ''}
-            <div class="text-xs text-gray-500 dark:text-slate-500">${customer.document_number || 'Sin documento'}</div>
+            <div class="text-xs text-gray-500 dark:text-slate-500">${escapeHtml(customer.document_number || 'Sin documento')}</div>
           `;
-          
+
           item.addEventListener('click', () => {
-            selectCustomer(input, customer);
+            selectCustomer(customer);
           });
-          
+
           dropdown.appendChild(item);
         });
-        
-        dropdown.classList.remove('hidden');
       } else {
-        dropdown.innerHTML = '<div class="p-3 text-gray-500 dark:text-slate-400 text-sm">No se encontraron clientes</div>';
-        dropdown.classList.remove('hidden');
+        dropdown.innerHTML = '<div class="p-3 text-sm text-gray-500 dark:text-slate-400">No se encontraron empresas</div>';
       }
+
+      dropdown.classList.remove('hidden');
     } catch (error) {
       console.error('Error searching customers:', error);
       dropdown.classList.add('hidden');
     }
   }
 
-  function selectCustomer(input, customer) {
-    const group = input.closest('.customer-search-group');
-    const hiddenInput = group.querySelector('.customer-id-input');
-    const selectedDiv = group.querySelector('.selected-customer');
-    const dropdown = input.nextElementSibling;
-    
-    input.value = `${customer.name}${customer.company_name ? ' - ' + customer.company_name : ''}`;
-    hiddenInput.value = customer.id;
-    
+  function selectCustomer(customer) {
+    input.value = `${customer.name}${customer.company_name ? ` - ${customer.company_name}` : ''}`;
+    hiddenInput.value = String(customer.id);
     selectedDiv.innerHTML = `
-      <strong>${escapeHtml(customer.name)}</strong>${customer.company_name ? ' - ' + escapeHtml(customer.company_name) : ''}<br>
-      <small class="text-gray-600">${customer.document_number || 'Sin documento'}</small>
+      <strong>${escapeHtml(customer.name)}</strong>${customer.company_name ? ` - ${escapeHtml(customer.company_name)}` : ''}<br>
+      <small class="text-gray-600 dark:text-slate-400">${escapeHtml(customer.document_number || 'Sin documento')}</small>
     `;
     selectedDiv.classList.remove('hidden');
-    
     dropdown.classList.add('hidden');
   }
 }

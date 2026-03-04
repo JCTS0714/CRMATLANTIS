@@ -160,6 +160,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('permission:customers.create')
         ->name('customers.store');
 
+    Route::patch('/customers/{customer}/status', [CustomerController::class, 'updateStatus'])
+        ->whereNumber('customer')
+        ->middleware('permission:customers.update')
+        ->name('customers.status');
+
     Route::post('/customers/import', [CustomerController::class, 'importCsv'])
         ->middleware('permission:customers.create')
         ->name('customers.import');
@@ -221,6 +226,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/postventa/contadores/import', [ContadorController::class, 'importCsv'])
         ->middleware('permission:contadores.create')
         ->name('postventa.contadores.import');
+
+    Route::post('/postventa/contadores/clear-local', [ContadorController::class, 'clearTableLocal'])
+        ->middleware('permission:contadores.delete')
+        ->name('postventa.contadores.clear-local');
 
     Route::put('/postventa/contadores/{contador}', [ContadorController::class, 'update'])
         ->middleware('permission:contadores.update')

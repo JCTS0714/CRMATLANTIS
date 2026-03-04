@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\PostVenta;
 
+use App\Http\Controllers\Controller;
+use App\Models\Customer;
 use App\Models\Contador;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,17 +12,19 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Http\Controllers\Controller;
+use Illuminate\Validation\Rule;
 
 class ContadorController extends Controller
 {
+    private const SERVIDOR_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+
     public function data(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
         $perPage = (int) $request->query('per_page', 15);
         $perPage = max(5, min(100, $perPage));
 
-        $query = Contador::query()->with(['customers:id,name']);
+        $query = Contador::query()->with(['customers:id,name,company_name,document_number,estado']);
 
         if ($q !== '') {
             $query->where(function ($sub) use ($q) {
@@ -40,10 +44,32 @@ class ContadorController extends Controller
         return response()->json([
             'contadores' => collect($rows->items())->map(function (Contador $c) {
                 $customer = $c->customers->first();
+                $estadoEmpresa = $customer?->estado;
+
+                if (!$estadoEmpresa) {
+                    $comercio = trim((string) ($c->comercio ?? ''));
+                    if ($comercio !== '') {
+                        $fallbackCustomer = Customer::query()
+                            ->select(['id', 'name', 'company_name', 'document_number', 'estado'])
+                            ->where('name', $comercio)
+                            ->orWhere('company_name', $comercio)
+                            ->first();
+
+                        if ($fallbackCustomer) {
+                            $customer = $fallbackCustomer;
+                            $estadoEmpresa = $fallbackCustomer->estado;
+                        }
+                    }
+                }
+
+                $estadoEmpresa = $estadoEmpresa ?: 'activo';
                 $customers = $c->customers
                     ->map(fn ($item) => [
                         'id' => $item->id,
                         'name' => $item->name,
+                        'company_name' => $item->company_name,
+                        'document_number' => $item->document_number,
+                        'estado' => $item->estado,
                     ])
                     ->values();
 
@@ -59,7 +85,16 @@ class ContadorController extends Controller
                     'usuario' => $c->usuario,
                     'contrasena' => $c->contrasena,
                     'servidor' => $c->servidor,
-                    'customer' => $customer ? ['id' => $customer->id, 'name' => $customer->name] : null,
+                    'estado_empresa' => $estadoEmpresa,
+                    'customer' => $customer
+                        ? [
+                            'id' => $customer->id,
+                            'name' => $customer->name,
+                            'company_name' => $customer->company_name,
+                            'document_number' => $customer->document_number,
+                            'estado' => $customer->estado,
+                        ]
+                        : null,
                     'customers' => $customers,
                 ];
             })->values(),
@@ -82,43 +117,43 @@ class ContadorController extends Controller
     {
         $validated = $request->validate([
             'nro' => ['nullable', 'string', 'max:50'],
-            'comercio' => ['nullable', 'string', 'max:255'],
-            'nom_contador' => ['nullable', 'string', 'max:255'],
-            'titular_tlf' => ['nullable', 'string', 'max:100'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'telefono_actu' => ['nullable', 'string', 'max:50'],
-            'link' => ['nullable', 'string', 'max:512'],
-            'usuario' => ['nullable', 'string', 'max:150'],
-            'contrasena' => ['nullable', 'string', 'max:255'],
-            'servidor' => ['nullable', 'string', 'max:50'],
-            'customer_ids' => ['nullable', 'array'],
-            'customer_ids.*' => ['integer', 'exists:customers,id'],
+            'nom_contador' => ['required', 'string', 'max:255'],
+            'titular_tlf' => ['required', 'string', 'max:100'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'link' => ['required', 'string', 'max:512'],
+            'usuario' => ['required', 'string', 'max:150'],
+            'contrasena' => ['required', 'string', 'max:255'],
+            'servidor' => ['required', 'string', 'max:50', Rule::in(self::SERVIDOR_OPTIONS)],
+            'customer_id' => [
+                'required',
+                'integer',
+                'exists:customers,id',
+                Rule::unique('contador_customer', 'customer_id'),
+            ],
         ]);
 
         $contador = null;
 
         DB::transaction(function () use ($validated, &$contador) {
+            $customerId = (int) $validated['customer_id'];
+            $comercio = $this->resolveComercioFromCustomerId($customerId);
+
             $contador = Contador::query()->create([
                 'nro' => $validated['nro'] ?? null,
-                'comercio' => $validated['comercio'] ?? null,
+                'comercio' => $comercio,
                 'nom_contador' => $validated['nom_contador'] ?? null,
                 'titular_tlf' => $validated['titular_tlf'] ?? null,
                 'telefono' => $validated['telefono'] ?? null,
-                'telefono_actu' => $validated['telefono_actu'] ?? null,
+                'telefono_actu' => null,
                 'link' => $validated['link'] ?? null,
                 'usuario' => $validated['usuario'] ?? null,
                 'contrasena' => $validated['contrasena'] ?? null,
                 'servidor' => $validated['servidor'] ?? null,
             ]);
 
-            $customerIds = $validated['customer_ids'] ?? [];
-            if (!empty($customerIds)) {
-                $syncData = [];
-                foreach ($customerIds as $customerId) {
-                    $syncData[$customerId] = ['fecha_asignacion' => now()];
-                }
-                $contador->customers()->sync($syncData);
-            }
+            $contador->customers()->sync([
+                $customerId => ['fecha_asignacion' => now()],
+            ]);
         });
 
         if (!$contador) {
@@ -127,9 +162,20 @@ class ContadorController extends Controller
             ], 500);
         }
 
+        $fresh = $contador->fresh()->load(['customers:id,name,company_name,document_number']);
+        $customer = $fresh?->customers?->first();
+
         return response()->json([
             'message' => 'Contador creado.',
-            'data' => $contador->fresh()->load(['customers:id,name']),
+            'data' => [
+                ...($fresh?->toArray() ?? []),
+                'customer' => $customer ? [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'company_name' => $customer->company_name,
+                    'document_number' => $customer->document_number,
+                ] : null,
+            ],
         ], 201);
     }
 
@@ -137,27 +183,32 @@ class ContadorController extends Controller
     {
         $validated = $request->validate([
             'nro' => ['nullable', 'string', 'max:50'],
-            'comercio' => ['nullable', 'string', 'max:255'],
-            'nom_contador' => ['nullable', 'string', 'max:255'],
-            'titular_tlf' => ['nullable', 'string', 'max:100'],
-            'telefono' => ['nullable', 'string', 'max:50'],
-            'telefono_actu' => ['nullable', 'string', 'max:50'],
-            'link' => ['nullable', 'string', 'max:512'],
-            'usuario' => ['nullable', 'string', 'max:150'],
-            'contrasena' => ['nullable', 'string', 'max:255'],
-            'servidor' => ['nullable', 'string', 'max:50'],
-            'customer_ids' => ['nullable', 'array'],
-            'customer_ids.*' => ['integer', 'exists:customers,id'],
+            'nom_contador' => ['required', 'string', 'max:255'],
+            'titular_tlf' => ['required', 'string', 'max:100'],
+            'telefono' => ['required', 'string', 'max:50'],
+            'link' => ['required', 'string', 'max:512'],
+            'usuario' => ['required', 'string', 'max:150'],
+            'contrasena' => ['required', 'string', 'max:255'],
+            'servidor' => ['required', 'string', 'max:50', Rule::in(self::SERVIDOR_OPTIONS)],
+            'customer_id' => [
+                'required',
+                'integer',
+                'exists:customers,id',
+                Rule::unique('contador_customer', 'customer_id')->ignore($contador->id, 'contador_id'),
+            ],
         ]);
 
         DB::transaction(function () use ($validated, $contador) {
+            $customerId = (int) $validated['customer_id'];
+            $comercio = $this->resolveComercioFromCustomerId($customerId);
+
             $contador->fill([
                 'nro' => $validated['nro'] ?? null,
-                'comercio' => $validated['comercio'] ?? null,
+                'comercio' => $comercio,
                 'nom_contador' => $validated['nom_contador'] ?? null,
                 'titular_tlf' => $validated['titular_tlf'] ?? null,
                 'telefono' => $validated['telefono'] ?? null,
-                'telefono_actu' => $validated['telefono_actu'] ?? null,
+                'telefono_actu' => null,
                 'link' => $validated['link'] ?? null,
                 'usuario' => $validated['usuario'] ?? null,
                 'contrasena' => $validated['contrasena'] ?? null,
@@ -165,21 +216,25 @@ class ContadorController extends Controller
             ]);
             $contador->save();
 
-            $customerIds = $validated['customer_ids'] ?? [];
-            if (!empty($customerIds)) {
-                $syncData = [];
-                foreach ($customerIds as $customerId) {
-                    $syncData[$customerId] = ['fecha_asignacion' => now()];
-                }
-                $contador->customers()->sync($syncData);
-            } else {
-                $contador->customers()->detach();
-            }
+            $contador->customers()->sync([
+                $customerId => ['fecha_asignacion' => now()],
+            ]);
         });
+
+        $fresh = $contador->fresh()->load(['customers:id,name,company_name,document_number']);
+        $customer = $fresh?->customers?->first();
 
         return response()->json([
             'message' => 'Contador actualizado.',
-            'data' => $contador->fresh()->load(['customers:id,name']),
+            'data' => [
+                ...($fresh?->toArray() ?? []),
+                'customer' => $customer ? [
+                    'id' => $customer->id,
+                    'name' => $customer->name,
+                    'company_name' => $customer->company_name,
+                    'document_number' => $customer->document_number,
+                ] : null,
+            ],
         ]);
     }
 
@@ -223,5 +278,41 @@ class ContadorController extends Controller
             'output' => $output,
             'path' => $path,
         ]);
+    }
+
+    public function clearTableLocal(Request $request): JsonResponse
+    {
+        if (!app()->environment('local')) {
+            return response()->json([
+                'message' => 'Esta acción solo está disponible en entorno local.',
+            ], 403);
+        }
+
+        $deleted = Contador::query()->count();
+        Contador::query()->delete();
+
+        return response()->json([
+            'message' => 'Tabla de contadores limpiada en local.',
+            'deleted' => $deleted,
+        ]);
+    }
+
+    private function resolveComercioFromCustomerId(int $customerId): ?string
+    {
+        $customer = Customer::query()
+            ->select(['id', 'name', 'company_name'])
+            ->find($customerId);
+
+        if (!$customer) {
+            return null;
+        }
+
+        $companyName = trim((string) ($customer->company_name ?? ''));
+        if ($companyName !== '') {
+            return $companyName;
+        }
+
+        $customerName = trim((string) ($customer->name ?? ''));
+        return $customerName !== '' ? $customerName : null;
     }
 }

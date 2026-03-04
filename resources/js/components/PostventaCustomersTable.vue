@@ -6,7 +6,7 @@
           v-model="searchInput"
           type="text"
           class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          placeholder="Buscar cliente (nombre, contacto, empresa, documento…)"
+          placeholder="Buscar contacto (nombre, contacto, empresa, documento…)"
         />
       </div>
 
@@ -64,10 +64,10 @@
     </div>
 
     <div v-if="showAdvancedFilters" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
-      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Servidor</label>
-          <select v-model="advancedFilters.servidor" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.servidor" class="w-auto min-w-52 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="option in serverOptions" :key="option" :value="option">{{ option }}</option>
           </select>
@@ -75,15 +75,23 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Menbresia</label>
-          <select v-model="advancedFilters.menbresia" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.menbresia" class="w-auto min-w-40 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
             <option value="">Todas</option>
             <option v-for="option in menbresiaOptions" :key="option" :value="option">{{ option }}</option>
           </select>
         </div>
 
         <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Estado</label>
+          <select v-model="advancedFilters.estado" class="w-auto min-w-36 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in estadoOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Tipo documento</label>
-          <select v-model="advancedFilters.document_type" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.document_type" class="w-auto min-w-36 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="option in documentTypeOptions" :key="option" :value="option">{{ option.toUpperCase() }}</option>
           </select>
@@ -91,12 +99,12 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Rubro</label>
-          <input v-model="advancedFilters.rubro" type="text" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Ej. restaurante" />
+          <input v-model="advancedFilters.rubro" type="text" class="w-auto min-w-48 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Ej. restaurante" />
         </div>
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Mes contacto</label>
-          <select v-model="advancedFilters.fecha_contacto_mes" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.fecha_contacto_mes" class="w-auto min-w-40 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
           </select>
@@ -104,7 +112,7 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Año contacto</label>
-          <input v-model="advancedFilters.fecha_contacto_anio" type="number" min="2000" max="2100" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="2026" />
+          <input v-model="advancedFilters.fecha_contacto_anio" type="number" min="2000" max="2100" class="w-auto min-w-32 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="2026" />
         </div>
       </div>
 
@@ -138,8 +146,9 @@
         <thead class="bg-slate-50 text-xs uppercase text-slate-600 dark:bg-slate-800 dark:text-slate-200">
           <tr>
             <th class="px-4 py-3">N°</th>
-            <th class="px-4 py-3">Cliente</th>
+            <th class="px-4 py-3">Contacto</th>
             <th class="px-4 py-3">Empresa</th>
+            <th class="px-4 py-3">Ciudad</th>
             <th class="px-4 py-3">Precio</th>
             <th class="px-4 py-3">Rubro</th>
             <th class="px-4 py-3">Documento</th>
@@ -149,9 +158,12 @@
             <th class="px-4 py-3">Usuario</th>
             <th class="px-4 py-3">Contraseña</th>
             <th class="px-4 py-3">Servidor</th>
+            <th class="px-4 py-3">Estado</th>
+            <th class="px-4 py-3">Menbresia</th>
             <th class="px-4 py-3">Mes contacto</th>
             <th class="px-4 py-3">Año contacto</th>
             <th class="px-4 py-3">F. creación</th>
+            <th class="px-4 py-3">Observación</th>
             <th class="px-4 py-3">Acciones</th>
           </tr>
         </thead>
@@ -166,6 +178,7 @@
               {{ c.contact_name || c.name || '—' }}
             </td>
             <td class="px-4 py-3">{{ c.company_name || '—' }}</td>
+            <td class="px-4 py-3">{{ c.company_address || '—' }}</td>
             <td class="px-4 py-3">{{ c.precio ?? '—' }}</td>
             <td class="px-4 py-3">{{ c.rubro || '—' }}</td>
             <td class="px-4 py-3">
@@ -178,9 +191,23 @@
             <td class="px-4 py-3">{{ c.usuario || '—' }}</td>
             <td class="px-4 py-3">{{ c.contrasena || '—' }}</td>
             <td class="px-4 py-3">{{ c.servidor || '—' }}</td>
+            <td class="px-4 py-3 whitespace-nowrap">
+              <select
+                class="min-w-30 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                :value="c.estado || 'activo'"
+                :disabled="changingStatusIds.has(c.id)"
+                @change="updateCustomerStatus(c, $event.target.value)"
+              >
+                <option value="activo">activo</option>
+                <option value="retirado">retirado</option>
+                <option value="eliminado">eliminado</option>
+              </select>
+            </td>
+            <td class="px-4 py-3">{{ c.menbresia || '—' }}</td>
             <td class="px-4 py-3">{{ c.fecha_contacto_mes || '—' }}</td>
             <td class="px-4 py-3">{{ c.fecha_contacto_anio || '—' }}</td>
             <td class="px-4 py-3">{{ c.fecha_creacion || '—' }}</td>
+            <td class="px-4 py-3">{{ c.observacion || '—' }}</td>
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
@@ -272,6 +299,7 @@ const isLocalOnlyActionsEnabled = (() => {
 
 const savingIds = ref(new Set());
 const deletingIds = ref(new Set());
+const changingStatusIds = ref(new Set());
 
 const searchInput = ref('');
 let searchTimeout = null;
@@ -280,6 +308,7 @@ const showAdvancedFilters = ref(false);
 const advancedFilters = ref({
   servidor: '',
   menbresia: '',
+  estado: '',
   rubro: '',
   document_type: '',
   fecha_contacto_mes: '',
@@ -288,6 +317,7 @@ const advancedFilters = ref({
 
 const serverOptions = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
 const menbresiaOptions = ['Mensual', 'Trimestral', 'Semestral', 'Anual'];
+const estadoOptions = ['activo', 'retirado', 'eliminado'];
 const documentTypeOptions = ['dni', 'ruc', 'otro'];
 const monthOptions = [
   { value: 1, label: 'Enero' },
@@ -317,8 +347,9 @@ const pagination = ref({
 
 const columns = [
   { key: 'csv_numero', label: 'N°' },
-  { key: 'customer', label: 'Cliente' },
+  { key: 'customer', label: 'Contacto' },
   { key: 'company', label: 'Empresa' },
+  { key: 'city', label: 'Ciudad' },
   { key: 'precio', label: 'Precio' },
   { key: 'rubro', label: 'Rubro' },
   { key: 'document', label: 'Documento' },
@@ -328,9 +359,12 @@ const columns = [
   { key: 'usuario', label: 'Usuario' },
   { key: 'contrasena', label: 'Contraseña' },
   { key: 'servidor', label: 'Servidor' },
+  { key: 'estado', label: 'Estado' },
+  { key: 'menbresia', label: 'Menbresia' },
   { key: 'fecha_contacto_mes', label: 'Mes contacto' },
   { key: 'fecha_contacto_anio', label: 'Año contacto' },
   { key: 'fecha_creacion', label: 'F. creación' },
+  { key: 'observacion', label: 'Observación' },
   { key: 'actions', label: 'Acciones' },
 ];
 
@@ -358,6 +392,7 @@ const buildAdvancedParams = () => {
 
   if (advancedFilters.value.servidor) params.servidor = advancedFilters.value.servidor;
   if (advancedFilters.value.menbresia) params.menbresia = advancedFilters.value.menbresia;
+  if (advancedFilters.value.estado) params.estado = advancedFilters.value.estado;
   if (advancedFilters.value.rubro) params.rubro = advancedFilters.value.rubro;
   if (advancedFilters.value.document_type) params.document_type = advancedFilters.value.document_type;
   if (advancedFilters.value.fecha_contacto_mes) params.fecha_contacto_mes = advancedFilters.value.fecha_contacto_mes;
@@ -398,6 +433,7 @@ const clearAdvancedFilters = async () => {
   advancedFilters.value = {
     servidor: '',
     menbresia: '',
+    estado: '',
     rubro: '',
     document_type: '',
     fecha_contacto_mes: '',
@@ -464,6 +500,26 @@ const clearCustomersTableLocal = async () => {
     toastError(msg);
   } finally {
     clearingTable.value = false;
+  }
+};
+
+const updateCustomerStatus = async (c, estado) => {
+  if (!c?.id) return;
+  const previous = c.estado || 'activo';
+  if (estado === previous) return;
+
+  c.estado = estado;
+  changingStatusIds.value.add(c.id);
+  try {
+    const { data } = await axios.patch(`/customers/${c.id}/status`, { estado });
+    c.estado = data?.data?.estado || estado;
+    toastSuccess('Estado actualizado');
+  } catch (e) {
+    c.estado = previous;
+    const msg = e?.response?.data?.message ?? 'No se pudo actualizar el estado.';
+    toastError(msg);
+  } finally {
+    changingStatusIds.value.delete(c.id);
   }
 };
 
