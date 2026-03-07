@@ -54,6 +54,15 @@
             </button>
 
             <button
+              v-else-if="isScrumTasks"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:text-slate-200 dark:bg-slate-900 dark:border-slate-800 dark:hover:bg-slate-800"
+              @click="toggleScrumView"
+            >
+              {{ scrumViewMode === 'kanban' ? 'Vista lista' : 'Vista kanban' }}
+            </button>
+
+            <button
               v-else-if="false"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
@@ -68,6 +77,15 @@
               @click="createIncidence"
             >
               Nueva incidencia
+            </button>
+
+            <button
+              v-else-if="isScrumTasks"
+              type="button"
+              class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
+              @click="createScrumTask"
+            >
+              Nueva tarea
             </button>
 
             <button
@@ -106,6 +124,8 @@
           <IncidenciasBoard v-else-if="isIncidencias && currentView === 'board'" />
 
           <BacklogBoard v-else-if="isBacklog" />
+
+          <ScrumTasksView v-else-if="isScrumTasks" :view-mode="scrumViewMode" />
 
           <PostventaCustomersTable v-else-if="isPostventaCustomers || isCustomers" />
 
@@ -153,6 +173,7 @@ const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
 const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
 const IncidenciasBoard = defineAsyncComponent(() => import('./IncidenciasBoard.vue'));
 const BacklogBoard = defineAsyncComponent(() => import('./BacklogBoard.vue'));
+const ScrumTasksView = defineAsyncComponent(() => import('./ScrumTasksView.vue'));
 const PostventaCustomersTable = defineAsyncComponent(() => import('./PostventaCustomersTable.vue'));
 const ContadoresTable = defineAsyncComponent(() => import('./ContadoresTable.vue'));
 const CertificadosTable = defineAsyncComponent(() => import('./CertificadosTable.vue'));
@@ -183,6 +204,7 @@ const currentView = computed(() => {
   return 'table';
 });
 const isBacklog = computed(() => normalizedPath.startsWith('/backlog'));
+const isScrumTasks = computed(() => normalizedPath.startsWith('/scrum/tareas'));
 const isPostventaCustomers = computed(() => normalizedPath === '/postventa/clientes');
 const isPostventaContadores = computed(() => normalizedPath === '/postventa/contadores');
 const isPostventaCertificados = computed(() => normalizedPath === '/postventa/certificados');
@@ -211,6 +233,8 @@ const pageTitle = computed(() =>
             ? 'Clientes'
             : isCalendar.value
               ? 'Calendario'
+                : isScrumTasks.value
+                  ? 'Scrum'
               : isPostventaIncidences.value
                 ? 'Incidencias'
                   : isPostventaCustomers.value
@@ -244,6 +268,8 @@ const pageSubtitle = computed(() =>
               ? 'Listado de clientes'
               : isCalendar.value
                 ? 'Agenda y recordatorios'
+                : isScrumTasks.value
+                  ? `Planificacion y seguimiento de tareas (vista ${scrumViewMode.value === 'kanban' ? 'kanban' : 'lista'})`
                   : isIncidencias.value
                     ? `Registro y seguimiento de incidencias (vista ${currentView.value === 'board' ? 'kanban' : 'lista'})`
                     : isBacklog.value
@@ -260,6 +286,9 @@ const pageSubtitle = computed(() =>
 const isPostventa = computed(
   () => isPostventaIncidences.value || isPostventaCustomers.value || isPostventaContadores.value || isPostventaCertificados.value
 );
+
+const scrumQuery = new URLSearchParams(window.location.search);
+const scrumViewMode = computed(() => (scrumQuery.get('view') === 'list' ? 'list' : 'kanban'));
 
 const isLostLeads = computed(() => normalizedPath === '/desistidos');
 
@@ -292,6 +321,16 @@ const createQuickLead = () => {
 
 const createIncidence = () => {
   window.dispatchEvent(new CustomEvent('incidencias:create'));
+};
+
+const createScrumTask = () => {
+  window.dispatchEvent(new CustomEvent('scrum-tasks:create'));
+};
+
+const toggleScrumView = () => {
+  if (!isScrumTasks.value) return;
+  const nextView = scrumViewMode.value === 'kanban' ? 'list' : 'kanban';
+  window.location.assign(`/scrum/tareas?view=${nextView}`);
 };
 
 const createContador = () => {

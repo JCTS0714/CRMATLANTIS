@@ -17,6 +17,7 @@ use App\Http\Controllers\RelatedLookupController;
 use App\Http\Controllers\Role\RoleController;
 use App\Http\Controllers\User\UserController;
 use App\Http\Controllers\Settings\SettingsController;
+use App\Http\Controllers\Scrum\ScrumTaskController;
 use App\Http\Controllers\Campaign\WhatsAppCampaignController;
 use App\Http\Controllers\Campaign\EmailCampaignController;
 use App\Http\Controllers\EmailUnsubscribeController;
@@ -182,6 +183,16 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/related-lookup', [RelatedLookupController::class, 'index'])->name('related.lookup');
     });
+
+    Route::get('/scrum/tareas', function () {
+        return view('dashboard');
+    })->name('scrum.tasks');
+
+    Route::get('/scrum/tareas/data', [ScrumTaskController::class, 'index'])->name('scrum.tasks.data');
+    Route::get('/scrum/tareas/responsables', [ScrumTaskController::class, 'users'])->name('scrum.tasks.users');
+    Route::post('/scrum/tareas', [ScrumTaskController::class, 'store'])->name('scrum.tasks.store');
+    Route::put('/scrum/tareas/{scrumTask}', [ScrumTaskController::class, 'update'])->name('scrum.tasks.update');
+    Route::patch('/scrum/tareas/{scrumTask}/status', [ScrumTaskController::class, 'updateStatus'])->name('scrum.tasks.status');
 
     Route::middleware('permission:incidencias.view')->group(function () {
         Route::get('/incidencias', function () {

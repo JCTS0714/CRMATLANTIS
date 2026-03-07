@@ -78,6 +78,18 @@ class SyncPermissions extends Command
             ], []);
         }
 
+        // Group-level menus used by frontend navigation
+        $menuGroups = [
+            'menu.postventa',
+        ];
+
+        foreach ($menuGroups as $menuPermission) {
+            Permission::query()->updateOrCreate([
+                'name' => $menuPermission,
+                'guard_name' => $guard,
+            ], []);
+        }
+
         $total = Permission::query()->where('guard_name', $guard)->count();
         $this->info("Permisos sincronizados. Total permisos para guard '{$guard}': {$total}");
 

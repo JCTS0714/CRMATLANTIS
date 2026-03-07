@@ -6,6 +6,14 @@ Bienvenido a la documentación del sistema CRM Atlantis.
 
 ## 📁 Estructura de Documentación
 
+### 📈 `/PROGRESO-*.md`
+Bitácoras ejecutivas por fecha con resumen de cambios de sesiones completas.
+
+**Archivos:**
+- `PROGRESO-2026-03-05.md` - Implementación completa del modulo Scrum Tareas (UI + backend + estado_tiempo)
+
+**Uso:** Revisar rapidamente que se hizo en una fecha especifica sin recorrer todos los commits.
+
 ### 📘 `/implementation/`
 Documentación técnica detallada de implementaciones completadas.
 

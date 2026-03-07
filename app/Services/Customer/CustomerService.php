@@ -141,6 +141,7 @@ class CustomerService
                     ->orWhere('servidor', 'like', "%{$query}%")
                     ->orWhere('menbresia', 'like', "%{$query}%")
                     ->orWhere('estado', 'like', "%{$query}%")
+                    ->orWhere('observacion', 'like', "%{$query}%")
                     ->orWhere('csv_numero', 'like', "%{$query}%")
                     ->orWhere('document_number', 'like', "%{$query}%");
             });

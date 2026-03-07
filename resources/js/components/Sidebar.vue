@@ -318,6 +318,71 @@
           </a>
         </li>
 
+        <li v-if="canSeeScrum">
+          <div
+            class="relative"
+            ref="scrumAnchor"
+            @mouseenter="onScrumMouseEnter"
+            @mouseleave="onScrumMouseLeave"
+          >
+            <button
+              type="button"
+              class="w-full flex items-center p-2 rounded-lg group"
+              :class="[
+                collapsed ? 'justify-center' : '',
+                isActive('/scrum')
+                  ? 'text-white bg-slate-800 border border-slate-700'
+                  : 'text-slate-200 hover:bg-slate-800'
+              ]"
+              @click="onToggleScrum"
+            >
+              <svg
+                class="w-5 h-5"
+                :class="isActive('/scrum') ? 'text-white/90' : 'text-slate-300 group-hover:text-white'"
+                aria-hidden="true"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M4 3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4.5a1 1 0 0 0 0-2H5V5h10v2.5a1 1 0 1 0 2 0V4a1 1 0 0 0-1-1H4Zm7 6a1 1 0 0 0-1 1v2.586l-.293-.293a1 1 0 1 0-1.414 1.414l2 2a1 1 0 0 0 1.414 0l2-2a1 1 0 0 0-1.414-1.414L12 12.586V10a1 1 0 0 0-1-1Zm-6 2a1 1 0 0 0 0 2h2.5a1 1 0 1 0 0-2H5Z"
+                ></path>
+              </svg>
+
+              <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">Scrum</span>
+
+              <svg
+                v-show="!collapsed"
+                class="w-4 h-4"
+                :class="scrumOpen ? 'rotate-180' : ''"
+                aria-hidden="true"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+              </svg>
+            </button>
+
+            <ul v-show="!collapsed && scrumOpen" class="mt-2 space-y-1 pl-2">
+              <li>
+                <a
+                  href="/scrum/tareas"
+                  class="flex items-center gap-3 p-2 rounded-lg group"
+                  :class="[
+                    'text-slate-200 hover:bg-slate-800',
+                    isActive('/scrum/tareas') ? 'bg-slate-800 border border-slate-700' : ''
+                  ]"
+                >
+                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                  <span class="whitespace-nowrap">Tareas</span>
+                </a>
+              </li>
+            </ul>
+          </div>
+        </li>
+
         <li v-if="canSeePostventa">
           <div
             class="relative"
@@ -428,6 +493,41 @@
     </div>
 
     <!-- Collapsed: hover flyout (teleported to body to avoid clipping/stacking issues) -->
+    <teleport to="body">
+      <div
+        v-if="collapsed"
+        v-show="scrumHoverOpen"
+        class="fixed z-[9999]"
+        :style="scrumFlyoutStyle"
+        @mouseenter="onScrumMouseEnter"
+        @mouseleave="onScrumMouseLeave"
+      >
+        <div class="min-w-56 bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden">
+          <div class="px-4 py-3 flex items-center justify-between border-b border-slate-800">
+            <div class="text-sm font-semibold text-slate-100">Scrum</div>
+            <svg
+              class="w-4 h-4 text-slate-300"
+              aria-hidden="true"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+            </svg>
+          </div>
+
+          <ul class="py-2">
+            <li>
+              <a href="/scrum/tareas" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
+                <span class="whitespace-nowrap">Tareas</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </teleport>
     <teleport to="body">
       <div
         v-if="collapsed"
@@ -618,6 +718,46 @@ const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission(
 const canSeeInbox = computed(() => hasPermission('menu.inbox'));
 const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
 const canSeePostventa = computed(() => hasPermission('menu.postventa'));
+const canSeeScrum = computed(() => Boolean(authUser.value));
+
+const scrumOpen = ref(isActive('/scrum'));
+const scrumHoverOpen = ref(false);
+const scrumAnchor = ref(null);
+const scrumFlyoutStyle = ref({ left: '0px', top: '0px' });
+
+let scrumHoverCloseTimer = null;
+const onScrumMouseEnter = () => {
+  if (!collapsed.value) return;
+  if (scrumHoverCloseTimer) {
+    clearTimeout(scrumHoverCloseTimer);
+    scrumHoverCloseTimer = null;
+  }
+
+  const rect = scrumAnchor.value?.getBoundingClientRect?.();
+  if (rect) {
+    scrumFlyoutStyle.value = {
+      left: `${Math.round(rect.right + 8)}px`,
+      top: `${Math.round(rect.top)}px`,
+    };
+  }
+
+  scrumHoverOpen.value = true;
+};
+const onScrumMouseLeave = () => {
+  if (!collapsed.value) return;
+  if (scrumHoverCloseTimer) clearTimeout(scrumHoverCloseTimer);
+  scrumHoverCloseTimer = setTimeout(() => {
+    scrumHoverOpen.value = false;
+  }, 120);
+};
+
+const onToggleScrum = () => {
+  if (collapsed.value) {
+    window.location.assign('/scrum/tareas');
+    return;
+  }
+  scrumOpen.value = !scrumOpen.value;
+};
 
 const postventaOpen = ref(isActive('/incidencias') || isActive('/backlog') || isActive('/postventa'));
 const postventaHoverOpen = ref(false);
