@@ -193,6 +193,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/scrum/tareas', [ScrumTaskController::class, 'store'])->name('scrum.tasks.store');
     Route::put('/scrum/tareas/{scrumTask}', [ScrumTaskController::class, 'update'])->name('scrum.tasks.update');
     Route::patch('/scrum/tareas/{scrumTask}/status', [ScrumTaskController::class, 'updateStatus'])->name('scrum.tasks.status');
+    Route::delete('/scrum/tareas/{scrumTask}', [ScrumTaskController::class, 'destroy'])->name('scrum.tasks.destroy');
 
     Route::middleware('permission:incidencias.view')->group(function () {
         Route::get('/incidencias', function () {

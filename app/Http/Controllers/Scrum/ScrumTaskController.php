@@ -225,6 +225,15 @@ class ScrumTaskController extends Controller
         ]);
     }
 
+    public function destroy(ScrumTask $scrumTask): JsonResponse
+    {
+        $scrumTask->delete();
+
+        return response()->json([
+            'message' => 'Tarea eliminada correctamente.',
+        ]);
+    }
+
     private function resolveEstadoTiempo(ScrumTask $task): int
     {
         if (!$task->tiempo_ejecucion) {

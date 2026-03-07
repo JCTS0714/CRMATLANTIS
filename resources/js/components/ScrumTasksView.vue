@@ -157,6 +157,7 @@
               </td>
               <td class="px-4 py-3 text-gray-700 dark:text-slate-200">{{ statusLabel(task.estado) }}</td>
               <td class="px-4 py-3">
+                <div class="flex items-center gap-2">
                 <button
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -164,6 +165,15 @@
                 >
                   Ver/Editar
                 </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-lg border border-red-200 bg-white px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
+                  :disabled="deletingTask"
+                  @click="deleteTask(task.id)"
+                >
+                  Eliminar
+                </button>
+                </div>
               </td>
             </tr>
           </tbody>
@@ -286,6 +296,15 @@
 
           <div class="flex items-end justify-end gap-2 md:col-span-2">
             <button
+              v-if="editingTaskId"
+              type="button"
+              class="inline-flex items-center rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30 disabled:opacity-60"
+              :disabled="deletingTask || savingTask"
+              @click="deleteTask(editingTaskId)"
+            >
+              {{ deletingTask ? 'Eliminando...' : 'Eliminar' }}
+            </button>
+            <button
               type="button"
               class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               @click="closeForm"
@@ -327,6 +346,7 @@ const columns = [
 const tasks = ref([]);
 const loadingTasks = ref(false);
 const savingTask = ref(false);
+const deletingTask = ref(false);
 const loadError = ref('');
 
 const filters = reactive({
@@ -566,6 +586,29 @@ const saveTask = async () => {
     toastError(error?.response?.data?.message || 'No se pudo guardar la tarea.');
   } finally {
     savingTask.value = false;
+  }
+};
+
+const deleteTask = async (taskId) => {
+  if (!taskId) return;
+
+  if (!window.confirm('¿Deseas eliminar esta tarea?')) {
+    return;
+  }
+
+  deletingTask.value = true;
+  try {
+    await axios.delete(`/scrum/tareas/${taskId}`);
+    toastSuccess('Tarea eliminada.');
+    await loadTasks();
+
+    if (editingTaskId.value === taskId) {
+      closeForm();
+    }
+  } catch (error) {
+    toastError(error?.response?.data?.message || 'No se pudo eliminar la tarea.');
+  } finally {
+    deletingTask.value = false;
   }
 };
 
