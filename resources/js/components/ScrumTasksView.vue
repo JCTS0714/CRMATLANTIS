@@ -42,10 +42,89 @@
       <button
         type="button"
         class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        @click="showAdvancedFilters = !showAdvancedFilters"
+      >
+        {{ showAdvancedFilters ? 'Ocultar filtros avanzados' : 'Filtros avanzados' }}
+      </button>
+
+      <button
+        type="button"
+        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
         @click="resetFilters"
       >
         Limpiar filtros
       </button>
+    </div>
+
+    <div v-if="showAdvancedFilters" class="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-800 dark:bg-slate-900/40">
+      <div class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Periodo:</label>
+        <select
+          v-model="periodFilters.mode"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+        >
+          <option value="all">Todos</option>
+          <option value="last_week">Última semana</option>
+          <option value="month">Por mes</option>
+          <option value="between_months">Entre meses</option>
+          <option value="date">Por fecha</option>
+          <option value="between_dates">Entre fechas</option>
+        </select>
+      </div>
+
+      <div v-if="periodFilters.mode === 'month'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Mes:</label>
+        <input
+          v-model="periodFilters.month"
+          type="month"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div v-if="periodFilters.mode === 'between_months'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Desde mes:</label>
+        <input
+          v-model="periodFilters.fromMonth"
+          type="month"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div v-if="periodFilters.mode === 'between_months'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Hasta mes:</label>
+        <input
+          v-model="periodFilters.toMonth"
+          type="month"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div v-if="periodFilters.mode === 'date'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Fecha:</label>
+        <input
+          v-model="periodFilters.date"
+          type="date"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div v-if="periodFilters.mode === 'between_dates'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Desde:</label>
+        <input
+          v-model="periodFilters.fromDate"
+          type="date"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
+
+      <div v-if="periodFilters.mode === 'between_dates'" class="flex items-center gap-2">
+        <label class="text-xs text-gray-600 dark:text-slate-300">Hasta:</label>
+        <input
+          v-model="periodFilters.toDate"
+          type="date"
+          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
+        />
+      </div>
     </div>
 
     <div v-if="loadingTasks" class="mb-4 text-sm text-gray-600 dark:text-slate-300">Cargando tareas...</div>
@@ -358,6 +437,17 @@ const filters = reactive({
   priority: '',
 });
 
+const showAdvancedFilters = ref(false);
+const periodFilters = reactive({
+  mode: 'all',
+  month: '',
+  fromMonth: '',
+  toMonth: '',
+  date: '',
+  fromDate: '',
+  toDate: '',
+});
+
 const formOpen = ref(false);
 const editingTaskId = ref(null);
 const draggedTaskId = ref(null);
@@ -390,8 +480,81 @@ const responsibleFilterOptions = computed(() => {
   return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
 });
 
+const formatDateOnly = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const monthBounds = (monthValue) => {
+  if (!monthValue || !/^\d{4}-\d{2}$/.test(monthValue)) {
+    return { from: null, to: null };
+  }
+
+  const [yearRaw, monthRaw] = monthValue.split('-');
+  const year = Number(yearRaw);
+  const month = Number(monthRaw);
+  if (Number.isNaN(year) || Number.isNaN(month) || month < 1 || month > 12) {
+    return { from: null, to: null };
+  }
+
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    from: `${year}-${String(month).padStart(2, '0')}-01`,
+    to: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
+  };
+};
+
+const normalizePeriodBounds = (from, to) => {
+  if (!from || !to) {
+    return { from, to };
+  }
+  return from > to ? { from: to, to: from } : { from, to };
+};
+
+const resolvePeriodRange = () => {
+  if (periodFilters.mode === 'all') {
+    return { from: null, to: null };
+  }
+
+  if (periodFilters.mode === 'last_week') {
+    const now = new Date();
+    const fromDate = new Date(now);
+    fromDate.setDate(fromDate.getDate() - 6);
+    return {
+      from: formatDateOnly(fromDate),
+      to: formatDateOnly(now),
+    };
+  }
+
+  if (periodFilters.mode === 'month') {
+    return monthBounds(periodFilters.month);
+  }
+
+  if (periodFilters.mode === 'between_months') {
+    const start = monthBounds(periodFilters.fromMonth);
+    const end = monthBounds(periodFilters.toMonth);
+    return normalizePeriodBounds(start.from, end.to);
+  }
+
+  if (periodFilters.mode === 'date') {
+    if (!periodFilters.date) {
+      return { from: null, to: null };
+    }
+    return { from: periodFilters.date, to: periodFilters.date };
+  }
+
+  if (periodFilters.mode === 'between_dates') {
+    return normalizePeriodBounds(periodFilters.fromDate || null, periodFilters.toDate || null);
+  }
+
+  return { from: null, to: null };
+};
+
 const filteredTasks = computed(() => {
   const term = filters.search.trim().toLowerCase();
+  const periodRange = resolvePeriodRange();
 
   return tasks.value.filter((task) => {
     const matchesSearch =
@@ -400,8 +563,13 @@ const filteredTasks = computed(() => {
       task.descripcion.toLowerCase().includes(term);
     const matchesResponsible = !filters.responsible || task.responsable === filters.responsible;
     const matchesPriority = !filters.priority || task.prioridad === filters.priority;
+    const createdDateValue = task.createdAt ? formatDateOnly(new Date(task.createdAt)) : null;
+    const matchesPeriod =
+      !periodRange.from ||
+      !periodRange.to ||
+      (createdDateValue && createdDateValue >= periodRange.from && createdDateValue <= periodRange.to);
 
-    return matchesSearch && matchesResponsible && matchesPriority;
+    return matchesSearch && matchesResponsible && matchesPriority && matchesPeriod;
   });
 });
 
@@ -508,6 +676,13 @@ const resetFilters = () => {
   filters.search = '';
   filters.responsible = '';
   filters.priority = '';
+  periodFilters.mode = 'all';
+  periodFilters.month = '';
+  periodFilters.fromMonth = '';
+  periodFilters.toMonth = '';
+  periodFilters.date = '';
+  periodFilters.fromDate = '';
+  periodFilters.toDate = '';
 };
 
 const openForm = (task = null) => {
