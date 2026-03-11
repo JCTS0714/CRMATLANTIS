@@ -10,11 +10,25 @@
         />
       </div>
 
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <div class="text-sm text-slate-600 dark:text-slate-300">
           <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
           <span v-else>Sin resultados</span>
         </div>
+
+        <button
+          type="button"
+          class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          @click="showAdvancedFilters = !showAdvancedFilters"
+        >
+          {{ showAdvancedFilters ? 'Ocultar filtros' : 'Filtros avanzados' }}
+          <span
+            v-if="activeAdvancedFiltersCount"
+            class="ml-2 inline-flex min-w-5 items-center justify-center rounded-full bg-sky-100 px-1.5 py-0.5 text-xs font-medium text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+          >
+            {{ activeAdvancedFiltersCount }}
+          </span>
+        </button>
 
         <label
           class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
@@ -40,6 +54,59 @@
           @toggle="toggleColumn"
           @reset="resetColumns"
         />
+      </div>
+    </div>
+
+    <div v-if="showAdvancedFilters" class="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+      <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Servidor</label>
+          <select v-model="advancedFilters.servidor" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in serverOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Estado empresa</label>
+          <select v-model="advancedFilters.estado_empresa" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in estadoEmpresaOptions" :key="option" :value="option">{{ option }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Usuario</label>
+          <select v-model="advancedFilters.has_usuario" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in availabilityOptions" :key="`usuario-${option.value}`" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Teléfono</label>
+          <select v-model="advancedFilters.has_telefono" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in availabilityOptions" :key="`telefono-${option.value}`" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Link</label>
+          <select v-model="advancedFilters.has_link" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+            <option value="">Todos</option>
+            <option v-for="option in availabilityOptions" :key="`link-${option.value}`" :value="option.value">{{ option.label }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mt-3 flex flex-wrap items-center gap-2">
+        <button type="button" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" @click="applyAdvancedFilters">
+          Aplicar filtros
+        </button>
+        <button type="button" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="!hasActiveAdvancedFilters" @click="clearAdvancedFilters">
+          Limpiar
+        </button>
       </div>
     </div>
 
@@ -158,7 +225,7 @@
 
 <script setup>
 import axios from 'axios';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { confirmDialog, promptContadorCreate, promptContadorEdit, toastError, toastSuccess } from '../ui/alerts';
 import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
 import { useColumnVisibility } from '../composables/useColumnVisibility';
@@ -171,10 +238,29 @@ const deletingIds = ref(new Set());
 
 const searchInput = ref('');
 let searchTimeout = null;
+const showAdvancedFilters = ref(false);
+
+const advancedFilters = ref({
+  servidor: '',
+  estado_empresa: '',
+  has_usuario: '',
+  has_telefono: '',
+  has_link: '',
+});
 
 const importing = ref(false);
 const importStatus = ref('');
 const clearingLocal = ref(false);
+
+const serverOptions = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+const estadoEmpresaOptions = ['activo', 'retirado', 'eliminado'];
+const availabilityOptions = [
+  { value: '1', label: 'Con dato' },
+  { value: '0', label: 'Sin dato' },
+];
+
+const hasActiveAdvancedFilters = computed(() => Object.values(advancedFilters.value).some((value) => String(value).trim() !== ''));
+const activeAdvancedFiltersCount = computed(() => Object.values(advancedFilters.value).filter((value) => String(value).trim() !== '').length);
 
 const isLocalOnlyActionEnabled =
   import.meta.env.DEV || ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -219,6 +305,18 @@ const {
   showStickyXScroll,
 } = useStickyHorizontalScroll({ tableRef });
 
+const buildAdvancedParams = () => {
+  const params = {};
+
+  if (advancedFilters.value.servidor) params.servidor = advancedFilters.value.servidor;
+  if (advancedFilters.value.estado_empresa) params.estado_empresa = advancedFilters.value.estado_empresa;
+  if (advancedFilters.value.has_usuario) params.has_usuario = advancedFilters.value.has_usuario;
+  if (advancedFilters.value.has_telefono) params.has_telefono = advancedFilters.value.has_telefono;
+  if (advancedFilters.value.has_link) params.has_link = advancedFilters.value.has_link;
+
+  return params;
+};
+
 const fetchRows = async (page = 1) => {
   loading.value = true;
   try {
@@ -227,6 +325,7 @@ const fetchRows = async (page = 1) => {
         q: searchInput.value || '',
         per_page: pagination.value.per_page,
         page,
+        ...buildAdvancedParams(),
       },
     });
 
@@ -243,6 +342,21 @@ const fetchRows = async (page = 1) => {
 const goToPage = (page) => {
   const p = Math.max(1, Math.min(pagination.value.last_page || 1, page));
   fetchRows(p);
+};
+
+const applyAdvancedFilters = async () => {
+  await fetchRows(1);
+};
+
+const clearAdvancedFilters = async () => {
+  advancedFilters.value = {
+    servidor: '',
+    estado_empresa: '',
+    has_usuario: '',
+    has_telefono: '',
+    has_link: '',
+  };
+  await fetchRows(1);
 };
 
 const normalizeLink = (value) => {

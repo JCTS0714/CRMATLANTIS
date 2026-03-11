@@ -5,6 +5,7 @@ namespace App\Http\Controllers\PostVenta;
 use App\Http\Controllers\Controller;
 use App\Models\Customer;
 use App\Models\Contador;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
@@ -17,12 +18,18 @@ use Illuminate\Validation\Rule;
 class ContadorController extends Controller
 {
     private const SERVIDOR_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+    private const ESTADO_EMPRESA_OPTIONS = ['activo', 'retirado', 'eliminado'];
 
     public function data(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
         $perPage = (int) $request->query('per_page', 15);
         $perPage = max(5, min(100, $perPage));
+        $servidor = trim((string) $request->query('servidor', ''));
+        $estadoEmpresa = trim((string) $request->query('estado_empresa', ''));
+        $hasUsuario = trim((string) $request->query('has_usuario', ''));
+        $hasTelefono = trim((string) $request->query('has_telefono', ''));
+        $hasLink = trim((string) $request->query('has_link', ''));
 
         $query = Contador::query()->with(['customers:id,name,company_name,document_number,estado']);
 
@@ -31,10 +38,24 @@ class ContadorController extends Controller
                 $sub->where('nro', 'like', "%{$q}%")
                     ->orWhere('comercio', 'like', "%{$q}%")
                     ->orWhere('nom_contador', 'like', "%{$q}%")
+                    ->orWhere('titular_tlf', 'like', "%{$q}%")
+                    ->orWhere('telefono', 'like', "%{$q}%")
                     ->orWhere('usuario', 'like', "%{$q}%")
                     ->orWhere('servidor', 'like', "%{$q}%");
             });
         }
+
+        if (in_array($servidor, self::SERVIDOR_OPTIONS, true)) {
+            $query->where('servidor', $servidor);
+        }
+
+        if (in_array($estadoEmpresa, self::ESTADO_EMPRESA_OPTIONS, true)) {
+            $this->applyEstadoEmpresaFilter($query, $estadoEmpresa);
+        }
+
+        $this->applyPresenceFilter($query, 'usuario', $hasUsuario);
+        $this->applyPresenceFilter($query, 'telefono', $hasTelefono);
+        $this->applyPresenceFilter($query, 'link', $hasLink);
 
         $rows = $query
             ->orderByDesc('id')
@@ -109,8 +130,77 @@ class ContadorController extends Controller
             'filters' => [
                 'q' => $q,
                 'per_page' => $perPage,
+                'servidor' => $servidor,
+                'estado_empresa' => $estadoEmpresa,
+                'has_usuario' => $hasUsuario,
+                'has_telefono' => $hasTelefono,
+                'has_link' => $hasLink,
             ],
         ]);
+    }
+
+    private function applyEstadoEmpresaFilter(Builder $query, string $estadoEmpresa): void
+    {
+        $query->where(function (Builder $subQuery) use ($estadoEmpresa) {
+            $subQuery->whereHas('customers', function (Builder $customerQuery) use ($estadoEmpresa) {
+                $customerQuery->where(function (Builder $statusQuery) use ($estadoEmpresa) {
+                    $statusQuery->where('estado', $estadoEmpresa);
+
+                    if ($estadoEmpresa === 'activo') {
+                        $statusQuery->orWhereNull('estado')
+                            ->orWhere('estado', '');
+                    }
+                });
+            })->orWhereExists(function ($customerQuery) use ($estadoEmpresa) {
+                $customerQuery->select(DB::raw(1))
+                    ->from('customers')
+                    ->where(function ($statusQuery) use ($estadoEmpresa) {
+                        $statusQuery->where('customers.estado', $estadoEmpresa);
+
+                        if ($estadoEmpresa === 'activo') {
+                            $statusQuery->orWhereNull('customers.estado')
+                                ->orWhere('customers.estado', '');
+                        }
+                    })
+                    ->where(function ($matchQuery) {
+                        $matchQuery->whereColumn('customers.name', 'contadores.comercio')
+                            ->orWhereColumn('customers.company_name', 'contadores.comercio');
+                    });
+            });
+
+            if ($estadoEmpresa === 'activo') {
+                $subQuery->orWhere(function (Builder $unknownStatusQuery) {
+                    $unknownStatusQuery->whereDoesntHave('customers')
+                        ->whereNotExists(function ($customerQuery) {
+                            $customerQuery->select(DB::raw(1))
+                                ->from('customers')
+                                ->where(function ($matchQuery) {
+                                    $matchQuery->whereColumn('customers.name', 'contadores.comercio')
+                                        ->orWhereColumn('customers.company_name', 'contadores.comercio');
+                                });
+                        });
+                });
+            }
+        });
+    }
+
+    private function applyPresenceFilter(Builder $query, string $column, string $value): void
+    {
+        if (!in_array($value, ['1', '0'], true)) {
+            return;
+        }
+
+        if ($value === '1') {
+            $query->whereNotNull($column)
+                ->where($column, '!=', '');
+
+            return;
+        }
+
+        $query->where(function (Builder $subQuery) use ($column) {
+            $subQuery->whereNull($column)
+                ->orWhere($column, '');
+        });
     }
 
     public function store(Request $request): JsonResponse
