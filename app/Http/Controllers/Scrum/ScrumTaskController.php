@@ -95,12 +95,12 @@ class ScrumTaskController extends Controller
                     'responsable_id' => $task->responsable_id,
                     'responsable' => $task->responsable?->name,
                     'prioridad' => $task->prioridad,
-                    'tiempo_ejecucion' => optional($task->tiempo_ejecucion)?->toDateTimeString(),
+                    'tiempo_ejecucion' => optional($task->tiempo_ejecucion)?->toIso8601String(),
                     'observacion' => $task->observacion,
                     'estado' => $task->estado,
                     'estado_tiempo' => $this->resolveEstadoTiempo($task),
-                    'created_at' => optional($task->created_at)?->toDateTimeString(),
-                    'updated_at' => optional($task->updated_at)?->toDateTimeString(),
+                    'created_at' => optional($task->created_at)?->toIso8601String(),
+                    'updated_at' => optional($task->updated_at)?->toIso8601String(),
                 ];
             });
 
@@ -154,7 +154,7 @@ class ScrumTaskController extends Controller
                 'responsable_id' => $task->responsable_id,
                 'responsable' => $task->responsable?->name,
                 'prioridad' => $task->prioridad,
-                'tiempo_ejecucion' => optional($task->tiempo_ejecucion)?->toDateTimeString(),
+                'tiempo_ejecucion' => optional($task->tiempo_ejecucion)?->toIso8601String(),
                 'observacion' => $task->observacion,
                 'estado' => $task->estado,
                 'estado_tiempo' => $this->resolveEstadoTiempo($task),
@@ -197,7 +197,7 @@ class ScrumTaskController extends Controller
                 'responsable_id' => $scrumTask->responsable_id,
                 'responsable' => $scrumTask->responsable?->name,
                 'prioridad' => $scrumTask->prioridad,
-                'tiempo_ejecucion' => optional($scrumTask->tiempo_ejecucion)?->toDateTimeString(),
+                'tiempo_ejecucion' => optional($scrumTask->tiempo_ejecucion)?->toIso8601String(),
                 'observacion' => $scrumTask->observacion,
                 'estado' => $scrumTask->estado,
                 'estado_tiempo' => $this->resolveEstadoTiempo($scrumTask),

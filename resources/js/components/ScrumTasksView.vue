@@ -99,6 +99,7 @@
 
             <div class="mt-3 grid grid-cols-1 gap-1 text-xs text-gray-600 dark:text-slate-300">
               <span>Asignador: {{ task.asignador }}</span>
+              <span>Creada: {{ formatDate(task.createdAt) }}</span>
               <span>Ejecucion: {{ formatDate(task.tiempoEjecucion) }}</span>
             </div>
 
@@ -124,6 +125,7 @@
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Asignador</th>
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Responsable</th>
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Prioridad</th>
+              <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Creada</th>
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Ejecucion</th>
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Estado tiempo</th>
               <th class="px-4 py-3 text-left font-semibold text-gray-700 dark:text-slate-200">Estado</th>
@@ -132,7 +134,7 @@
           </thead>
           <tbody class="divide-y divide-gray-100 bg-white dark:divide-slate-800 dark:bg-slate-900">
             <tr v-if="filteredTasks.length === 0">
-              <td colspan="8" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">Sin tareas para mostrar.</td>
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500 dark:text-slate-400">Sin tareas para mostrar.</td>
             </tr>
             <tr v-for="task in filteredTasks" :key="task.id">
               <td class="px-4 py-3 text-gray-800 dark:text-slate-100">
@@ -146,6 +148,7 @@
                   {{ task.prioridad }}
                 </span>
               </td>
+              <td class="px-4 py-3 text-gray-700 dark:text-slate-200">{{ formatDate(task.createdAt) }}</td>
               <td class="px-4 py-3 text-gray-700 dark:text-slate-200">{{ formatDate(task.tiempoEjecucion) }}</td>
               <td class="px-4 py-3">
                 <span
@@ -419,9 +422,25 @@ const priorityClass = (priority) => {
 
 const formatDate = (value) => {
   if (!value) return 'Sin fecha';
-  const date = new Date(value);
+  const normalized = typeof value === 'string' ? value.replace(' ', 'T') : value;
+  const date = new Date(normalized);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString();
+};
+
+const toIsoStringFromLocalInput = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toISOString();
+};
+
+const toDateTimeLocalFromServer = (value) => {
+  if (!value) return '';
+  const normalized = typeof value === 'string' ? value.replace(' ', 'T') : value;
+  const date = new Date(normalized);
+  if (Number.isNaN(date.getTime())) return '';
+  return toDateTimeLocal(date);
 };
 
 const toDateTimeLocal = (date) => {
@@ -507,7 +526,7 @@ const openForm = (task = null) => {
   form.responsableId = task.responsable_id ?? null;
   form.responsable = task.responsable;
   form.prioridad = task.prioridad;
-  form.tiempoEjecucion = task.tiempoEjecucion;
+  form.tiempoEjecucion = toDateTimeLocalFromServer(task.tiempoEjecucion);
   form.observacion = task.observacion;
   form.estado = task.estado;
   responsibleQuery.value = task.responsable || '';
@@ -533,6 +552,7 @@ const normalizeTask = (task) => ({
   observacion: task.observacion,
   estado: task.estado,
   estadoTiempo: Number(task.estado_tiempo ?? 0),
+  createdAt: task.created_at ?? null,
 });
 
 const loadTasks = async () => {
@@ -568,7 +588,7 @@ const saveTask = async () => {
       descripcion: form.descripcion,
       responsable_id: form.responsableId,
       prioridad: form.prioridad,
-      tiempo_ejecucion: form.tiempoEjecucion || null,
+      tiempo_ejecucion: toIsoStringFromLocalInput(form.tiempoEjecucion),
       observacion: form.observacion || null,
     };
 
