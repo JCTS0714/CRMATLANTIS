@@ -31,6 +31,8 @@ class UserController extends Controller
 
     public function index(Request $request): JsonResponse
     {
+        $canUseFunciones = Schema::hasColumn('users', 'funciones');
+
         $validated = $request->validate([
             'search' => ['nullable', 'string', 'max:100'],
             'q' => ['nullable', 'string', 'max:100'],
@@ -48,6 +50,10 @@ class UserController extends Controller
         $dir = (string) ($validated['dir'] ?? $validated['sort_direction'] ?? 'desc');
 
         $columns = ['id', 'name', 'email', 'created_at'];
+        if ($canUseFunciones) {
+            $columns[] = 'funciones';
+        }
+
         if (Schema::hasColumn('users', 'profile_photo_path')) {
             $columns[] = 'profile_photo_path';
         }
@@ -57,9 +63,13 @@ class UserController extends Controller
             ->with(['roles:id,name']);
 
         if ($search !== '') {
-            $query->where(function ($q) use ($search) {
+            $query->where(function ($q) use ($search, $canUseFunciones) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%");
+
+                if ($canUseFunciones) {
+                    $q->orWhere('funciones', 'like', "%{$search}%");
+                }
             });
         }
 
@@ -71,7 +81,7 @@ class UserController extends Controller
 
         $paginator = $query->paginate($perPage)->appends($request->query());
 
-        $data = collect($paginator->items())->map(function (User $user) {
+        $data = collect($paginator->items())->map(function (User $user) use ($canUseFunciones) {
             $photoUrl = $user->profile_photo_path
                 ? '/storage/' . ltrim($user->profile_photo_path, '/')
                 : null;
@@ -84,6 +94,7 @@ class UserController extends Controller
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'funciones' => $canUseFunciones ? $user->funciones : null,
                 'profile_photo_url' => $photoUrl,
                 'created_at' => $user->created_at,
                 'roles' => $roles,
@@ -109,10 +120,12 @@ class UserController extends Controller
         $guard = config('auth.defaults.guard', 'web');
 
         $canStorePhotoPath = Schema::hasColumn('users', 'profile_photo_path');
+        $canStoreFunciones = Schema::hasColumn('users', 'funciones');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', Rule::unique(User::class, 'email')],
+            'funciones' => ['nullable', 'string'],
             'role' => [
                 'nullable',
                 'string',
@@ -134,6 +147,10 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
         ];
 
+        if ($canStoreFunciones) {
+            $attributes['funciones'] = $validated['funciones'] ?? null;
+        }
+
         if ($canStorePhotoPath) {
             $attributes['profile_photo_path'] = $photoPath;
         }
@@ -146,7 +163,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Usuario creado.',
-            'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+            'data' => array_merge($user->only(['id', 'name', 'email', 'funciones', 'created_at']), [
                 'roles' => [['id' => null, 'name' => $role]],
                 'role' => $role,
             ]),
@@ -158,6 +175,7 @@ class UserController extends Controller
         $guard = config('auth.defaults.guard', 'web');
 
         $canStorePhotoPath = Schema::hasColumn('users', 'profile_photo_path');
+        $canStoreFunciones = Schema::hasColumn('users', 'funciones');
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -168,6 +186,7 @@ class UserController extends Controller
                 'max:255',
                 Rule::unique(User::class, 'email')->ignore($user->id),
             ],
+            'funciones' => ['nullable', 'string'],
             'role' => [
                 'nullable',
                 'string',
@@ -180,6 +199,10 @@ class UserController extends Controller
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
+
+        if ($canStoreFunciones) {
+            $user->funciones = $validated['funciones'] ?? null;
+        }
 
         if (!empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
@@ -203,7 +226,7 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Usuario actualizado.',
-            'data' => array_merge($user->only(['id', 'name', 'email', 'created_at']), [
+            'data' => array_merge($user->only(['id', 'name', 'email', 'funciones', 'created_at']), [
                 'roles' => $user->roles()->get(['id', 'name'])->map(fn ($r) => ['id' => $r->id, 'name' => $r->name])->values(),
                 'role' => $user->roles()->pluck('name')->first(),
             ]),

@@ -9,7 +9,7 @@
     :pagination="pagination"
     :pagination-info="paginationInfo"
     :search-query="tableState.searchQuery"
-    search-placeholder="Buscar por nombre o email"
+    search-placeholder="Buscar por nombre, email o funciones"
     :per-page="filters.per_page"
     :per-page-options="[10, 25, 50, 100]"
     sortable
@@ -56,6 +56,11 @@
             >
               {{ role.name }}
             </BaseBadge>
+          </div>
+        </td>
+        <td class="px-4 py-3 text-sm text-gray-600 dark:text-slate-300">
+          <div class="max-w-xs whitespace-pre-line break-words">
+            {{ item.funciones || '—' }}
           </div>
         </td>
         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
@@ -146,6 +151,18 @@
                     {{ roleName }}
                   </option>
                 </select>
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Funciones
+                </label>
+                <textarea
+                  v-model="userForm.funciones"
+                  rows="4"
+                  placeholder="Describe las funciones o responsabilidades del usuario"
+                  class="block w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm shadow-sm transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder:text-slate-400 dark:focus:border-blue-500 dark:focus:ring-blue-500/20"
+                />
               </div>
             </div>
 
@@ -262,6 +279,7 @@ const columns = [
   { key: 'id', label: 'ID', sortable: true },
   { key: 'name', label: 'Usuario', sortable: true },
   { key: 'roles', label: 'Roles' },
+  { key: 'funciones', label: 'Funciones' },
   { key: 'created_at', label: 'Creado', sortable: true },
   { key: 'actions', label: 'Acciones' }
 ];
@@ -318,6 +336,7 @@ const getLocalAutofillModule = async () => {
 const userForm = ref({
   name: '',
   email: '',
+  funciones: '',
   role: 'employee',
   password: ''
 });
@@ -339,6 +358,7 @@ const editUser = (user) => {
   userForm.value = {
     name: user.name,
     email: user.email,
+    funciones: user.funciones || '',
     role: selectedRole,
     password: ''
   };
@@ -366,6 +386,7 @@ const saveUser = async () => {
       const fd = new FormData();
       fd.append('name', userForm.value.name);
       fd.append('email', userForm.value.email);
+      fd.append('funciones', userForm.value.funciones || '');
       fd.append('role', selectedRole);
       if (!editingUser.value) {
         fd.append('password', userForm.value.password);
@@ -423,6 +444,7 @@ const closeUserModal = () => {
   userForm.value = {
     name: '',
     email: '',
+    funciones: '',
     role: 'employee',
     password: ''
   };
@@ -442,6 +464,7 @@ watch(() => showCreateModal.value, (newValue) => {
     userForm.value = {
       name: '',
       email: '',
+      funciones: '',
       role: 'employee',
       password: ''
     };
