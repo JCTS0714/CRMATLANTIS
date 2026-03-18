@@ -904,15 +904,22 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
 
       <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha creación</label>
+          <input id="sw-cert-fecha_creacion" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaCreacionValue)}" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha vencimiento</label>
+          <input id="sw-cert-fecha_vencimiento" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaVencimientoValue)}" />
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Estado</label>
           <select id="sw-cert-estado" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
             <option value="activo" ${cert.estado === 'activo' || !cert.estado ? 'selected' : ''}>Activo</option>
             <option value="inactivo" ${cert.estado === 'inactivo' ? 'selected' : ''}>Inactivo</option>
           </select>
-        </div>
-        <div>
-          <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha vencimiento</label>
-          <input id="sw-cert-fecha_vencimiento" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaVencimientoValue)}" />
         </div>
       </div>
 
@@ -925,11 +932,6 @@ export async function promptCertificadoEdit(cert = {}, isCreate = false) {
           <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Clave</label>
           <input id="sw-cert-clave" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(cert.clave)}" />
         </div>
-      </div>
-
-      <div>
-        <label class="block text-xs font-medium text-gray-600 dark:text-slate-300">Fecha creación</label>
-        <input id="sw-cert-fecha_creacion" type="date" class="mt-1 w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100" value="${escapeHtml(fechaCreacionValue)}" />
       </div>
 
       <div>
