@@ -35,4 +35,18 @@ return [
         ],
     ],
 
+    'kapso' => [
+        'enabled' => env('KAPSO_ENABLED', false),
+        'api_key' => env('KAPSO_API_KEY'),
+        'phone_number_id' => env('KAPSO_PHONE_NUMBER_ID'),
+        'base_url' => env('KAPSO_BASE_URL', 'https://api.kapso.ai/meta/whatsapp/v24.0'),
+    ],
+
+    'brevo' => [
+        'enabled' => env('BREVO_ENABLED', false),
+        'api_key' => env('BREVO_API_KEY'),
+        'sender_email' => env('BREVO_SENDER_EMAIL'),
+        'sender_name' => env('BREVO_SENDER_NAME', 'CRM Atlantis'),
+    ],
+
 ];

@@ -9,6 +9,8 @@ return new class extends Migration
 {
     public function up(): void
     {
+        $driver = DB::getDriverName();
+
         try {
             DB::statement('ALTER TABLE leads DROP INDEX leads_migracion_index');
         } catch (\Throwable $e) {
@@ -16,7 +18,12 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('leads', 'migracion')) {
-            DB::statement('ALTER TABLE leads MODIFY migracion VARCHAR(255) NULL');
+            if (in_array($driver, ['mysql', 'mariadb'], true)) {
+                DB::statement('ALTER TABLE leads MODIFY migracion VARCHAR(255) NULL');
+            } elseif ($driver === 'pgsql') {
+                DB::statement('ALTER TABLE leads ALTER COLUMN migracion TYPE VARCHAR(255) USING migracion::VARCHAR');
+                DB::statement('ALTER TABLE leads ALTER COLUMN migracion DROP NOT NULL');
+            }
         }
 
         if (!Schema::hasColumn('leads', 'referencia')) {
@@ -43,6 +50,8 @@ return new class extends Migration
 
     public function down(): void
     {
+        $driver = DB::getDriverName();
+
         if (!Schema::hasColumn('leads', 'fecha_contacto_mes') || !Schema::hasColumn('leads', 'fecha_contacto_anio')) {
             Schema::table('leads', function (Blueprint $table) {
                 if (!Schema::hasColumn('leads', 'fecha_contacto_mes')) {
@@ -61,9 +70,15 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('leads', 'migracion')) {
-            DB::statement("UPDATE leads SET migracion = NULL WHERE migracion IS NOT NULL AND STR_TO_DATE(migracion, '%Y-%m-%d') IS NULL");
-            DB::statement('ALTER TABLE leads MODIFY migracion DATE NULL');
-            DB::statement('ALTER TABLE leads ADD INDEX leads_migracion_index (migracion)');
+            if (in_array($driver, ['mysql', 'mariadb'], true)) {
+                DB::statement("UPDATE leads SET migracion = NULL WHERE migracion IS NOT NULL AND STR_TO_DATE(migracion, '%Y-%m-%d') IS NULL");
+                DB::statement('ALTER TABLE leads MODIFY migracion DATE NULL');
+                DB::statement('ALTER TABLE leads ADD INDEX leads_migracion_index (migracion)');
+            } elseif ($driver === 'pgsql') {
+                DB::statement("UPDATE leads SET migracion = NULL WHERE migracion IS NOT NULL AND migracion !~ '^\\d{4}-\\d{2}-\\d{2}$'");
+                DB::statement('ALTER TABLE leads ALTER COLUMN migracion TYPE DATE USING NULLIF(migracion, \'\')::DATE');
+                DB::statement('CREATE INDEX IF NOT EXISTS leads_migracion_index ON leads (migracion)');
+            }
         }
     }
 };

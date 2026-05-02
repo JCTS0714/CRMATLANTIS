@@ -565,32 +565,46 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
-import axios from 'axios';
 import { confirmDialog, toastSuccess, toastError } from '../ui/alerts';
+import { useLeadsBoardPeriodFilters } from '../composables/useLeadsBoardPeriodFilters';
+import { useLeadsBoardLeadModals } from '../composables/useLeadsBoardLeadModals';
+import { useLeadsBoardDragDrop } from '../composables/useLeadsBoardDragDrop';
+import { useLeadsBoardLeadActions } from '../composables/useLeadsBoardLeadActions';
+import { useLeadsBoardData } from '../composables/useLeadsBoardData';
+import { useLeadsBoardLifecycle } from '../composables/useLeadsBoardLifecycle';
 
-const loading = ref(true);
-const stages = ref([]);
-const limit = ref(20);
-const periodType = ref('last_week');
-const periodMonth = ref('');
-const periodMonthFrom = ref('');
-const periodMonthTo = ref('');
-const periodDate = ref('');
-const periodDateFrom = ref('');
-const periodDateTo = ref('');
-const suppressLimitReload = ref(false);
+const {
+  periodType,
+  periodMonth,
+  periodMonthFrom,
+  periodMonthTo,
+  periodDate,
+  periodDateFrom,
+  periodDateTo,
+  clearPeriodInputs,
+  resolvePeriodRange,
+  isPeriodReady,
+} = useLeadsBoardPeriodFilters();
 
-const clearPeriodInputs = () => {
-  periodMonth.value = '';
-  periodMonthFrom.value = '';
-  periodMonthTo.value = '';
-  periodDate.value = '';
-  periodDateFrom.value = '';
-  periodDateTo.value = '';
-};
-
-const moveError = ref('');
+const {
+  loading,
+  stages,
+  limit,
+  gridColsClass,
+  load,
+} = useLeadsBoardData({
+  periodType,
+  periodMonth,
+  periodMonthFrom,
+  periodMonthTo,
+  periodDate,
+  periodDateFrom,
+  periodDateTo,
+  clearPeriodInputs,
+  resolvePeriodRange,
+  isPeriodReady,
+  toastError,
+});
 
 const isLocalAutofillEnabled = (() => {
   if (typeof window === 'undefined') return false;
@@ -607,760 +621,67 @@ const getLocalAutofillModule = async () => {
   return localAutofillModulePromise;
 };
 
-// 🚀 NUEVO DRAG & DROP SIMPLE
-const draggedLead = ref(null);
-const draggedFromStage = ref(null);
-const dragOverStageId = ref(null);
-const dropPreviewPosition = ref(null);
-
-const gridColsClass = computed(() => {
-  const n = stages.value.length || 1;
-  if (n <= 1) return 'grid-cols-1';
-  if (n === 2) return 'grid-cols-1 md:grid-cols-2';
-  if (n === 3) return 'grid-cols-1 md:grid-cols-3';
-  return 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4';
+const {
+  moveError,
+  draggedLead,
+  dragOverStageId,
+  dropPreviewPosition,
+  isLeadLocked,
+  onDragStart,
+  onDragEnd,
+  onDragOver,
+  onDropOnStage,
+  removeLeadFromStage,
+} = useLeadsBoardDragDrop({
+  stages,
+  load,
+  confirmDialog,
+  toastSuccess,
 });
 
-const formatMoney = (amount, currency) => {
-  const number = Number(amount);
-  if (Number.isNaN(number)) return '';
-  if (currency === 'USD') return `$${number.toFixed(2)}`;
-  return `S/ ${number.toFixed(2)}`;
-};
-
-const pad = (value) => String(value).padStart(2, '0');
-
-const toDateString = (date) => {
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  return `${year}-${month}-${day}`;
-};
-
-const getMonthRange = (value) => {
-  if (!value || !/^\d{4}-\d{2}$/.test(value)) {
-    return { from: null, to: null };
-  }
-
-  const [yearText, monthText] = value.split('-');
-  const year = Number(yearText);
-  const month = Number(monthText);
-  if (Number.isNaN(year) || Number.isNaN(month) || month < 1 || month > 12) {
-    return { from: null, to: null };
-  }
-
-  const lastDay = new Date(year, month, 0).getDate();
-  return {
-    from: `${year}-${pad(month)}-01`,
-    to: `${year}-${pad(month)}-${pad(lastDay)}`,
-  };
-};
-
-const normalizeRange = (from, to) => {
-  if (from && to && from > to) {
-    return { from: to, to: from };
-  }
-  return { from, to };
-};
-
-const resolvePeriodRange = () => {
-  switch (periodType.value) {
-    case 'last_week': {
-      const end = new Date();
-      const start = new Date(end);
-      start.setDate(start.getDate() - 6);
-      return {
-        from: toDateString(start),
-        to: toDateString(end),
-      };
-    }
-
-    case 'month': {
-      const { from, to } = getMonthRange(periodMonth.value);
-      return { from: from ?? undefined, to: to ?? undefined };
-    }
-
-    case 'between_months': {
-      const startRange = getMonthRange(periodMonthFrom.value);
-      const endRange = getMonthRange(periodMonthTo.value);
-      return normalizeRange(startRange.from ?? undefined, endRange.to ?? undefined);
-    }
-
-    case 'date': {
-      if (!periodDate.value) return { from: undefined, to: undefined };
-      return { from: periodDate.value, to: periodDate.value };
-    }
-
-    case 'between_dates': {
-      return normalizeRange(
-        periodDateFrom.value || undefined,
-        periodDateTo.value || undefined,
-      );
-    }
-
-    default:
-      return { from: undefined, to: undefined };
-  }
-};
-
-const isPeriodReady = () => {
-  if (periodType.value === 'all' || periodType.value === 'last_week') return true;
-  if (periodType.value === 'month') return !!periodMonth.value;
-  if (periodType.value === 'between_months') return !!periodMonthFrom.value && !!periodMonthTo.value;
-  if (periodType.value === 'date') return !!periodDate.value;
-  if (periodType.value === 'between_dates') return !!periodDateFrom.value && !!periodDateTo.value;
-  return false;
-};
-
-const load = async ({ showLoading = true } = {}) => {
-  if (showLoading) loading.value = true;
-  try {
-    const range = resolvePeriodRange();
-    const params = {
-      limit: limit.value || undefined,
-      date_from: range.from,
-      date_to: range.to,
-    };
-
-    const response = await axios.get('/leads/board-data', { params });
-    stages.value = response?.data?.data?.stages ?? [];
-  } catch (e) {
-    stages.value = [];
-    const msg = e?.response?.data?.message ?? 'No se pudo cargar el pipeline.';
-    toastError(msg);
-    // also log to console for debugging
-    // eslint-disable-next-line no-console
-    console.error('Leads board load error', e);
-  } finally {
-    if (showLoading) loading.value = false;
-  }
-};
-
-watch(limit, async (newValue, oldValue) => {
-  if (suppressLimitReload.value) return;
-  if (newValue === oldValue) return;
-  await load({ showLoading: false });
+const {
+  archivingIds,
+  formatMoney,
+  archiveLead,
+  goToCalendarWithLead,
+} = useLeadsBoardLeadActions({
+  confirmDialog,
+  toastSuccess,
+  toastError,
+  moveError,
+  removeLeadFromStage,
 });
 
-watch(periodType, async (newType, oldType) => {
-  if (newType !== oldType) {
-    clearPeriodInputs();
-  }
-
-  if (newType === 'all' || newType === 'last_week') {
-    await load({ showLoading: false });
-  }
+const {
+  quickOpen,
+  quickSaving,
+  quickError,
+  quickForm,
+  documentPlaceholder,
+  showQuickModal,
+  hideQuickModal,
+  fillQuickLeadForTest,
+  submitQuick,
+  editOpen,
+  editSaving,
+  editError,
+  observacionInput,
+  editForm,
+  openEditModal,
+  closeEditModal,
+  submitEdit,
+  markDesistido,
+  sendToEspera,
+} = useLeadsBoardLeadModals({
+  stages,
+  getLocalAutofillModule,
+  confirmDialog,
+  toastSuccess,
+  toastError,
 });
 
-watch(
-  [periodMonth, periodMonthFrom, periodMonthTo, periodDate, periodDateFrom, periodDateTo],
-  async () => {
-    if (!isPeriodReady()) return;
-    await load({ showLoading: false });
-  }
-);
-
-const archivingIds = ref(new Set());
-
-const isLeadLocked = (lead, stage) => {
-  return !!(lead?.archived_at || lead?.won_at || stage?.is_won);
-};
-
-// ========================================
-// 🚀 NUEVO DRAG & DROP SIMPLE Y LIMPIO
-// ========================================
-
-const onDragStart = (lead, stage, event) => {
-  if (isLeadLocked(lead, stage)) return;
-  
-  draggedLead.value = lead;
-  draggedFromStage.value = stages.value.find(s => s.id === lead.stage_id);
-  
-  // Visual feedback optimizado - sin transiciones lentas
-  if (event?.target) {
-    event.target.style.transform = 'scale(1.02)';
-    event.target.style.opacity = '0.7';
-    event.target.style.transition = 'transform 0.1s ease';
-  }
-};
-
-const onDragEnd = (event) => {
-  // Reset visual feedback - inmediato
-  if (event?.target) {
-    event.target.style.transform = '';
-    event.target.style.opacity = '';
-    event.target.style.transition = '';
-  }
-  
-  // Limpiar preview inmediatamente
-  dragOverStageId.value = null;
-  dropPreviewPosition.value = null;
-  
-  // Clean up inmediato
-  draggedLead.value = null;
-  draggedFromStage.value = null;
-};
-
-const onDragOver = (event) => {
-  if (!draggedLead.value) return;
-  event.preventDefault(); // Allow drop
-  
-  // Encontrar la etapa sobre la que se está arrastrando directamente
-  const stageElement = event.currentTarget.closest('section[data-stage-id]');
-  if (!stageElement) return;
-  
-  const stageId = parseInt(stageElement.getAttribute('data-stage-id'));
-  const targetStage = stages.value.find(s => s.id === stageId);
-  if (!targetStage) return;
-  
-  dragOverStageId.value = stageId;
-  
-  // Calcular posición de preview directamente
-  const dropY = event.clientY;
-  dropPreviewPosition.value = calculateDropPosition(targetStage, dropY, draggedLead.value.id);
-};
-
-const onDropOnStage = async (targetStage, event) => {
-  event.preventDefault();
-  
-  if (!draggedLead.value || !targetStage) return;
-  
-  const lead = draggedLead.value;
-  const fromStage = draggedFromStage.value;
-  
-  // Validations
-  if (isLeadLocked(lead, fromStage)) {
-    moveError.value = 'Este lead está bloqueado y no se puede mover.';
-    return;
-  }
-  
-  if (targetStage.is_won && !lead.customer_id) {
-    const ok = await confirmDialog({
-      title: 'Confirmar GANADO',
-      text: '¿Marcar este lead como GANADO? Esto lo convertirá en cliente automáticamente.',
-      confirmText: 'Sí, marcar como ganado',
-      cancelText: 'Cancelar',
-      icon: 'warning',
-    });
-    if (!ok) return;
-  }
-  
-  moveError.value = '';
-  
-  try {
-    const isSameStage = fromStage.id === targetStage.id;
-    
-    if (isSameStage) {
-      // CASO 1: Reordenamiento dentro de la misma columna
-      const dropY = event.clientY;
-      const newPosition = calculateDropPosition(targetStage, dropY, lead.id);
-      // No usar await - que sea inmediato
-      reorderLeadsInStage(targetStage.id, lead.id, newPosition);
-      
-    } else {
-      // CASO 2: Movimiento entre columnas diferentes - Optimistic UI Update
-      const isLeadConversionToWon = targetStage.is_won && !lead.customer_id;
-
-      if (isLeadConversionToWon) {
-        const response = await axios.patch(`/leads/${lead.id}/move-stage`, {
-          stage_id: targetStage.id,
-        });
-
-        const convertedCustomerId = Number(response?.data?.data?.customer_id ?? 0);
-        const params = new URLSearchParams();
-        if (Number.isInteger(convertedCustomerId) && convertedCustomerId > 0) {
-          params.set('edit_customer_id', String(convertedCustomerId));
-        }
-        params.set('source', 'lead-conversion');
-
-        toastSuccess('Lead convertido a cliente. Completa los datos del cliente.');
-        window.location.assign(`/postventa/clientes?${params.toString()}`);
-        return;
-      }
-
-      const dropY = event.clientY;
-      const newPosition = calculateDropPosition(targetStage, dropY, lead.id);
-      
-      // 1. Update UI inmediatamente (optimistic)
-      removeLeadFromStage(fromStage.id, lead.id);
-      addLeadToStage(targetStage.id, { ...lead, stage_id: targetStage.id }, newPosition);
-      
-      // 2. Sync con backend en background
-      axios.patch(`/leads/${lead.id}/move-stage`, { 
-        stage_id: targetStage.id 
-      }).then(() => {
-        // 3. Mantener orden actual que ya está en la UI
-        const orderedIds = targetStage.leads.map(l => l.id);
-        return axios.patch('/leads/reorder', {
-          stage_id: targetStage.id,
-          ordered_ids: orderedIds
-        });
-      }).catch(error => {
-        console.error('Error moving lead:', error);
-        moveError.value = 'Error al mover el lead. Recargando...';
-        // En caso de error, recargar datos
-        load({ showLoading: false });
-      });
-    }
-    
-  } catch (error) {
-    moveError.value = 'Error al mover el lead. Inténtalo de nuevo.';
-    
-    // Reload to get fresh data
-    await load({ showLoading: false });
-  }
-};
-
-// Cache para elementos DOM
-const stageElementCache = new Map();
-
-const calculateDropPosition = (stage, dropY, draggedLeadId = null) => {
-  let stageElement = stageElementCache.get(stage.id);
-  if (!stageElement || !document.contains(stageElement)) {
-    stageElement = document.querySelector(`[data-stage-id="${stage.id}"] .p-3`);
-    if (!stageElement) return 0;
-    stageElementCache.set(stage.id, stageElement);
-  }
-  
-  const leadCards = stageElement.querySelectorAll('article[data-lead-id]');
-  let position = 0;
-  
-  // Optimización: usar for loop directo sin Array.from
-  for (let i = 0; i < leadCards.length; i++) {
-    const card = leadCards[i];
-    const leadId = parseInt(card.getAttribute('data-lead-id'));
-    
-    // Skip si es la tarjeta que se está arrastrando
-    if (draggedLeadId && leadId === draggedLeadId) continue;
-    
-    const rect = card.getBoundingClientRect();
-    if (dropY < rect.top + rect.height / 2) {
-      return position;
-    }
-    position++;
-  }
-  
-  return position; // Insert at end
-};
-
-const reorderLeadsInStage = async (stageId, leadId, position) => {
-  const stage = stages.value.find(s => s.id === stageId);
-  if (!stage || !Array.isArray(stage.leads)) return;
-  
-  // Encontrar el lead actual
-  const currentIndex = stage.leads.findIndex(l => l.id === leadId);
-  if (currentIndex === -1) return;
-  
-  // Si la posición es la misma, no hacer nada
-  if (currentIndex === position) return;
-  
-  // Remover de posición actual
-  const [lead] = stage.leads.splice(currentIndex, 1);
-  
-  // Calcular nueva posición ajustada
-  const newIndex = Math.min(Math.max(0, position), stage.leads.length);
-  
-  // Insertar en nueva posición
-  stage.leads.splice(newIndex, 0, lead);
-  
-  // Actualizar conteo inmediatamente para UI responsiva
-  stage.count = stage.leads.length;
-  
-  // Enviar nuevo orden al backend (sin await para no bloquear UI)
-  const orderedIds = stage.leads.map(l => l.id);
-  
-  // Ejecutar en background para no bloquear la UI
-  axios.patch('/leads/reorder', {
-    stage_id: stageId,
-    ordered_ids: orderedIds
-  }).catch(error => {
-    console.error('Error reordering leads:', error);
-    // En caso de error, recargar datos
-    load({ showLoading: false });
-  });
-};
-
-// ========================================
-// 🛠 FUNCIONES AUXILIARES SIMPLES
-// ========================================
-
-const removeLeadFromStage = (stageId, leadId) => {
-  const stage = stages.value.find(s => s.id === stageId);
-  if (!stage?.leads) return;
-  
-  const index = stage.leads.findIndex(l => l.id === leadId);
-  if (index !== -1) {
-    stage.leads.splice(index, 1);
-    stage.count = stage.leads.length;
-  }
-};
-
-const addLeadToStage = (stageId, lead, position = 0) => {
-  const stage = stages.value.find(s => s.id === stageId);
-  if (!stage) return;
-  
-  if (!Array.isArray(stage.leads)) stage.leads = [];
-  
-  // Remove if already exists
-  const existingIndex = stage.leads.findIndex(l => l.id === lead.id);
-  if (existingIndex !== -1) {
-    stage.leads.splice(existingIndex, 1);
-  }
-  
-  // Insert at specific position
-  const insertIndex = Math.min(Math.max(0, position), stage.leads.length);
-  stage.leads.splice(insertIndex, 0, lead);
-  stage.count = stage.leads.length;
-};
-
-// Esta función fue eliminada - ahora usamos onDropOnStage
-
-const archiveLead = async (lead, stage) => {
-  if (!lead?.id) return;
-  if (!stage?.is_won && !lead?.won_at) return;
-
-  const ok = await confirmDialog({
-    title: 'Archivar lead',
-    text: 'Se ocultará del pipeline, pero seguirá visible en la tabla (historial).',
-    confirmText: 'Archivar',
-    cancelText: 'Cancelar',
-    icon: 'warning',
-  });
-  if (!ok) return;
-
-  archivingIds.value.add(lead.id);
-  moveError.value = '';
-  try {
-    await axios.patch(`/leads/${lead.id}/archive`);
-
-    // Remove from UI
-    const removed = removeLeadFromStage(stage.id, lead.id);
-    if (removed) {
-      // nothing else needed
-    }
-    toastSuccess('Lead archivado');
-  } catch (e) {
-    const msg = e?.response?.data?.message ?? 'No se pudo archivar el lead.';
-    moveError.value = msg;
-    toastError(msg);
-  } finally {
-    archivingIds.value.delete(lead.id);
-  }
-};
-
-const goToCalendarWithLead = (lead) => {
-  if (!lead?.id) return;
-
-  const title = lead.name ? `Seguimiento lead: ${lead.name}` : 'Seguimiento lead';
-  const details = [
-    lead.company_name ? `Empresa: ${lead.company_name}` : null,
-    lead.contact_name ? `Contacto: ${lead.contact_name}` : null,
-    lead.contact_phone ? `Teléfono: ${lead.contact_phone}` : null,
-    lead.contact_email ? `Email: ${lead.contact_email}` : null,
-    lead.observacion ? `Observación: ${lead.observacion}` : null,
-  ].filter(Boolean);
-
-  const params = new URLSearchParams({
-    related_type: 'lead',
-    related_id: String(lead.id),
-    title,
-  });
-
-  if (details.length > 0) {
-    params.set('description', details.join(' | '));
-  }
-
-  window.location.assign(`/calendar?${params.toString()}`);
-};
-
-// Quick lead modal
-const quickOpen = ref(false);
-const quickSaving = ref(false);
-const quickError = ref('');
-
-const quickForm = ref({
-  name: '',
-  amount: null,
-  currency: 'PEN',
-  contact_name: '',
-  contact_phone: '',
-  contact_email: '',
-  company_name: '',
-  company_address: '',
-  migracion: '',
-  referencia: '',
-  document_type: 'otro',
-  document_number: '55555555',
-  observacion: '',
-});
-
-// Edit modal form already declared below as editForm; ensure observacion included
-
-const documentPlaceholder = computed(() => {
-  if (quickForm.value.document_type === 'dni') return 'Documento: DNI (8 dígitos)';
-  if (quickForm.value.document_type === 'ruc') return 'Documento: RUC (11 dígitos)';
-  if (quickForm.value.document_type === 'otro') return 'Documento: OTRO (por defecto 55555555)';
-  return 'Documento: Número (opcional)';
-});
-
-const showQuickModal = () => {
-  quickError.value = '';
-  quickForm.value = {
-    name: '',
-    amount: null,
-    currency: 'PEN',
-    contact_name: '',
-    contact_phone: '',
-    contact_email: '',
-    company_name: '',
-    company_address: '',
-    migracion: '',
-    referencia: '',
-    document_type: 'otro',
-    document_number: '55555555',
-    observacion: '',
-  };
-  quickOpen.value = true;
-};
-
-const fillQuickLeadForTest = async () => {
-  const module = await getLocalAutofillModule();
-  module?.autofillLeadQuickForm?.(quickForm);
-};
-
-const hideQuickModal = () => {
-  quickOpen.value = false;
-};
-
-const firstValidationMessage = (error) => {
-  const errors = error?.response?.data?.errors;
-  if (!errors || typeof errors !== 'object') return null;
-  const firstKey = Object.keys(errors)[0];
-  const first = firstKey ? errors[firstKey]?.[0] : null;
-  return typeof first === 'string' ? first : null;
-};
-
-const submitQuick = async () => {
-  quickSaving.value = true;
-  quickError.value = '';
-
-  const payload = {
-    name: quickForm.value.name,
-    amount: quickForm.value.amount,
-    currency: quickForm.value.currency,
-    contact_name: quickForm.value.contact_name || null,
-    contact_phone: quickForm.value.contact_phone || null,
-    contact_email: quickForm.value.contact_email || null,
-    company_name: quickForm.value.company_name || null,
-    company_address: quickForm.value.company_address || null,
-    migracion: quickForm.value.migracion || null,
-    referencia: quickForm.value.referencia || null,
-    document_type: quickForm.value.document_type || null,
-    document_number: quickForm.value.document_number || null,
-    observacion: quickForm.value.observacion || null,
-  };
-
-  try {
-    const response = await axios.post('/leads', payload);
-    const newLead = response.data.data;
-    
-    // Agregar el nuevo lead al inicio de la primera etapa (Seguimiento)
-    const firstStage = stages.value.find(s => s.sort_order === 10 || s.key === 'follow_up') || stages.value[0];
-    if (firstStage) {
-      if (!Array.isArray(firstStage.leads)) firstStage.leads = [];
-      firstStage.leads.unshift(newLead);
-      firstStage.count = firstStage.leads.length;
-    }
-    
-    toastSuccess('Lead creado exitosamente');
-    hideQuickModal();
-  } catch (error) {
-    quickError.value = firstValidationMessage(error) ?? error?.response?.data?.message ?? 'No se pudo crear el lead.';
-  } finally {
-    quickSaving.value = false;
-  }
-};
-
-// Edit Lead modal
-const editOpen = ref(false);
-const editSaving = ref(false);
-const editError = ref('');
-const observacionInput = ref(null);
-const editForm = ref({
-  id: null,
-  name: '',
-  amount: null,
-  currency: 'PEN',
-  contact_name: '',
-  contact_phone: '',
-  contact_email: '',
-  company_name: '',
-  company_address: '',
-  migracion: '',
-  referencia: '',
-  document_type: 'otro',
-  document_number: '55555555',
-  observacion: '',
-});
-
-const openEditModal = (lead) => {
-  editError.value = '';
-  editForm.value = {
-    id: lead.id,
-    name: lead.name || '',
-    amount: lead.amount ?? null,
-    currency: lead.currency ?? 'PEN',
-    contact_name: lead.contact_name ?? '',
-    contact_phone: lead.contact_phone ?? '',
-    contact_email: lead.contact_email ?? '',
-    company_name: lead.company_name ?? '',
-    company_address: lead.company_address ?? '',
-    migracion: lead.migracion ?? '',
-    referencia: lead.referencia ?? '',
-    document_type: lead.document_type ?? 'otro',
-    document_number: lead.document_number ?? '55555555',
-    observacion: lead.observacion ?? '',
-  };
-  editOpen.value = true;
-  nextTick(() => {
-    if (observacionInput.value?.focus) {
-      observacionInput.value.focus();
-      observacionInput.value.select?.();
-    }
-  });
-};
-
-const markDesistido = async () => {
-  if (!editForm.value?.id) return;
-  const ok = await confirmDialog({
-    title: 'Marcar como desistido',
-    text: '¿Estás seguro? Esto archivará el lead y lo moverá a la lista de desistidos.',
-    confirmText: 'Sí, marcar',
-    cancelText: 'Cancelar',
-    icon: 'warning',
-  });
-  if (!ok) return;
-
-  try {
-    const res = await axios.post(`/leads/${editForm.value.id}/desist`, { observacion: editForm.value.observacion || '' });
-    
-    // Cerrar modal inmediatamente
-    closeEditModal();
-    
-    // Remover lead de la UI
-    for (const stage of stages.value) {
-      const idx = stage.leads?.findIndex?.(l => l.id === editForm.value.id) ?? -1;
-      if (idx !== -1) {
-        stage.leads.splice(idx, 1);
-        stage.count = stage.leads.length;
-        break;
-      }
-    }
-    
-    toastSuccess('Lead marcado como desistido');
-
-    // Redireccionar inmediatamente usando la ubicación del backend
-    const target = res?.data?.location || '/desistidos';
-    window.location.assign(target);
-  } catch (e) {
-    const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo marcar como desistido.';
-    toastError(msg);
-  }
-};
-
-const sendToEspera = async () => {
-  if (!editForm.value?.id) return;
-  const ok = await confirmDialog({
-    title: 'Enviar a zona de espera',
-    text: '¿Estás seguro? Esto archivará el lead y lo moverá a la zona de espera.',
-    confirmText: 'Sí, enviar',
-    cancelText: 'Cancelar',
-    icon: 'warning',
-  });
-  if (!ok) return;
-
-  try {
-    const res = await axios.post(`/leads/${editForm.value.id}/wait`, { observacion: editForm.value.observacion || '' });
-    
-    // Cerrar modal inmediatamente
-    closeEditModal();
-    
-    // Remover lead de la UI
-    for (const stage of stages.value) {
-      const idx = stage.leads?.findIndex?.(l => l.id === editForm.value.id) ?? -1;
-      if (idx !== -1) {
-        stage.leads.splice(idx, 1);
-        stage.count = stage.leads.length;
-        break;
-      }
-    }
-    
-    toastSuccess('Lead enviado a zona de espera');
-
-    // Redireccionar inmediatamente usando la ubicación del backend
-    const target = res?.data?.location || '/espera';
-    window.location.assign(target);
-  } catch (e) {
-    const msg = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo enviar a zona de espera.';
-    toastError(msg);
-  }
-};
-
-const closeEditModal = () => {
-  editOpen.value = false;
-};
-
-const submitEdit = async () => {
-  editSaving.value = true;
-  editError.value = '';
-
-  const payload = {
-    name: editForm.value.name,
-    amount: editForm.value.amount,
-    currency: editForm.value.currency,
-    observacion: editForm.value.observacion || null,
-    contact_name: editForm.value.contact_name || null,
-    contact_phone: editForm.value.contact_phone || null,
-    contact_email: editForm.value.contact_email || null,
-    company_name: editForm.value.company_name || null,
-    company_address: editForm.value.company_address || null,
-    migracion: editForm.value.migracion || null,
-    referencia: editForm.value.referencia || null,
-    document_type: editForm.value.document_type || null,
-    document_number: editForm.value.document_number || null,
-  };
-
-  try {
-    const res = await axios.put(`/leads/${editForm.value.id}`, payload);
-    const updated = res?.data?.data;
-    if (updated) {
-      // Update lead in UI
-      for (const s of stages.value) {
-        if (!Array.isArray(s.leads)) continue;
-        const idx = s.leads.findIndex((l) => l.id === updated.id);
-        if (idx !== -1) {
-          s.leads.splice(idx, 1, updated);
-          break;
-        }
-      }
-    }
-    toastSuccess('Lead actualizado');
-    closeEditModal();
-  } catch (e) {
-    editError.value = firstValidationMessage(e) ?? e?.response?.data?.message ?? 'No se pudo actualizar el lead.';
-  } finally {
-    editSaving.value = false;
-  }
-};
-
-const onExternalCreateQuick = () => showQuickModal();
-
-onMounted(async () => {
-  window.addEventListener('leads:create-quick', onExternalCreateQuick);
-  await load();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('leads:create-quick', onExternalCreateQuick);
+useLeadsBoardLifecycle({
+  showQuickModal,
+  load,
 });
 </script>

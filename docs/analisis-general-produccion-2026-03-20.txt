@@ -1,0 +1,70 @@
+ANALISIS GENERAL DEL PROYECTO CRM ATLANTIS
+Fecha: 2026-03-20
+
+RESUMEN EJECUTIVO
+- El proyecto esta en complejidad medio-alta/alta para mantenimiento continuo.
+- Evaluacion general:
+  1) Complejidad funcional: alta (8/10)
+  2) Complejidad tecnica: media-alta (7/10)
+  3) Preparacion para produccion: media (6/10) con hardening previo; baja (4/10) si se despliega sin estabilizar.
+
+EVIDENCIA RECOLECTADA
+1) Superficie funcional y tecnica grande
+- 146 rutas activas.
+- 172 archivos PHP (carpetas core).
+- 37 archivos Vue.
+- 21 archivos JS/TS.
+- 38 migraciones.
+- 8 seeders.
+
+2) Volumen de codigo (aprox.)
+- app/*.php: 8348 lineas.
+- routes/*.php: 1765 lineas.
+- migrations: 1219 lineas.
+- seeders: 233 lineas.
+- vue: 14428 lineas.
+- js/ts: 4018 lineas.
+
+3) Concentracion de complejidad (hotspots)
+- Controladores de gran tamano en modulos de incidencias/campanas/postventa.
+- Componentes frontend muy grandes (LeadsBoard, CalendarView, Sidebar, ScrumTasksView, etc.).
+- Esto incrementa costo de cambios y riesgo de regresiones.
+
+4) Estado de pruebas
+- Total archivos de pruebas: 10.
+- Resultado de ejecucion: 22 pruebas fallidas, 2 exitosas.
+- Falla recurrente: uso de funciones SQL MONTH()/YEAR() no compatibles con SQLite en tests.
+- Riesgo: baja confianza para despliegues frecuentes sin romper funcionalidades.
+
+5) Senal de crecimiento por acumulacion
+- Alcance actual supera el alcance inicial: CRM + campañas + scrum + postventa + incidencias + calendario + notificaciones.
+- Se observa expansion funcional mas rapida que consolidacion tecnica.
+
+RECOMENDACION PRINCIPAL
+No reescribir desde cero. Ejecutar una fase de poda y estabilizacion de 3 a 5 semanas antes de agregar nuevas funcionalidades.
+
+PLAN PROPUESTO
+1) Congelar features nuevas por 1 sprint.
+- Solo bugs, rendimiento y pruebas.
+- Definir modulos core (3 a 5 maximo) y clasificar el resto como opcional.
+
+2) Poda de funcionalidades de bajo uso.
+- Medir uso real por rutas/modulos (logs y eventos).
+- Ocultar del menu lo no usado (deprecacion suave) y luego retirar codigo en segunda fase.
+
+3) Reducir complejidad estructural.
+- Separar rutas por dominio/modulo.
+- Dividir componentes Vue grandes en subcomponentes/composables.
+- Mover logica de controladores grandes a servicios/acciones.
+
+4) Endurecer calidad para produccion.
+- Resolver incompatibilidades SQL en migraciones de tests.
+- Cobertura minima en flujos criticos: auth, leads, campañas, postventa, incidencias.
+- Definir gate de despliegue: build frontend + tests backend + smoke tests.
+
+5) Preparar operacion real.
+- Checklist de colas, scheduler, backups, observabilidad y rollback.
+- Definir indicadores simples (latencia y errores por modulo critico).
+
+CONCLUSION
+La percepcion de "proyecto pesado y dificil de mantener" es correcta y esta respaldada por metricas. El sistema esta cerca de un estado productivo, pero requiere una etapa corta de simplificacion y hardening para evitar que el costo de mantenimiento se dispare en el siguiente ciclo.

@@ -1,0 +1,190 @@
+PLAN DESACOPLADO DE ESTABILIZACION
+Proyecto: CRM ATLANTIS
+Fecha: 2026-03-25
+
+OBJETIVO
+Ejecutar mejoras en bloques independientes para evitar que arreglar una parte rompa otra.
+Cada paso debe poder implementarse, validarse y revertirse por separado.
+
+PRINCIPIOS DE EJECUCION
+1) Independencia por dominio
+- Cada paso toca un solo dominio tecnico/funcional.
+- No mezclar en un mismo cambio: permisos + UI, rutas + negocio, scheduler + frontend.
+
+2) Contrato estable
+- Antes de cada cambio, definir que no cambia:
+  - rutas publicas
+  - payloads JSON
+  - nombres de permisos/roles (si no es una fase RBAC)
+- Si se requiere romper contrato, abrir fase separada.
+
+3) Validacion con corte
+- Cada paso termina con:
+  - smoke test del dominio
+  - checklist funcional minima
+  - criterio de rollback explicito
+
+4) Reversibilidad
+- Si falla, se revierte TODO el paso.
+- Prohibido dejar cambios parciales para el siguiente paso.
+
+REGLAS DE CONTROL (ANTI-REGRESION)
+1) Un PR = un dominio.
+2) Maximo 8-12 archivos por PR (salvo excepcion justificada).
+3) Prohibido tocar RBAC y navegacion en el mismo PR.
+4) Prohibido tocar rutas y logica de negocio en el mismo PR.
+5) Cada PR incluye:
+- alcance
+- no-alcance
+- riesgos
+- plan de rollback
+- evidencia de pruebas
+
+SECUENCIA PROPUESTA (DESACOPLADA)
+PASO 1: Observabilidad y metricas
+- Alcance: logs, tiempos de respuesta, contadores de uso por modulo.
+- No cambia funcionalidad.
+- Objetivo: medir antes de optimizar.
+
+PASO 2: Carga recurrente de frontend
+- Alcance: polling de notificaciones/dashboard (intervalos, estrategia adaptativa).
+- Sin cambios en RBAC, rutas o permisos.
+- Objetivo: reducir carga por usuario concurrente.
+
+PASO 3: Scheduler y colas
+- Alcance: ajuste de tareas programadas y delegacion a jobs en cola.
+- Sin cambios de UI.
+- Objetivo: desacoplar procesos pesados del request lifecycle.
+
+PASO 4: RBAC interno (roles/permisos)
+- Alcance: simplificar fuentes de verdad de permisos, eliminar duplicidad de middlewares equivalentes.
+- Sin tocar layout/menu visual.
+- Objetivo: bajar complejidad de mantenimiento de seguridad.
+
+PASO 5: Navegacion y visibilidad de menu
+- Alcance: visibilidad en sidebar y catalogo de menu.*
+- Sin cambiar autorizacion backend.
+- Objetivo: coherencia UI sin riesgo de seguridad.
+
+PASO 6: Modularizacion de rutas
+- Alcance: dividir archivo de rutas por dominio.
+- Mantener mismos nombres de ruta y middlewares.
+- Objetivo: reducir friccion de mantenimiento.
+
+PASO 7: Refactor frontend estructural
+- Alcance: extraer subcomponentes/composables de archivos grandes.
+- Sin tocar APIs.
+- Objetivo: reducir deuda en componentes monoliticos.
+
+PASO 8: Pruebas y compatibilidad de migraciones
+- Alcance: estabilizar suite de tests y ajustes cross-db en migraciones.
+- Sin agregar features.
+- Objetivo: liberar cambios con confianza.
+
+PASO 9: Poda funcional
+- Alcance: desactivar o retirar funciones de bajo uso con deprecacion controlada.
+- Sin mezclar con refactor de base.
+- Objetivo: aligerar sistema y soporte.
+
+PASO 10: Hardening de produccion
+- Alcance: backups, rollback, monitoreo, alertas, checklist operativa final.
+- Objetivo: salida a produccion con riesgo controlado.
+
+PLANTILLA DE CHECKLIST POR PASO
+- [ ] Alcance y no-alcance definidos
+- [ ] Contratos estables documentados
+- [ ] Cambios limitados al dominio
+- [ ] Smoke tests ejecutados
+- [ ] Evidencia de resultados
+- [ ] Riesgos identificados
+- [ ] Rollback probado o documentado
+
+RESULTADO ESPERADO
+Con este camino, cada mejora se implementa como bloque aislado.
+Si algo falla, se revierte ese bloque sin comprometer el resto del sistema.
+
+ESTADO DE EJECUCION (ACTUALIZADO 2026-03-25)
+Decision: cerrar PASO 7 y avanzar al siguiente paso.
+
+PASO 7 - CIERRE FORMAL
+- Estado: CERRADO para el alcance de refactor estructural del frontend en los modulos priorizados.
+- Contrato: sin cambios en rutas publicas ni payloads API.
+- Evidencia: build de frontend exitoso al cierre de cada subpaso principal.
+- Riesgo residual: bajo, centrado en deuda cosmetica (no bloqueante).
+
+Subpasos realizados en PASO 7 (resumen ejecutivo)
+- CalendarView desacoplado en composables de runtime y prompt de eventos.
+- LeadsBoard desacoplado en composables de filtros, modales, drag/drop, acciones y lifecycle.
+- Integraciones validadas con compilacion de produccion.
+
+Subpasos considerados opcionales (no bloqueantes)
+- Extraccion de helpers menores o constantes de UI sin impacto funcional.
+- Micro-refactors de estilo/legibilidad sin deuda operativa real.
+
+Criterio de salida aplicado para PASO 7
+- El componente principal deja de ser monolitico para cambios habituales.
+- Las responsabilidades quedan separadas por dominio funcional.
+- El sistema compila y mantiene comportamiento esperado.
+
+TRANSICION RECOMENDADA
+Siguiente paso activo: PASO 8 (pruebas y compatibilidad de migraciones).
+- Foco inicial: estabilizar pruebas de regresion y validar casos de compatibilidad cross-db.
+- Regla de control: no reabrir PASO 7 salvo bug comprobado en produccion o bloqueo directo.
+
+PASO 8 - PLAN DE EJECUCION MINIMO (ACTIVO)
+Objetivo operativo:
+- Tener una linea base de pruebas repetible.
+- Identificar fallas de entorno vs fallas reales de codigo.
+- Cerrar compatibilidad minima de migraciones entre motores soportados.
+
+Matriz de pruebas priorizada (necesario)
+1) Smoke auth y perfil (Feature):
+- tests/Feature/Auth/AuthenticationTest.php
+- tests/Feature/Auth/RegistrationTest.php
+- tests/Feature/Auth/PasswordResetTest.php
+- tests/Feature/Auth/PasswordUpdateTest.php
+- tests/Feature/Auth/PasswordConfirmationTest.php
+- tests/Feature/Auth/EmailVerificationTest.php
+- tests/Feature/ProfileTest.php
+
+2) Smoke basico (Unit/Feature):
+- tests/Unit/ExampleTest.php
+- tests/Feature/ExampleTest.php
+
+3) Migraciones y compatibilidad DB (prioridad alta):
+- Validar migrate fresh en entorno de prueba.
+- Detectar SQL no portable (funciones de fecha, sintaxis especifica de motor).
+- Ajustar migraciones/queries para evitar lock-in no intencional.
+
+Ejecucion por cortes (necesario)
+- Corte A: baseline de test actual (sin tocar codigo).
+- Corte B: correcciones minimas para que baseline sea estable.
+- Corte C: verificacion de migraciones en entorno de pruebas.
+
+No alcance en PASO 8 (opcional o fuera de fase)
+- Nuevas features.
+- Refactor estructural adicional de frontend.
+- Cambios de navegacion o RBAC.
+
+Checklist de cierre PASO 8
+- [x] Baseline de tests ejecutado y documentado
+- [x] Fallas clasificadas: entorno vs codigo
+- [x] Correcciones minimas aplicadas para estabilidad
+- [x] Migraciones verificadas en entorno de prueba
+- [x] Evidencia de ejecucion guardada
+
+Evidencia PASO 8 (2026-03-25)
+- Baseline inicial: 22 failed, 2 passed (bloqueado por migraciones no compatibles con SQLite).
+- Causa 1 corregida: funciones de fecha MySQL-only en migracion de customers (`MONTH`, `YEAR`).
+- Causa 2 corregida: `ALTER ... MODIFY` MySQL-only en migracion de leads.
+- Causa 3 corregida: consulta a `information_schema.statistics` MySQL-only para indices.
+- Resultado final: `php artisan test` en verde -> 24 passed (60 assertions).
+
+Decision de entorno de pruebas (cierre 2026-03-25)
+- Runtime operativo confirmado en MySQL.
+- Entorno de tests se mantiene en SQLite en memoria por ahora (solo pruebas).
+- Se mantiene esta politica para no bloquear avance del plan.
+
+Estado de cierre
+- PASO 8: CERRADO.
+- Siguiente paso sugerido para siguiente iteracion: PASO 9 (poda funcional), sin urgencia inmediata.

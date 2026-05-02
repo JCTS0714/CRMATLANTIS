@@ -1,0 +1,110 @@
+RESUMEN DE CAMBIOS Y PROBLEMAS RESUELTOS
+Proyecto: CRM ATLANTIS
+Fecha: 2026-03-25
+
+OBJETIVO DEL RESUMEN
+Documentar los cambios ejecutados en esta fase y el problema concreto que resolvio cada punto.
+
+PUNTO 1 - DESACOPLE ESTRUCTURAL DE LEADSBOARD (PASO 7)
+Problema:
+- El componente LeadsBoard concentraba demasiada logica (drag/drop, acciones, carga, watchers y lifecycle), lo que elevaba el riesgo de regresiones y hacia lento el mantenimiento.
+
+Cambio aplicado:
+- Se separo la logica en composables especializados:
+  - useLeadsBoardDragDrop.js
+  - useLeadsBoardLeadActions.js
+  - useLeadsBoardData.js
+  - useLeadsBoardLifecycle.js
+  - useLeadsBoardLeadModals.js
+  - useLeadsBoardPeriodFilters.js
+
+Problema resuelto:
+- Se redujo el acoplamiento interno del board.
+- Cada responsabilidad quedo aislada por dominio funcional.
+- Se simplifico la evolucion futura y la deteccion de fallas por modulo.
+
+Resultado validado:
+- Integracion completada en LeadsBoard.vue con compilaciones exitosas por slice.
+
+
+PUNTO 2 - DESACOPLE EN CALENDAR Y FILTROS RELACIONADOS
+Problema:
+- Parte de la logica de formularios y runtime de calendario estaba concentrada y era dificil de extender sin tocar varias zonas.
+
+Cambio aplicado:
+- Se modularizo en composables:
+  - useCalendarEventPrompt.js
+  - useCalendarRuntime.js
+  - usePeriodFilters.js
+  - useResponsibleLookup.js
+
+Problema resuelto:
+- Mejor separacion entre UI, interacciones y reglas de negocio del calendario.
+- Menor riesgo de cambios colaterales al modificar prompts, recordatorios y filtros.
+
+Resultado validado:
+- Flujo integrado sin romper contrato de rutas ni payloads.
+
+
+PUNTO 3 - CIERRE FORMAL DE PASO 7 EN DOCUMENTACION
+Problema:
+- El plan seguia abierto y podia extenderse indefinidamente con micro-tareas sin valor operativo inmediato.
+
+Cambio aplicado:
+- Se cerro formalmente PASO 7 en el documento principal del plan:
+  - docs/plan-desacoplado-estabilizacion-2026-03-25.txt
+
+Problema resuelto:
+- Se delimito alcance terminado y se evito seguir agregando subpasos no bloqueantes.
+- Se habilito transicion ordenada a PASO 8.
+
+Resultado validado:
+- Estado del plan actualizado y trazable.
+
+
+PUNTO 4 - ESTABILIZACION DE TESTS Y MIGRACIONES CROSS-DB (PASO 8)
+Problema:
+- La suite de pruebas fallaba por SQL no portable (sentencias MySQL-only ejecutando en entorno SQLite de test).
+
+Cambio aplicado:
+- Ajustes en migraciones para compatibilidad por driver:
+  - 2026_02_26_000200_add_contact_month_year_to_leads_and_customers.php
+    - Backfill por motor (SQLite/PostgreSQL/MySQL) en vez de MONTH()/YEAR() fijo.
+  - 2026_02_26_000300_revert_lead_contact_fields_and_add_reference.php
+    - Guardas para evitar MODIFY en motores no compatibles y down seguro por motor.
+  - 2026_03_04_120000_enforce_unique_customer_assignment_for_contadores.php
+    - Verificacion y drop de indices por motor (PRAGMA/pg_indexes/information_schema).
+
+Problema resuelto:
+- Se eliminaron bloqueos por SQL especifico de MySQL en entorno de pruebas.
+- Se mejoro portabilidad de migraciones y estabilidad de CI local.
+
+Resultado validado:
+- Evolucion de pruebas:
+  - Antes: 22 failed / 2 passed.
+  - Despues: 24 passed (60 assertions).
+
+
+PUNTO 5 - ACLARACION DE ENTORNO MYSQL VS SQLITE
+Problema:
+- Duda sobre posible uso de SQLite en el proyecto operativo.
+
+Cambio aplicado:
+- Auditoria de configuracion y verificacion en runtime:
+  - Runtime Laravel confirmado en MySQL.
+  - phpunit.xml mantiene SQLite en memoria solo para tests.
+- Se documento la decision en el plan:
+  - Mantener SQLite en tests por ahora, sin tocar runtime productivo.
+
+Problema resuelto:
+- Se separo claramente politica de produccion vs politica de pruebas.
+- Se evito cambiar infraestructura sin necesidad funcional inmediata.
+
+Resultado validado:
+- php artisan test ejecutado nuevamente en verde (24 passed).
+
+
+CONCLUSION GENERAL
+- PASO 7 quedo cerrado con desacople estructural principal.
+- PASO 8 quedo cerrado con suite estable y migraciones compatibles en tests.
+- Estado final de esta fase: estable, documentado y listo para continuar cuando se decida abrir PASO 9.

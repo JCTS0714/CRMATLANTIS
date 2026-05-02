@@ -8,6 +8,7 @@
       :total-count="totalCount"
       :per-page="perPage"
       :importing="importing"
+      :can-import="canCreateLeads"
       @update:per-page="changePerPage"
       @stage-filter="handleStageFilter"
       @import-file="handleImportFile"
@@ -79,6 +80,7 @@
               :lead="lead"
               :stages="stages"
               :is-moving="movingLeadIds.has(lead.id)"
+              :can-update-stage="canUpdateLeads"
               @change-stage="handleStageChange"
             />
 
@@ -154,6 +156,14 @@ const searchInput = ref('');
 const activeStageId = ref(null);
 const perPage = computed(() => pagination.per_page);
 const totalCount = computed(() => pagination.total || 0);
+
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+const canCreateLeads = computed(() => hasPermission('leads.create'));
+const canUpdateLeads = computed(() => hasPermission('leads.update'));
 
 const columns = [
   { key: 'id', label: 'ID' },
@@ -247,6 +257,7 @@ const restorePaginationAfterRollback = () => {
 };
 
 const handleStageChange = async ({ leadId, stageId }) => {
+  if (!canUpdateLeads.value) return;
   if (!leadId || !stageId) return;
 
   const leadIndex = items.value.findIndex((item) => item.id === leadId);
@@ -308,6 +319,7 @@ const handleStageChange = async ({ leadId, stageId }) => {
 
 
 const handleImportFile = async (event) => {
+  if (!canCreateLeads.value) return;
   const file = event.target.files[0];
   if (!file) return;
 

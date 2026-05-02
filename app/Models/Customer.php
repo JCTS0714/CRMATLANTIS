@@ -26,6 +26,9 @@ class Customer extends Model
         'servidor',
         'menbresia',
         'estado',
+        'pago_estado',
+        'mes_pagado',
+        'mes_por_pagar',
         'fecha_creacion',
         'fecha_contacto',
         'fecha_contacto_mes',
@@ -42,6 +45,8 @@ class Customer extends Model
         'fecha_contacto' => 'date',
         'fecha_contacto_mes' => 'integer',
         'fecha_contacto_anio' => 'integer',
+        'mes_pagado' => 'integer',
+        'mes_por_pagar' => 'integer',
     ];
 
     // ==================== RELATIONSHIPS ====================

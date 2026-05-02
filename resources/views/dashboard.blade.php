@@ -56,10 +56,36 @@
                         : $user->getAllPermissions()->pluck('name')->values()->all(),
                 ]
                 : null;
+
+            $modulesPayload = [
+                'dynamic' => collect(config('modules.dynamic', []))
+                    ->filter(function ($module) {
+                        return is_array($module)
+                            && !empty($module['enabled'])
+                            && !empty($module['path'])
+                            && !empty($module['component'])
+                            && !empty($module['label']);
+                    })
+                    ->map(function ($module) {
+                        return [
+                            'key' => (string) ($module['key'] ?? ''),
+                            'label' => (string) ($module['label'] ?? ''),
+                            'subtitle' => (string) ($module['subtitle'] ?? ''),
+                            'path' => (string) ($module['path'] ?? ''),
+                            'component' => (string) ($module['component'] ?? ''),
+                            'menu_permission' => (string) ($module['menu_permission'] ?? ''),
+                            'view_permission' => (string) ($module['view_permission'] ?? ''),
+                            'auto_menu' => (bool) ($module['auto_menu'] ?? true),
+                        ];
+                    })
+                    ->values()
+                    ->all(),
+            ];
         @endphp
 
         <script>
             window.__AUTH_USER__ = @json($authPayload);
+            window.__APP_MODULES__ = @json($modulesPayload);
             window.__APP_LOGO_MARK__ = @json($appLogoMark);
             window.__APP_LOGO_FULL__ = @json($appLogoFull);
         </script>

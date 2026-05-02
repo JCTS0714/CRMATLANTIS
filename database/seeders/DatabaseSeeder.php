@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             IncidenceStagesSeeder::class,
             InternalUserSeeder::class,
             EmailMenuPermissionSeeder::class,
+            InboxPermissionSeeder::class,
         ]);
     }
 }

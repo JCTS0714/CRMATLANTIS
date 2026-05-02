@@ -219,7 +219,7 @@
               class="w-full flex items-center p-2 rounded-lg group"
               :class="[
                 collapsed ? 'justify-center' : '',
-                isActive('/leads/whatsapp') || isActive('/leads/email')
+                isActive('/inbox/facturas')
                   ? 'text-white bg-slate-800 border border-slate-700'
                   : 'text-slate-200 hover:bg-slate-800'
               ]"
@@ -227,7 +227,7 @@
             >
               <svg
                 class="w-5 h-5"
-                :class="(isActive('/leads/whatsapp') || isActive('/leads/email'))
+                :class="isActive('/inbox/facturas')
                   ? 'text-white/90'
                   : 'text-slate-300 group-hover:text-white'"
                 aria-hidden="true"
@@ -238,7 +238,7 @@
                 <path d="M2 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4zm2 0 6 4 6-4H4zm14 2.2-8 5.3-8-5.3V16h16V6.2z"></path>
               </svg>
 
-              <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">Bandeja de entrada</span>
+              <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">Bandeja de envios</span>
 
               <svg
                 v-show="!collapsed"
@@ -255,30 +255,17 @@
             </button>
 
             <ul v-show="!collapsed && inboxOpen" class="mt-2 space-y-1 pl-2">
-              <li v-if="canSeeLeads">
+              <li v-if="canSeeInbox">
                 <a
-                  href="/leads/whatsapp"
+                  href="/inbox/facturas"
                   class="flex items-center gap-3 p-2 rounded-lg group"
                   :class="[
                     'text-slate-200 hover:bg-slate-800',
-                    path === '/leads/whatsapp' ? 'bg-slate-800 border border-slate-700' : ''
+                    path === '/inbox/facturas' ? 'bg-slate-800 border border-slate-700' : ''
                   ]"
                 >
                   <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                  <span class="whitespace-nowrap">WhatsApp masivo</span>
-                </a>
-              </li>
-              <li v-if="canSeeEmail">
-                <a
-                  href="/leads/email"
-                  class="flex items-center gap-3 p-2 rounded-lg group"
-                  :class="[
-                    'text-slate-200 hover:bg-slate-800',
-                    path === '/leads/email' ? 'bg-slate-800 border border-slate-700' : ''
-                  ]"
-                >
-                  <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                  <span class="whitespace-nowrap">Email masivo</span>
+                  <span class="whitespace-nowrap">Envios de facturas</span>
                 </a>
               </li>
             </ul>
@@ -433,7 +420,7 @@
             </button>
 
             <ul v-show="!collapsed && postventaOpen" class="mt-2 space-y-1 pl-2">
-              <li>
+              <li v-if="canSeeIncidencias">
                 <a
                   href="/backlog"
                   class="flex items-center gap-3 p-2 rounded-lg group"
@@ -446,7 +433,7 @@
                   <span class="whitespace-nowrap">Incidencias</span>
                 </a>
               </li>
-              <li>
+              <li v-if="canSeeCustomers">
                 <a
                   href="/postventa/clientes"
                   class="flex items-center gap-3 p-2 rounded-lg group"
@@ -459,7 +446,7 @@
                   <span class="whitespace-nowrap">Clientes</span>
                 </a>
               </li>
-              <li>
+              <li v-if="canSeeContadores">
                 <a
                   href="/postventa/contadores"
                   class="flex items-center gap-3 p-2 rounded-lg group"
@@ -472,7 +459,7 @@
                   <span class="whitespace-nowrap">Contadores</span>
                 </a>
               </li>
-              <li>
+              <li v-if="canSeeCertificados">
                 <a
                   href="/postventa/certificados"
                   class="flex items-center gap-3 p-2 rounded-lg group"
@@ -487,6 +474,32 @@
               </li>
             </ul>
           </div>
+        </li>
+
+        <li v-for="module in dynamicMenuModules" :key="module.key || module.path">
+          <a
+            :href="module.path"
+            :title="module.label"
+            class="flex items-center p-2 rounded-lg group"
+            :class="[
+              collapsed ? 'justify-center' : '',
+              isActive(module.path)
+                ? 'text-white bg-slate-800 border border-slate-700'
+                : 'text-slate-200 hover:bg-slate-800'
+            ]"
+          >
+            <svg
+              class="w-5 h-5"
+              :class="isActive(module.path) ? 'text-white/90' : 'text-slate-300 group-hover:text-white'"
+              aria-hidden="true"
+              fill="currentColor"
+              viewBox="0 0 20 20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path d="M4 3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8.414a1 1 0 0 0-.293-.707l-4.414-4.414A1 1 0 0 0 11.586 3H4Zm7 1.414L15.586 9H12a1 1 0 0 1-1-1V4.414Z"></path>
+            </svg>
+            <span class="flex-1 ms-3 whitespace-nowrap" v-show="!collapsed">{{ module.label }}</span>
+          </a>
         </li>
       </ul>
       </div>
@@ -553,25 +566,25 @@
           </div>
 
           <ul class="py-2">
-            <li>
+            <li v-if="canSeeIncidencias">
               <a href="/backlog" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Incidencias</span>
               </a>
             </li>
-            <li>
+            <li v-if="canSeeCustomers">
               <a href="/postventa/clientes" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Clientes</span>
               </a>
             </li>
-            <li>
+            <li v-if="canSeeContadores">
               <a href="/postventa/contadores" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Contadores</span>
               </a>
             </li>
-            <li>
+            <li v-if="canSeeCertificados">
               <a href="/postventa/certificados" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
                 <span class="whitespace-nowrap">Certificados</span>
@@ -640,7 +653,7 @@
       >
         <div class="min-w-56 bg-slate-900 border border-slate-800 rounded-lg shadow-sm overflow-hidden">
           <div class="px-4 py-3 flex items-center justify-between border-b border-slate-800">
-            <div class="text-sm font-semibold text-slate-100">Bandeja de entrada</div>
+            <div class="text-sm font-semibold text-slate-100">Bandeja de envios</div>
             <svg
               class="w-4 h-4 text-slate-300"
               aria-hidden="true"
@@ -654,16 +667,10 @@
           </div>
 
           <ul class="py-2">
-            <li v-if="canSeeLeads">
-              <a href="/leads/whatsapp" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+            <li v-if="canSeeInbox">
+              <a href="/inbox/facturas" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
                 <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                <span class="whitespace-nowrap">WhatsApp masivo</span>
-              </a>
-            </li>
-            <li v-if="canSeeEmail">
-              <a href="/leads/email" class="flex items-center gap-3 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                <span class="w-3 h-3 rounded-full border border-slate-400"></span>
-                <span class="whitespace-nowrap">Email masivo</span>
+                <span class="whitespace-nowrap">Envios de facturas</span>
               </a>
             </li>
           </ul>
@@ -711,14 +718,49 @@ const hasPermission = (permission) => {
   return Array.isArray(perms) && perms.includes(permission);
 };
 
-const canSeeUsers = computed(() => hasPermission('menu.users'));
-const canSeeRoles = computed(() => hasPermission('menu.roles'));
-const canSeeLeads = computed(() => hasPermission('menu.leads'));
-const canSeeEmail = computed(() => hasPermission('menu.email') || hasPermission('menu.leads'));
+const canSeeUsers = computed(() => hasPermission('menu.users') && hasPermission('users.view'));
+const canSeeRoles = computed(() => hasPermission('menu.roles') && hasPermission('roles.view'));
+const canSeeLeads = computed(() => hasPermission('menu.leads') && hasPermission('leads.view'));
 const canSeeInbox = computed(() => hasPermission('menu.inbox'));
-const canSeeCalendar = computed(() => hasPermission('menu.calendar') || hasPermission('calendar.view'));
-const canSeePostventa = computed(() => hasPermission('menu.postventa'));
+const canSeeCalendar = computed(() => hasPermission('calendar.view'));
+const canSeeIncidencias = computed(() => hasPermission('incidencias.view'));
+const canSeeCustomers = computed(() => hasPermission('customers.view'));
+const canSeeContadores = computed(() => hasPermission('contadores.view'));
+const canSeeCertificados = computed(() => hasPermission('certificados.view'));
+const canSeePostventa = computed(() => {
+  if (!hasPermission('menu.postventa')) return false;
+  return canSeeIncidencias.value || canSeeCustomers.value || canSeeContadores.value || canSeeCertificados.value;
+});
 const canSeeScrum = computed(() => Boolean(authUser.value));
+
+const appModules = computed(() => window.__APP_MODULES__ ?? { dynamic: [] });
+const canAccessModule = (module) => {
+  const menuPermission = String(module?.menu_permission || '').trim();
+  const viewPermission = String(module?.view_permission || '').trim();
+
+  if (menuPermission && !hasPermission(menuPermission)) {
+    return false;
+  }
+
+  if (viewPermission && !hasPermission(viewPermission)) {
+    return false;
+  }
+
+  return true;
+};
+
+const dynamicMenuModules = computed(() =>
+  (appModules.value.dynamic ?? []).filter((module) => {
+    return module
+      && typeof module === 'object'
+      && module.auto_menu !== false
+      && typeof module.path === 'string'
+      && module.path.length > 0
+      && typeof module.label === 'string'
+      && module.label.length > 0
+      && canAccessModule(module);
+  })
+);
 
 const scrumOpen = ref(isActive('/scrum'));
 const scrumHoverOpen = ref(false);
@@ -839,7 +881,7 @@ const onTogglePipeline = () => {
 };
 
 // Inbox submenu state & handlers
-const inboxOpen = ref(isActive('/leads/whatsapp') || isActive('/leads/email'));
+const inboxOpen = ref(isActive('/inbox/facturas'));
 const inboxHoverOpen = ref(false);
 const inboxAnchor = ref(null);
 const inboxFlyoutStyle = ref({ left: '0px', top: '0px' });
@@ -872,7 +914,7 @@ const onInboxMouseLeave = () => {
 
 const onToggleInbox = () => {
   if (collapsed.value) {
-    window.location.assign('/leads/whatsapp');
+    window.location.assign('/inbox/facturas');
     return;
   }
   inboxOpen.value = !inboxOpen.value;

@@ -3,97 +3,154 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 class MakeModule extends Command
 {
-    protected $signature = 'make:module {name : Nombre del módulo (singular, en español idealmente)} {--prefix= : Ruta base (ej: postventa/certificados)}';
+    protected $signature = 'make:module
+        {name : Nombre del modulo}
+        {--path= : Ruta base (ej: /operaciones/reportes)}
+        {--prefix= : Prefijo de API (ej: operaciones/reportes)}
+        {--menu= : Permiso de menu (ej: menu.reportes)}
+        {--component= : Nombre de componente Vue (ej: ReportesModule.vue)}';
 
-    protected $description = 'Genera controlador, rutas y seeder de permisos para un nuevo módulo';
+    protected $description = 'Genera un modulo auto-registrado en menu/vista/permisos sin cableado manual';
 
     public function handle(): int
     {
-        $name = trim($this->argument('name'));
+        $name = trim((string) $this->argument('name'));
         if ($name === '') {
-            $this->error('Nombre de módulo inválido.');
-            return 1;
+            $this->error('Nombre de modulo invalido.');
+            return self::FAILURE;
         }
 
         $studly = Str::studly($name);
-        $resource = Str::lower(Str::plural($name)); // e.g. certificados
-        $prefix = $this->option('prefix') ?: $resource;
+        $slug = Str::slug($name);
+        $resource = Str::snake(Str::pluralStudly($name));
 
-        // Paths
-        $controllerDir = base_path('app/Http/Controllers');
-        $controllerPath = $controllerDir . DIRECTORY_SEPARATOR . $studly . 'Controller.php';
+        $path = $this->normalizeDashboardPath((string) ($this->option('path') ?: '/' . Str::kebab(Str::plural($name))));
+        $prefix = trim((string) ($this->option('prefix') ?: ltrim($path, '/')));
+        $menuPermission = trim((string) ($this->option('menu') ?: ('menu.' . Str::snake($name))));
+        $viewPermission = $resource . '.view';
 
-        $routesDir = base_path('routes/modules');
-        $routesPath = $routesDir . DIRECTORY_SEPARATOR . $resource . '.php';
+        $componentFile = trim((string) ($this->option('component') ?: ($studly . 'Module.vue')));
+        if (!Str::endsWith(Str::lower($componentFile), '.vue')) {
+            $componentFile .= '.vue';
+        }
 
-        $seederDir = base_path('database/seeders');
-        $seederClass = 'PermissionModule' . Str::studly($resource) . 'Seeder';
-        $seederPath = $seederDir . DIRECTORY_SEPARATOR . $seederClass . '.php';
+        $controllerClass = $studly . 'Controller';
+        $controllerPath = base_path('app/Http/Controllers/' . $controllerClass . '.php');
+        $componentPath = base_path('resources/js/components/' . $componentFile);
 
-        // Create controller
-        if (! File::exists($controllerPath)) {
-            $controllerContent = $this->controllerStub($studly, $resource);
-            File::put($controllerPath, $controllerContent);
-            $this->info("Controlador creado: app/Http/Controllers/{$studly}Controller.php");
+        $generatedRoutesDir = base_path('routes/modules/auth/generated');
+        $generatedRoutesPath = $generatedRoutesDir . DIRECTORY_SEPARATOR . $slug . '.php';
+
+        if (!File::exists($controllerPath)) {
+            File::put($controllerPath, $this->controllerStub($controllerClass, $resource));
+            $this->info("Controlador creado: app/Http/Controllers/{$controllerClass}.php");
         } else {
-            $this->warn("Controlador ya existe: app/Http/Controllers/{$studly}Controller.php");
+            $this->warn("Controlador ya existe: app/Http/Controllers/{$controllerClass}.php");
         }
 
-        // Create routes dir and file
-        if (! File::isDirectory($routesDir)) {
-            File::makeDirectory($routesDir, 0755, true);
-        }
-
-        if (! File::exists($routesPath)) {
-            $routesContent = $this->routesStub($studly, $resource, $prefix);
-            File::put($routesPath, $routesContent);
-            $this->info("Archivo de rutas creado: routes/modules/{$resource}.php");
+        if (!File::exists($componentPath)) {
+            File::put($componentPath, $this->componentStub($name));
+            $this->info("Componente creado: resources/js/components/{$componentFile}");
         } else {
-            $this->warn("Archivo de rutas ya existe: routes/modules/{$resource}.php");
+            $this->warn("Componente ya existe: resources/js/components/{$componentFile}");
         }
 
-        // Ensure routes/web.php includes the modules file
-        $webRoutes = base_path('routes/web.php');
-        $requireLine = "require __DIR__.'/modules/{$resource}.php';";
-        $webContent = File::get($webRoutes);
-        if (strpos($webContent, $requireLine) === false) {
-            // Insert before the existing require __DIR__.'/auth.php'; or append at end
-            $authRequire = "require __DIR__.'/auth.php';";
-            if (strpos($webContent, $authRequire) !== false) {
-                $webContent = str_replace($authRequire, $requireLine . "\n\n" . $authRequire, $webContent);
-            } else {
-                $webContent .= "\n" . $requireLine . "\n";
-            }
-            File::put($webRoutes, $webContent);
-            $this->info("Se añadió inclusión de rutas en routes/web.php");
+        if (!File::isDirectory($generatedRoutesDir)) {
+            File::makeDirectory($generatedRoutesDir, 0755, true);
+        }
+
+        if (!File::exists($generatedRoutesPath)) {
+            File::put($generatedRoutesPath, $this->generatedRoutesStub($controllerClass, $resource, $prefix));
+            $this->info("Rutas API creadas: routes/modules/auth/generated/{$slug}.php");
         } else {
-            $this->info('La inclusión de rutas ya existe en routes/web.php');
+            $this->warn("Rutas API ya existen: routes/modules/auth/generated/{$slug}.php");
         }
 
-        // Create seeder
-        if (! File::exists($seederPath)) {
-            $seederContent = $this->seederStub($seederClass, $resource);
-            File::put($seederPath, $seederContent);
-            $this->info("Seeder de permisos creado: database/seeders/{$seederClass}.php");
+        $registered = $this->registerDynamicModule([
+            'key' => $slug,
+            'label' => Str::headline($name),
+            'subtitle' => 'Modulo generado automaticamente',
+            'path' => $path,
+            'component' => $componentFile,
+            'menu_permission' => $menuPermission,
+            'view_permission' => $viewPermission,
+            'auto_menu' => true,
+            'enabled' => true,
+        ]);
+
+        if ($registered) {
+            $this->info('Modulo registrado en config/modules.php');
         } else {
-            $this->warn("Seeder ya existe: database/seeders/{$seederClass}.php");
+            $this->warn('No se pudo registrar el modulo automaticamente en config/modules.php');
+            $this->line('Registra manualmente la entrada en config/modules.php');
         }
 
-        $this->info('Generación completada.');
-        $this->line('Pasos sugeridos:');
-        $this->line("- Revisa/ajusta routes/modules/{$resource}.php para adaptarlo a tus endpoints.");
-        $this->line("- Ejecuta: php artisan db:seed --class={$seederClass} para crear los permisos del módulo.");
-        $this->line("- Si usas control de versiones, añade los archivos generados al commit.");
+        $this->call('permissions:sync');
 
-        return 0;
+        try {
+            Artisan::call('optimize:clear');
+            $this->info('Cache limpiada con optimize:clear');
+        } catch (\Throwable $e) {
+            $this->warn('No se pudo limpiar cache automaticamente: ' . $e->getMessage());
+        }
+
+        $this->newLine();
+        $this->info('Modulo generado y sincronizado.');
+        $this->line("Ruta SPA: {$path}");
+        $this->line("Permisos base: {$resource}.view/create/update/delete + {$menuPermission}");
+
+        return self::SUCCESS;
     }
 
-    protected function controllerStub(string $studly, string $resource): string
+    protected function normalizeDashboardPath(string $path): string
+    {
+        $path = '/' . ltrim(trim($path), '/');
+        return rtrim($path, '/') ?: '/';
+    }
+
+    protected function registerDynamicModule(array $module): bool
+    {
+        $configPath = base_path('config/modules.php');
+        if (!File::exists($configPath)) {
+            return false;
+        }
+
+        $content = File::get($configPath);
+        if (str_contains($content, "'key' => '{$module['key']}'")) {
+            return true;
+        }
+
+        $entry = "        [\n"
+            . "            'key' => '{$module['key']}',\n"
+            . "            'label' => '{$module['label']}',\n"
+            . "            'subtitle' => '{$module['subtitle']}',\n"
+            . "            'path' => '{$module['path']}',\n"
+            . "            'component' => '{$module['component']}',\n"
+            . "            'menu_permission' => '{$module['menu_permission']}',\n"
+            . "            'view_permission' => '{$module['view_permission']}',\n"
+            . "            'auto_menu' => " . ($module['auto_menu'] ? 'true' : 'false') . ",\n"
+            . "            'enabled' => " . ($module['enabled'] ? 'true' : 'false') . ",\n"
+            . "        ],\n";
+
+        $needle = "    ],\n];";
+        $position = strrpos($content, $needle);
+        if ($position === false) {
+            return false;
+        }
+
+        $updated = substr($content, 0, $position) . $entry . substr($content, $position);
+        File::put($configPath, $updated);
+
+        return true;
+    }
+
+    protected function controllerStub(string $controllerClass, string $resource): string
     {
         return <<<PHP
 <?php
@@ -102,92 +159,72 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 
-class {$studly}Controller extends Controller
+class {$controllerClass} extends Controller
 {
     public function index()
-    {
-        return view('dashboard');
-    }
-
-    public function data(Request \$request)
     {
         return response()->json(['data' => []]);
     }
 
     public function store(Request \$request)
     {
-        return response()->json(['message' => 'Creado'], 201);
+        return response()->json(['message' => '{$resource} creado'], 201);
     }
 
     public function update(Request \$request, \$id)
     {
-        return response()->json(['message' => 'Actualizado']);
+        return response()->json(['message' => '{$resource} actualizado', 'id' => \$id]);
     }
 
     public function destroy(\$id)
     {
-        return response()->json(['message' => 'Eliminado']);
+        return response()->json(['message' => '{$resource} eliminado', 'id' => \$id]);
     }
 }
 PHP;
     }
 
-    protected function routesStub(string $studly, string $resource, string $prefix): string
+    protected function generatedRoutesStub(string $controllerClass, string $resource, string $prefix): string
     {
-        $controllerFq = "\\App\\Http\\Controllers\\{$studly}Controller";
+        $fqcn = "\\App\\Http\\Controllers\\{$controllerClass}";
+        $prefix = trim($prefix, '/');
+
         return <<<PHP
 <?php
 
 use Illuminate\Support\Facades\Route;
 
-Route::middleware('auth')->group(function () {
-    // Rutas del módulo {$resource}
-    Route::middleware('permission:{$resource}.view')->group(function () {
-        Route::get('/{$prefix}', function () { return view('dashboard'); })->name('{$prefix}.index');
-        Route::get('/{$prefix}/data', [{$controllerFq}::class, 'data'])->name('{$prefix}.data');
-    });
+Route::middleware('permission:{$resource}.view')
+    ->get('/api/{$prefix}', [{$fqcn}::class, 'index'])
+    ->name('{$resource}.index');
 
-    Route::post('/{$prefix}', [{$controllerFq}::class, 'store'])->middleware('permission:{$resource}.create')->name('{$prefix}.store');
-    Route::put('/{$prefix}/{id}', [{$controllerFq}::class, 'update'])->middleware('permission:{$resource}.update')->name('{$prefix}.update');
-    Route::delete('/{$prefix}/{id}', [{$controllerFq}::class, 'destroy'])->middleware('permission:{$resource}.delete')->name('{$prefix}.destroy');
-});
+Route::middleware('permission:{$resource}.create')
+    ->post('/api/{$prefix}', [{$fqcn}::class, 'store'])
+    ->name('{$resource}.store');
 
+Route::middleware('permission:{$resource}.update')
+    ->put('/api/{$prefix}/{id}', [{$fqcn}::class, 'update'])
+    ->name('{$resource}.update');
+
+Route::middleware('permission:{$resource}.delete')
+    ->delete('/api/{$prefix}/{id}', [{$fqcn}::class, 'destroy'])
+    ->name('{$resource}.destroy');
 PHP;
     }
 
-    protected function seederStub(string $className, string $resource): string
+    protected function componentStub(string $name): string
     {
-        $guard = config('auth.defaults.guard', 'web');
-        return <<<'PHP'
-<?php
+        $title = Str::headline($name);
 
-namespace Database\Seeders;
-
-use Illuminate\Database\Seeder;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\PermissionRegistrar;
-
-class {$className} extends Seeder
-{
-    public function run(): void
-    {
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
-        $guard = config('auth.defaults.guard', 'web');
-
-        $perms = [
-            '{$resource}.view',
-            '{$resource}.create',
-            '{$resource}.update',
-            '{$resource}.delete',
-            'menu.{$resource}',
-        ];
-
-        foreach ($perms as $p) {
-            Permission::query()->updateOrCreate(['name' => $p, 'guard_name' => $guard], []);
-        }
-    }
-}
-PHP;
+        return <<<VUE
+<template>
+  <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{$title}</h2>
+    <p class="mt-2 text-sm text-slate-600 dark:text-slate-300">
+      Modulo generado automaticamente. Reemplaza este contenido con tu implementacion.
+    </p>
+  </section>
+</template>
+VUE;
     }
 }

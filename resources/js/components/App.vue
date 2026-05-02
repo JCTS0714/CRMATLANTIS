@@ -18,7 +18,7 @@
             </div>
 
             <button
-              v-if="isRoles"
+              v-if="isRoles && canCreateRoles"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createRole"
@@ -27,7 +27,7 @@
             </button>
 
             <button
-              v-else-if="isLeadsBoard || isLeadsList"
+              v-else-if="(isLeadsBoard || isLeadsList) && canCreateLeads"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createQuickLead"
@@ -71,7 +71,7 @@
             </button>
 
             <button
-              v-if="isPostventaIncidences || isPostventaCustomers"
+              v-if="(isPostventaIncidences || isPostventaCustomers) && canCreateIncidencias"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createIncidence"
@@ -89,7 +89,7 @@
             </button>
 
             <button
-              v-else-if="isPostventaContadores"
+              v-else-if="isPostventaContadores && canCreateContadores"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createContador"
@@ -98,7 +98,7 @@
             </button>
 
             <button
-              v-else-if="isPostventaCertificados"
+              v-else-if="isPostventaCertificados && canCreateCertificados"
               type="button"
               class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 hover:shadow focus:outline-none focus:ring-4 focus:ring-blue-300"
               @click="createCertificado"
@@ -115,9 +115,7 @@
 
           <LeadsTable v-else-if="isLeadsList" />
 
-          <LeadsWhatsAppCampaign v-else-if="isLeadsWhatsApp" />
-
-          <LeadsEmailCampaign v-else-if="isLeadsEmail" />
+          <InvoiceDispatchInbox v-else-if="isInvoiceDispatchInbox" />
 
           <IncidenciasTable v-else-if="isIncidencias && currentView === 'table'" />
 
@@ -141,6 +139,11 @@
 
           <CalendarView v-else-if="isCalendar" />
 
+          <DynamicModuleHost
+            v-else-if="activeDynamicModule"
+            :component-file="activeDynamicModule.component"
+          />
+
           <template v-else>
             <DashboardView />
           </template>
@@ -161,14 +164,14 @@ import { computed, ref, defineAsyncComponent, onMounted } from 'vue';
 import Header from './Header.vue';
 import Sidebar from './Sidebar.vue';
 import Footer from './Footer.vue';
+import DynamicModuleHost from './DynamicModuleHost.vue';
 
 // Lazy load heavy components for better performance
 const UsersTable = defineAsyncComponent(() => import('./UsersTable.vue'));
 const RolesTable = defineAsyncComponent(() => import('./RolesTable.vue'));
 const LeadsBoard = defineAsyncComponent(() => import('./LeadsBoard.vue'));
 const LeadsTable = defineAsyncComponent(() => import('./LeadsTable.vue'));
-const LeadsWhatsAppCampaign = defineAsyncComponent(() => import('./LeadsWhatsAppCampaign.vue'));
-const LeadsEmailCampaign = defineAsyncComponent(() => import('./LeadsEmailCampaign.vue'));
+const InvoiceDispatchInbox = defineAsyncComponent(() => import('./InvoiceDispatchInbox.vue'));
 const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
 const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
 const IncidenciasBoard = defineAsyncComponent(() => import('./IncidenciasBoard.vue'));
@@ -187,12 +190,33 @@ import IncidenceQuickModal from './IncidenceQuickModal.vue';
 import IncidenceEditModal from './IncidenceEditModal.vue';
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
+const normalizePath = (value) => {
+  const str = String(value || '').trim();
+  if (!str) return '/';
+  return str.replace(/\/+$/, '') || '/';
+};
+
+const appModules = computed(() => window.__APP_MODULES__ ?? { dynamic: [] });
+const dynamicModules = computed(() =>
+  (appModules.value.dynamic ?? []).filter((module) => {
+    return module
+      && typeof module === 'object'
+      && typeof module.path === 'string'
+      && typeof module.component === 'string'
+      && module.path.length > 0
+      && module.component.length > 0;
+  })
+);
+
+const activeDynamicModule = computed(() =>
+  dynamicModules.value.find((module) => normalizePath(module.path) === normalizedPath) ?? null
+);
+
 const isUsers = computed(() => normalizedPath.startsWith('/users'));
 const isRoles = computed(() => normalizedPath.startsWith('/roles'));
 const isLeadsBoard = computed(() => normalizedPath === '/leads');
 const isLeadsList = computed(() => normalizedPath === '/leads/list');
-const isLeadsWhatsApp = computed(() => normalizedPath === '/leads/whatsapp');
-const isLeadsEmail = computed(() => normalizedPath === '/leads/email');
+const isInvoiceDispatchInbox = computed(() => normalizedPath === '/inbox/facturas');
 const isLeads = computed(() => normalizedPath.startsWith('/leads'));
 const isCustomers = computed(() => normalizedPath.startsWith('/customers'));
 const isCalendar = computed(() => normalizedPath.startsWith('/calendar'));
@@ -212,17 +236,29 @@ const isSettings = computed(() => normalizedPath.startsWith('/configuracion'));
 
 const isPostventaIncidences = computed(() => isIncidencias.value || isBacklog.value);
 
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canCreateRoles = computed(() => hasPermission('roles.create'));
+const canCreateLeads = computed(() => hasPermission('leads.create'));
+const canCreateIncidencias = computed(() => hasPermission('incidencias.create'));
+const canCreateContadores = computed(() => hasPermission('contadores.create'));
+const canCreateCertificados = computed(() => hasPermission('certificados.create'));
+
 const pageTitle = computed(() =>
-  isUsers.value
+  activeDynamicModule.value?.label
+    ? activeDynamicModule.value.label
+    : isUsers.value
     ? 'Usuarios'
     : isRoles.value
       ? 'Roles'
       : isSettings.value
         ? 'Configuración'
-      : isLeadsWhatsApp.value
-        ? 'WhatsApp'
-      : isLeadsEmail.value
-        ? 'Email'
+      : isInvoiceDispatchInbox.value
+        ? 'Bandeja de envios'
       : isLeads.value
         ? 'Leads'
         : normalizedPath === '/desistidos'
@@ -246,16 +282,16 @@ const pageTitle = computed(() =>
             : 'Dashboard'
 );
 const pageSubtitle = computed(() =>
-  isUsers.value
+  activeDynamicModule.value?.subtitle
+    ? activeDynamicModule.value.subtitle
+    : isUsers.value
     ? 'Gestión de usuarios del sistema'
     : isRoles.value
       ? 'Crea roles y asigna permisos'
       : isSettings.value
         ? 'Personalización del sistema'
-      : isLeadsWhatsApp.value
-        ? 'Campañas manuales asistidas (sin API)'
-      : isLeadsEmail.value
-        ? 'Campañas informativas por correo (con baja automática)'
+      : isInvoiceDispatchInbox.value
+        ? 'Envio de facturas por WhatsApp API, fallback manual y email'
       : isLeadsBoard.value
         ? 'Pipeline de oportunidades'
         : isLeadsList.value

@@ -1,0 +1,367 @@
+CONTEXTO COMPLETO DEL MODULO DE ENVIOS (WHATSAPP + EMAIL)
+Proyecto origen: JCPAYMANAGER
+Objetivo: Replicar este modulo en otro CRM (incluyendo flujo con archivo PDF por WhatsApp)
+Ultima actualizacion funcional: flujo de 3 pasos (preparar, enviar por API, fallback manual)
+
+============================================================
+1) PROPOSITO DEL MODULO
+============================================================
+
+El modulo resuelve el envio de facturas a clientes con dos canales:
+- WhatsApp API (Kapso) con archivo adjunto tipo document (PDF u otro)
+- Email transaccional (Brevo), opcional
+
+Problema que evita:
+- Abrir solo WhatsApp Web con texto no adjunta archivo automaticamente.
+- Para adjuntar archivo automatico se requiere API (Kapso/Meta), numero habilitado y URL publica del archivo.
+
+Resultado esperado del flujo:
+1. Usuario prepara factura (sube archivo y plantilla de mensaje).
+2. Sistema guarda archivo y mensaje en BD.
+3. Usuario envia por WhatsApp API en un segundo paso explicito.
+4. Si API no esta lista, UI muestra diagnostico y permite fallback manual wa.me.
+
+============================================================
+2) REQUISITOS TECNICOS Y VARIABLES DE ENTORNO
+============================================================
+
+Backend:
+- Node.js + Express
+- MySQL (compatible con Hostinger)
+- Multer para carga de archivos
+- HTTPS nativo para llamadas externas
+
+Variables minimas para WhatsApp con archivo:
+- KAPSO_ENABLED=true
+- KAPSO_API_KEY=...
+- KAPSO_PHONE_NUMBER_ID=...
+- PUBLIC_BASE_URL=https://tu-dominio-publico
+
+Variables minimas para email (opcional):
+- BREVO_ENABLED=true
+- BREVO_API_KEY=...
+- BREVO_SENDER_EMAIL=...
+- BREVO_SENDER_NAME=...
+
+Variables de base de datos:
+- DB_HOST
+- DB_PORT
+- DB_USER
+- DB_PASSWORD
+- DB_NAME
+
+Punto critico:
+- PUBLIC_BASE_URL no puede ser localhost si quieres adjuntar archivos por API.
+- Kapso/Meta necesita descargar el archivo desde una URL publica accesible por internet.
+
+============================================================
+3) ESTRUCTURA DE DATOS DEL MODULO
+============================================================
+
+Tablas principales usadas por envios:
+
+Tabla: pagos_mensuales
+Campos relevantes:
+- id
+- clienteId
+- mes
+- anio
+- estado (factura_pendiente | factura_enviada | pago_registrado)
+
+Tabla: envios_factura
+Campos relevantes:
+- id
+- pagoId (UNIQUE)
+- archivoUrl
+- mensaje
+- estado (preparado | enviado)
+- fechaPreparado
+- fechaEnviado
+
+Tabla: clientes
+Campos relevantes para envio:
+- id
+- comercio
+- contacto
+- celular
+- precio
+
+Tabla: auditoria
+Campos relevantes:
+- accion
+- clienteId
+- detalles (JSON serializado)
+- usuario
+
+Estados operativos del envio de factura:
+- preparado: existe archivo y mensaje listos para enviar
+- enviado: se confirmo envio (por API o marcado manual)
+
+============================================================
+4) LOGICA DE NEGOCIO DEL MODULO (BACKEND)
+============================================================
+
+4.1 Funciones auxiliares clave
+- getBaseUrl(req): usa PUBLIC_BASE_URL si existe, sino usa protocolo+host actual.
+- esBaseUrlPublica(baseUrl): valida que no sea localhost/127.0.0.1/::1/.local.
+- construirUrlWhatsAppManual({ celularConPais, mensaje }): genera wa.me con texto codificado.
+- obtenerDiagnosticoWhatsapp({ celularConPais, baseUrl }): devuelve lista de bloqueos.
+
+Diagnosticos estandar devueltos por backend:
+- celular_invalido
+- kapso_no_configurado
+- public_base_url_no_publica
+
+4.2 Endpoint de estado Kapso
+GET /api/integraciones/kapso/status
+Respuesta:
+- enabled
+- configured
+- phoneNumberId
+- missing[]
+
+4.3 Endpoint de prueba Kapso (texto)
+POST /api/integraciones/kapso/test
+Body:
+- celularDestino
+Accion:
+- envia texto simple a Kapso para sanity check.
+
+4.4 Preparar factura (NO envia por API en este paso)
+POST /api/facturas/preparar
+Multipart:
+- pagoId
+- mensajeTemplate
+- archivo
+
+Reglas:
+- Pago debe existir.
+- Estado de pago permitido: factura_pendiente o factura_enviada.
+- Nombre del archivo debe coincidir con el comercio (normalizado).
+- Guarda archivo en uploads/facturas.
+- Upsert en envios_factura con estado preparado.
+
+Respuesta incluye:
+- archivoUrl
+- facturaUrl
+- mensaje
+- whatsappUrl (manual)
+- whatsappApiReady (true/false)
+- whatsappDiagnostics[]
+- whatsappDelivery.reason=prepared_only
+
+4.5 Enviar archivo por WhatsApp API
+POST /api/facturas/:pagoId/enviar-whatsapp
+
+Reglas:
+- Debe existir pago.
+- Debe existir facturaArchivoUrl en envios_factura.
+- Valida diagnostico (celular, kapso, URL publica).
+- Si diagnostico no vacio: responde 400 con diagnostics[] y whatsappUrl manual.
+
+Envio a Kapso:
+- type=document
+- document.link=facturaUrl publica
+- document.caption
+- document.filename
+- biz_opaque_callback_data=pago_{id}
+
+Si envio OK:
+- actualiza envios_factura.estado=enviado + fechaEnviado
+- actualiza pagos_mensuales.estado a factura_enviada (si estaba pendiente)
+- inserta auditoria accion ENVIO_WHATSAPP_KAPSO
+- responde messageId y facturaUrl
+
+4.6 Marcar enviada manual
+POST /api/facturas/:pagoId/marcar-enviada
+- Cambia envios_factura a enviado.
+- Cambia pagos_mensuales a factura_enviada si aplica.
+
+4.7 Enviar email con factura
+POST /api/facturas/:pagoId/enviar-email
+- Requiere email valido y factura preparada.
+- Usa Brevo y link publico de factura.
+- Actualiza estados similar a WhatsApp.
+
+============================================================
+5) LOGICA DE INTERFAZ (FRONTEND)
+============================================================
+
+Componente principal origen:
+- src/components/EnvioMasivo.jsx
+
+Funciones UI clave:
+- cargarPendientes
+- cargarEstadoKapso
+- cargarEstadoBrevo
+- prepararFila
+- enviarWhatsappArchivo
+- abrirWhatsappManual
+- enviarCorreo
+- marcarEnviada
+
+Flujo visual implementado:
+- KPI cards (pendientes, factura lista, listas para enviar, modo activo)
+- Toggle de modo:
+  - Envio por Kapso API
+  - Envio manual wa.me
+- Tarjetas de integracion (Kapso y Brevo)
+- Bloque de diagnostico con mensajes de bloqueo
+- Acciones por fila en orden:
+  1) Preparar factura
+  2) Enviar archivo WA
+  3) Abrir WA manual
+  4) Enviar email
+  5) Marcar enviada
+
+Importante de UX:
+- El boton de enviar archivo WA no debe disparar preparacion automaticamente.
+- Separar preparar de enviar reduce errores y hace trazable el diagnostico.
+
+============================================================
+6) DOCUMENTACION PRACTICA DE KAPSO API (RESUMEN)
+============================================================
+
+6.1 Autenticacion
+Header requerido:
+- X-API-Key: TU_API_KEY
+
+6.2 Base URL WhatsApp (Meta-compatible)
+- https://api.kapso.ai/meta/whatsapp/v24.0
+
+6.3 Enviar mensaje
+Endpoint:
+- POST /{phone_number_id}/messages
+
+Campos comunes:
+- messaging_product: whatsapp
+- recipient_type: individual
+- to: numero destino (E.164 sin +)
+- type: text | document | image | template | etc.
+
+Para documento:
+- type: document
+- document.link: URL publica HTTPS del archivo
+- document.caption
+- document.filename
+
+Respuesta esperada:
+- messages[0].id (messageId)
+
+6.4 Endpoint plataforma (gestion)
+Base URL:
+- https://api.kapso.ai/platform/v1
+
+Util:
+- Listar numeros conectados
+- Crear/listar webhooks
+- Revisar entregas
+
+6.5 Webhooks Kapso (si luego los activas)
+Header de firma:
+- X-Webhook-Signature (HMAC SHA256)
+Header idempotencia:
+- X-Idempotency-Key
+
+Buenas practicas webhook:
+- validar firma antes de procesar
+- responder 200 rapido
+- evitar reprocesar el mismo idempotency key
+
+============================================================
+7) ERRORES COMUNES Y COMO DETECTARLOS
+============================================================
+
+Error: PUBLIC_BASE_URL no publica
+- Sintoma: diagnostico public_base_url_no_publica
+- Solucion: usar dominio HTTPS publico (no localhost)
+
+Error: 401/403 Kapso
+- Sintoma: details de Kapso con autenticacion denegada
+- Solucion: revisar KAPSO_API_KEY y proyecto correcto
+
+Error: no adjunta archivo
+- Causas tipicas:
+  - URL inaccesible desde internet
+  - archivo no servido por backend
+  - phone_number_id incorrecto
+
+Error: 404 en endpoint enviar-whatsapp
+- Causa tipica: backend desactualizado corriendo version vieja
+- Solucion: reiniciar proceso y validar ruta expuesta
+
+============================================================
+8) CHECKLIST DE REPLICACION EN OTRO CRM
+============================================================
+
+1. Crear tablas equivalentes (clientes, pagos_mensuales, envios_factura, auditoria).
+2. Implementar carga y guardado de archivo factura en ruta publica.
+3. Implementar endpoint preparar (solo guardar + diagnostico).
+4. Implementar endpoint enviar-whatsapp (accion explicita API).
+5. Guardar trazabilidad en auditoria con messageId.
+6. Exponer endpoint estado Kapso.
+7. Implementar fallback wa.me en frontend.
+8. Mostrar diagnostico visual al usuario.
+9. Validar que facturaUrl sea publica desde internet.
+10. Probar con numero real y revisar logs de Kapso.
+
+============================================================
+9) EJEMPLO BREVE DE FLUJO (FRONTEND + BACKEND)
+============================================================
+
+9.1 Ejemplo Frontend (pseudo JS)
+
+PASO A: preparar
+- Subir archivo + plantilla
+- POST /api/facturas/preparar (multipart)
+- Si whatsappApiReady=true, habilitar boton enviar WA API
+- Si false, mostrar diagnostics y boton fallback manual
+
+PASO B: enviar archivo por API
+- POST /api/facturas/{pagoId}/enviar-whatsapp
+- Si 200: mostrar "enviado" y refrescar tabla
+- Si 400: mostrar diagnostics[]
+
+9.2 Ejemplo Backend (pseudo codigo)
+
+function prepararFactura(pagoId, archivo, plantilla):
+  validar pago
+  validar nombre archivo
+  guardar archivo en /uploads/facturas
+  upsert envios_factura(estado=preparado)
+  diagnostico = evaluar(celular, kapsoConfig, publicBaseUrl)
+  return { facturaUrl, whatsappApiReady, diagnostics }
+
+function enviarWhatsapp(pagoId):
+  cargar pago + cliente + envio preparado
+  diagnostico = evaluar(celular, kapsoConfig, publicBaseUrl)
+  if diagnostico no vacio -> 400
+  response = kapso.sendDocument({ to, link, caption, filename })
+  actualizar estados a enviado
+  registrar auditoria con response.messageId
+  return ok
+
+============================================================
+10) ADAPTACION SI TU CRM NO USA NODE
+============================================================
+
+Si tu CRM actual esta en PHP/Laravel/otro stack sin Node:
+- Mantener exactamente el contrato REST (mismos endpoints y payloads).
+- Mantener mismas reglas de negocio y diagnosticos.
+- Reemplazar solo la capa de implementacion (ORM, DB, controladores).
+
+En particular, conserva:
+- Separacion preparar vs enviar
+- Validacion de URL publica
+- Trazabilidad de messageId y estado
+- Fallback manual wa.me
+
+============================================================
+11) ARCHIVOS DE REFERENCIA EN ESTE REPO
+============================================================
+
+- server.js
+- src/components/EnvioMasivo.jsx
+- docs/KAPSO_PRUEBAS.md
+
+Fin del documento.

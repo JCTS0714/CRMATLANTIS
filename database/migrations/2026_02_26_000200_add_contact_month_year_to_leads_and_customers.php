@@ -19,7 +19,29 @@ return new class extends Migration
             $table->unsignedSmallInteger('fecha_contacto_anio')->nullable()->after('fecha_contacto_mes');
         });
 
-        DB::statement('UPDATE customers SET fecha_contacto_mes = MONTH(fecha_contacto), fecha_contacto_anio = YEAR(fecha_contacto) WHERE fecha_contacto IS NOT NULL AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)');
+        $driver = DB::getDriverName();
+
+        if ($driver === 'sqlite') {
+            DB::statement(
+                "UPDATE customers
+                SET
+                    fecha_contacto_mes = CAST(strftime('%m', fecha_contacto) AS INTEGER),
+                    fecha_contacto_anio = CAST(strftime('%Y', fecha_contacto) AS INTEGER)
+                WHERE fecha_contacto IS NOT NULL
+                  AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)"
+            );
+        } elseif ($driver === 'pgsql') {
+            DB::statement(
+                "UPDATE customers
+                SET
+                    fecha_contacto_mes = EXTRACT(MONTH FROM fecha_contacto)::INTEGER,
+                    fecha_contacto_anio = EXTRACT(YEAR FROM fecha_contacto)::INTEGER
+                WHERE fecha_contacto IS NOT NULL
+                  AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)"
+            );
+        } else {
+            DB::statement('UPDATE customers SET fecha_contacto_mes = MONTH(fecha_contacto), fecha_contacto_anio = YEAR(fecha_contacto) WHERE fecha_contacto IS NOT NULL AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)');
+        }
     }
 
     public function down(): void

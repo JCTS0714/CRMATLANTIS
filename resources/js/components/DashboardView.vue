@@ -38,7 +38,7 @@
 
       <section class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         <a
-          v-if="cards.leads"
+          v-if="cards.leads && canViewLeads"
           href="/leads"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -55,7 +55,7 @@
         </a>
 
         <a
-          v-if="cards.customers"
+          v-if="cards.customers && canViewCustomers"
           href="/postventa/clientes"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -70,7 +70,7 @@
         </a>
 
         <a
-          v-if="cards.incidencias"
+          v-if="cards.incidencias && canViewIncidencias"
           href="/backlog"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -85,7 +85,7 @@
         </a>
 
         <a
-          v-if="cards.certificados"
+          v-if="cards.certificados && canViewCertificados"
           href="/postventa/certificados"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -103,7 +103,7 @@
         </a>
 
         <a
-          v-if="cards.contadores"
+          v-if="cards.contadores && canViewContadores"
           href="/postventa/contadores"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -120,7 +120,7 @@
         </a>
 
         <a
-          v-if="cards.calendar"
+          v-if="cards.calendar && canViewCalendar"
           href="/calendar"
           class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
@@ -136,7 +136,7 @@
       </section>
 
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2">
+        <div v-if="canViewCertificados" class="lg:col-span-2">
           <div class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="border-b border-slate-200 p-6 dark:border-slate-800">
               <div class="flex items-center justify-between">
@@ -149,7 +149,7 @@
                     @reset="resetColumns"
                   />
                   <a
-                    v-if="cards.certificados"
+                    v-if="cards.certificados && canViewCertificados"
                     href="/postventa/certificados"
                     class="text-sm font-medium text-blue-600 hover:underline"
                   >
@@ -206,12 +206,12 @@
           </div>
         </div>
 
-        <div>
+        <div v-if="canViewCalendar">
           <div class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div class="border-b border-slate-200 p-6 dark:border-slate-800">
               <div class="flex items-center justify-between">
                 <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Próximos eventos</h2>
-                <a v-if="cards.calendar" href="/calendar" class="text-sm font-medium text-blue-600 hover:underline">Ver calendario</a>
+                <a v-if="cards.calendar && canViewCalendar" href="/calendar" class="text-sm font-medium text-blue-600 hover:underline">Ver calendario</a>
               </div>
               <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Asignados a ti (máx. 5)</p>
             </div>
@@ -234,11 +234,11 @@
       </section>
 
       <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div v-if="lists.recent_leads" class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div v-if="lists.recent_leads && canViewLeads" class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div class="border-b border-slate-200 p-6 dark:border-slate-800">
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Últimos leads</h2>
-              <a href="/leads" class="text-sm font-medium text-blue-600 hover:underline">Ver leads</a>
+              <a v-if="canViewLeads" href="/leads" class="text-sm font-medium text-blue-600 hover:underline">Ver leads</a>
             </div>
             <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Últimos 5 registros</p>
           </div>
@@ -261,13 +261,13 @@
         </div>
 
         <div
-          v-if="lists.recent_incidences"
+          v-if="lists.recent_incidences && canViewIncidencias"
           class="rounded-lg border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
         >
           <div class="border-b border-slate-200 p-6 dark:border-slate-800">
             <div class="flex items-center justify-between">
               <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Últimas incidencias</h2>
-              <a href="/backlog" class="text-sm font-medium text-blue-600 hover:underline">Ver incidencias</a>
+              <a v-if="canViewIncidencias" href="/backlog" class="text-sm font-medium text-blue-600 hover:underline">Ver incidencias</a>
             </div>
             <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Últimos 5 registros</p>
           </div>
@@ -289,7 +289,7 @@
 
 <script setup>
 import axios from 'axios';
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
 import { useColumnVisibility } from '../composables/useColumnVisibility';
 import { useStickyHorizontalScroll } from '../composables/useStickyHorizontalScroll';
@@ -332,6 +332,19 @@ const lists = ref({
 
 const monthInput = ref(null);
 const selectedMonth = ref('');
+
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canViewLeads = computed(() => hasPermission('leads.view'));
+const canViewCustomers = computed(() => hasPermission('customers.view'));
+const canViewIncidencias = computed(() => hasPermission('incidencias.view'));
+const canViewCertificados = computed(() => hasPermission('certificados.view'));
+const canViewContadores = computed(() => hasPermission('contadores.view'));
+const canViewCalendar = computed(() => hasPermission('calendar.view'));
 
 const openMonthPicker = () => {
   const el = monthInput.value;

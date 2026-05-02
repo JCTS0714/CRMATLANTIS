@@ -17,7 +17,4 @@ import { onMounted } from 'vue';
 onMounted(() => {
     console.log('Component mounted.');
 });
-</script>)
-        }
-    }
 </script>

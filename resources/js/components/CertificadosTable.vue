@@ -17,6 +17,7 @@
         </div>
 
         <label
+          v-if="canCreateCertificados"
           class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :class="importingData ? 'pointer-events-none opacity-50' : ''"
         >
@@ -25,6 +26,7 @@
         </label>
 
         <label
+          v-if="canCreateCertificados"
           class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :class="importingImages ? 'pointer-events-none opacity-50' : ''"
         >
@@ -105,6 +107,7 @@
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
+                  v-if="canUpdateCertificados"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="savingIds.has(c.id)"
@@ -113,6 +116,7 @@
                   Editar
                 </button>
                 <button
+                  v-if="canDeleteCertificados"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
                   :disabled="deletingIds.has(c.id)"
@@ -161,7 +165,7 @@
 
 <script setup>
 import axios from 'axios';
-import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { confirmDialog, promptCertificadoCreate, promptCertificadoEdit, toastError, toastSuccess } from '../ui/alerts';
 import TableColumnsDropdown from './base/TableColumnsDropdown.vue';
 import { useColumnVisibility } from '../composables/useColumnVisibility';
@@ -201,6 +205,16 @@ let searchTimeout = null;
 const importingData = ref(false);
 const importingImages = ref(false);
 const importStatus = ref('');
+
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canCreateCertificados = computed(() => hasPermission('certificados.create'));
+const canUpdateCertificados = computed(() => hasPermission('certificados.update'));
+const canDeleteCertificados = computed(() => hasPermission('certificados.delete'));
 
 const pagination = ref({
   current_page: 1,

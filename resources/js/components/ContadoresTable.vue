@@ -31,6 +31,7 @@
         </button>
 
         <label
+          v-if="canCreateContadores"
           class="inline-flex cursor-pointer items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :class="importing ? 'pointer-events-none opacity-50' : ''"
         >
@@ -39,7 +40,7 @@
         </label>
 
         <button
-          v-if="isLocalOnlyActionEnabled"
+          v-if="isLocalOnlyActionEnabled && canDeleteContadores"
           type="button"
           class="inline-flex items-center rounded-lg border border-red-300 bg-white px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-800 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
           :disabled="clearingLocal || loading"
@@ -169,6 +170,7 @@
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
+                  v-if="canUpdateContadores"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="savingIds.has(c.id)"
@@ -177,6 +179,7 @@
                   Editar
                 </button>
                 <button
+                  v-if="canDeleteContadores"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
                   :disabled="deletingIds.has(c.id)"
@@ -251,6 +254,16 @@ const advancedFilters = ref({
 const importing = ref(false);
 const importStatus = ref('');
 const clearingLocal = ref(false);
+
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canCreateContadores = computed(() => hasPermission('contadores.create'));
+const canUpdateContadores = computed(() => hasPermission('contadores.update'));
+const canDeleteContadores = computed(() => hasPermission('contadores.delete'));
 
 const serverOptions = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
 const estadoEmpresaOptions = ['activo', 'retirado', 'eliminado'];

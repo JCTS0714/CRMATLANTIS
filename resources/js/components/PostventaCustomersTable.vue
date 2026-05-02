@@ -11,9 +11,17 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <input ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
+        <input
+          v-if="canCreateCustomers"
+          ref="importInput"
+          type="file"
+          accept=".csv,text/csv"
+          class="hidden"
+          @change="onImportFileSelected"
+        />
 
         <button
+          v-if="canCreateCustomers"
           type="button"
           class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :disabled="importing"
@@ -31,6 +39,7 @@
         </button>
 
         <button
+          v-if="canCreateCustomers"
           type="button"
           class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-60"
           :disabled="creating"
@@ -40,7 +49,7 @@
         </button>
 
         <button
-          v-if="isLocalOnlyActionsEnabled"
+          v-if="isLocalOnlyActionsEnabled && canDeleteCustomers"
           type="button"
           class="inline-flex items-center rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-900/40"
           :disabled="clearingTable"
@@ -193,6 +202,7 @@
             <td class="px-4 py-3">{{ c.servidor || '—' }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
               <select
+                v-if="canUpdateCustomers"
                 class="min-w-30 rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
                 :value="c.estado || 'activo'"
                 :disabled="changingStatusIds.has(c.id)"
@@ -202,6 +212,7 @@
                 <option value="retirado">retirado</option>
                 <option value="eliminado">eliminado</option>
               </select>
+              <span v-else>{{ c.estado || 'activo' }}</span>
             </td>
             <td class="px-4 py-3">{{ c.menbresia || '—' }}</td>
             <td class="px-4 py-3">{{ c.fecha_contacto_mes || '—' }}</td>
@@ -211,6 +222,7 @@
             <td class="px-4 py-3">
               <div class="flex items-center gap-2">
                 <button
+                  v-if="canCreateIncidencias"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   @click="openIncidence(c)"
@@ -219,6 +231,7 @@
                 </button>
 
                 <button
+                  v-if="canUpdateCustomers"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                   :disabled="savingIds.has(c.id)"
@@ -228,6 +241,7 @@
                 </button>
 
                 <button
+                  v-if="canDeleteCustomers"
                   type="button"
                   class="inline-flex items-center rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-60 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/30"
                   :disabled="deletingIds.has(c.id)"
@@ -290,6 +304,17 @@ const tableJustUpdated = ref(false);
 const importInput = ref(null);
 const importing = ref(false);
 const clearingTable = ref(false);
+
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canCreateCustomers = computed(() => hasPermission('customers.create'));
+const canUpdateCustomers = computed(() => hasPermission('customers.update'));
+const canDeleteCustomers = computed(() => hasPermission('customers.delete'));
+const canCreateIncidencias = computed(() => hasPermission('incidencias.create'));
 
 const isLocalOnlyActionsEnabled = (() => {
   if (typeof window === 'undefined') return false;

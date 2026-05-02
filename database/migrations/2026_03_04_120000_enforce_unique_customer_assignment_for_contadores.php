@@ -62,6 +62,27 @@ return new class extends Migration
 
     private function indexExists(string $table, string $indexName): bool
     {
+        $driver = DB::getDriverName();
+
+        if ($driver === 'sqlite') {
+            $indexes = DB::select("PRAGMA index_list('{$table}')");
+            foreach ($indexes as $index) {
+                if (($index->name ?? null) === $indexName) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        if ($driver === 'pgsql') {
+            $result = DB::selectOne(
+                'SELECT COUNT(1) AS total FROM pg_indexes WHERE schemaname = current_schema() AND tablename = ? AND indexname = ?',
+                [$table, $indexName]
+            );
+
+            return ((int) ($result->total ?? 0)) > 0;
+        }
+
         $result = DB::selectOne(
             'SELECT COUNT(1) AS total FROM information_schema.statistics WHERE table_schema = DATABASE() AND table_name = ? AND index_name = ?',
             [$table, $indexName]
@@ -73,6 +94,13 @@ return new class extends Migration
     private function dropIndexIfExists(string $table, string $indexName): void
     {
         if (!$this->indexExists($table, $indexName)) {
+            return;
+        }
+
+        $driver = DB::getDriverName();
+
+        if ($driver === 'sqlite' || $driver === 'pgsql') {
+            DB::statement(sprintf('DROP INDEX IF EXISTS "%s"', $indexName));
             return;
         }
 

@@ -28,7 +28,7 @@
       <select
         class="w-full rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
         :value="lead.stage_id ?? ''"
-        :disabled="isMoving || !Array.isArray(stages) || stages.length === 0"
+        :disabled="isMoving || !canUpdateStage || !Array.isArray(stages) || stages.length === 0"
         @change="handleStageChange"
       >
         <option
@@ -62,6 +62,10 @@ const props = defineProps({
   isMoving: {
     type: Boolean,
     default: false
+  },
+  canUpdateStage: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -104,6 +108,7 @@ const goToCalendar = () => {
 };
 
 const handleStageChange = (event) => {
+  if (!props.canUpdateStage) return;
   const selectedStageId = Number(event.target.value);
   if (!Number.isFinite(selectedStageId) || selectedStageId <= 0) return;
   if (selectedStageId === Number(props.lead?.stage_id)) return;

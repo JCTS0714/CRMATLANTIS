@@ -13,8 +13,9 @@
       </div>
 
       <div class="flex items-center gap-2">
-        <input ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
+        <input v-if="canCreateIncidencias" ref="importInput" type="file" accept=".csv,text/csv" class="hidden" @change="onImportFileSelected" />
         <button
+          v-if="canCreateIncidencias"
           type="button"
           class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :disabled="importing"
@@ -122,6 +123,7 @@
               <td class="px-4 py-3">
                 <div class="flex items-center gap-2">
                   <button
+                    v-if="canUpdateIncidencias"
                     type="button"
                     class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     :disabled="isLocked(it)"
@@ -131,7 +133,7 @@
                   </button>
 
                   <button
-                    v-if="canArchive(it)"
+                    v-if="canUpdateIncidencias && canArchive(it)"
                     type="button"
                     class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
                     :disabled="archivingIds.has(it.id)"
@@ -141,6 +143,7 @@
                   </button>
 
                   <button
+                    v-if="canDeleteIncidencias"
                     type="button"
                     class="inline-flex items-center rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 shadow-sm hover:bg-red-100 disabled:opacity-60 dark:border-red-800 dark:bg-red-950 dark:text-red-300 dark:hover:bg-red-900"
                     :disabled="deletingIds.has(it.id)"
@@ -262,6 +265,16 @@ const columns = [
   { key: 'updated_at', label: 'Actualizado' },
 ];
 
+const authUser = computed(() => window.__AUTH_USER__ ?? null);
+const hasPermission = (permission) => {
+  const perms = authUser.value?.permissions;
+  return Array.isArray(perms) && perms.includes(permission);
+};
+
+const canCreateIncidencias = computed(() => hasPermission('incidencias.create'));
+const canUpdateIncidencias = computed(() => hasPermission('incidencias.update'));
+const canDeleteIncidencias = computed(() => hasPermission('incidencias.delete'));
+
 const {
   tableRef,
   visibleKeys,
@@ -327,6 +340,7 @@ const triggerImport = () => {
 };
 
 const onImportFileSelected = async (ev) => {
+  if (!canCreateIncidencias.value) return;
   const file = ev?.target?.files?.[0];
   if (!file) return;
 
@@ -360,6 +374,7 @@ const stageById = computed(() => {
 const isLocked = (it) => !!it?.archived_at;
 
 const openEdit = (it) => {
+  if (!canUpdateIncidencias.value) return;
   if (!it?.id) return;
   window.dispatchEvent(new CustomEvent('incidencias:edit', { detail: { incidence: it } }));
 };
@@ -371,6 +386,7 @@ const canArchive = (it) => {
 };
 
 const archive = async (it) => {
+  if (!canUpdateIncidencias.value) return;
   if (!it?.id) return;
   if (!canArchive(it)) return;
 
@@ -405,6 +421,7 @@ const archive = async (it) => {
 };
 
 const confirmDelete = async (incidence) => {
+  if (!canDeleteIncidencias.value) return;
   const confirmed = await confirmDialog({
     title: '¿Eliminar incidencia?',
     text: `Se eliminará permanentemente "${incidence.title || `#${incidence.correlative}`}"`,
@@ -420,6 +437,7 @@ const confirmDelete = async (incidence) => {
 };
 
 const deleteIncidence = async (incidence) => {
+  if (!canDeleteIncidencias.value) return;
   deletingIds.value.add(incidence.id);
   error.value = '';
 

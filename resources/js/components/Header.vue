@@ -306,6 +306,40 @@ const notifications = ref([]);
 const unreadCount = ref(0);
 let notifTimer = null;
 let lastSeenIds = new Set();
+let notificationsInFlight = false;
+let outsideClickHandler = null;
+let visibilityChangeHandler = null;
+let onlineHandler = null;
+let offlineHandler = null;
+
+const POLL_ACTIVE_MS = 30000;
+const POLL_BACKGROUND_MS = 120000;
+const POLL_ERROR_MS = 180000;
+
+const getPollDelay = () => {
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+    return POLL_BACKGROUND_MS;
+  }
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return POLL_BACKGROUND_MS;
+  }
+
+  return POLL_ACTIVE_MS;
+};
+
+const clearNotificationsPoll = () => {
+  if (!notifTimer) return;
+  clearTimeout(notifTimer);
+  notifTimer = null;
+};
+
+const scheduleNotificationsPoll = (delayMs = getPollDelay()) => {
+  clearNotificationsPoll();
+  notifTimer = setTimeout(() => {
+    pollNotifications({ toastNew: true });
+  }, Math.max(5000, delayMs));
+};
 
 const loadNotifications = async ({ toastNew = false } = {}) => {
   try {
@@ -325,9 +359,23 @@ const loadNotifications = async ({ toastNew = false } = {}) => {
     notifications.value = list;
     unreadCount.value = Number(count) || 0;
     lastSeenIds = new Set(list.map((n) => n.id));
+    return true;
   } catch {
-    // silent
+    return false;
   }
+};
+
+const pollNotifications = async ({ toastNew = false } = {}) => {
+  if (notificationsInFlight) {
+    scheduleNotificationsPoll();
+    return;
+  }
+
+  notificationsInFlight = true;
+  const ok = await loadNotifications({ toastNew });
+  notificationsInFlight = false;
+
+  scheduleNotificationsPoll(ok ? getPollDelay() : POLL_ERROR_MS);
 };
 
 const openNotification = async (n) => {
@@ -382,22 +430,60 @@ onMounted(() => {
   syncTheme();
   window.addEventListener('theme:changed', syncTheme);
 
-  loadNotifications({ toastNew: false });
-  notifTimer = setInterval(() => loadNotifications({ toastNew: true }), 30000);
+  pollNotifications({ toastNew: false });
   
   // Close dropdowns when clicking outside
-  document.addEventListener('click', (event) => {
+  outsideClickHandler = (event) => {
     if (showNotifications.value && !event.target.closest('[data-notifications-container]')) {
       showNotifications.value = false;
     }
     if (showUserDropdown.value && !event.target.closest('[data-user-dropdown-container]')) {
       showUserDropdown.value = false;
     }
-  });
+  };
+
+  visibilityChangeHandler = () => {
+    if (document.visibilityState === 'visible') {
+      pollNotifications({ toastNew: false });
+      return;
+    }
+
+    scheduleNotificationsPoll(POLL_BACKGROUND_MS);
+  };
+
+  onlineHandler = () => {
+    pollNotifications({ toastNew: false });
+  };
+
+  offlineHandler = () => {
+    scheduleNotificationsPoll(POLL_BACKGROUND_MS);
+  };
+
+  document.addEventListener('click', outsideClickHandler);
+  document.addEventListener('visibilitychange', visibilityChangeHandler);
+  window.addEventListener('online', onlineHandler);
+  window.addEventListener('offline', offlineHandler);
 });
 
 onBeforeUnmount(() => {
   window.removeEventListener('theme:changed', syncTheme);
-  if (notifTimer) clearInterval(notifTimer);
+
+  clearNotificationsPoll();
+
+  if (outsideClickHandler) {
+    document.removeEventListener('click', outsideClickHandler);
+  }
+
+  if (visibilityChangeHandler) {
+    document.removeEventListener('visibilitychange', visibilityChangeHandler);
+  }
+
+  if (onlineHandler) {
+    window.removeEventListener('online', onlineHandler);
+  }
+
+  if (offlineHandler) {
+    window.removeEventListener('offline', offlineHandler);
+  }
 });
 </script>

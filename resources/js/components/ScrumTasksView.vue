@@ -411,6 +411,8 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import axios from 'axios';
 import { toastError, toastSuccess } from '../ui/alerts';
+import { usePeriodFilters } from '../composables/usePeriodFilters';
+import { useResponsibleLookup } from '../composables/useResponsibleLookup';
 
 const props = defineProps({
   viewMode: {
@@ -437,26 +439,29 @@ const filters = reactive({
   priority: '',
 });
 
-const showAdvancedFilters = ref(false);
-const periodFilters = reactive({
-  mode: 'all',
-  month: '',
-  fromMonth: '',
-  toMonth: '',
-  date: '',
-  fromDate: '',
-  toDate: '',
-});
+const {
+  showAdvancedFilters,
+  periodFilters,
+  resolvePeriodRange,
+  resetPeriodFilters,
+  formatDateOnly,
+} = usePeriodFilters();
 
 const formOpen = ref(false);
 const editingTaskId = ref(null);
 const draggedTaskId = ref(null);
 const dragOverColumnId = ref('');
-const responsibleQuery = ref('');
-const responsibleLoading = ref(false);
-const responsibleDropdownOpen = ref(false);
-const responsibleOptions = ref([]);
-let responsibleSearchTimer = null;
+const {
+  responsibleQuery,
+  responsibleLoading,
+  responsibleDropdownOpen,
+  responsibleOptions,
+  loadResponsibleOptions,
+  scheduleResponsibleSearch,
+  openResponsibleDropdown,
+  closeResponsibleDropdown,
+  selectResponsible: selectResponsibleFromLookup,
+} = useResponsibleLookup();
 const form = reactive({
   nombre: '',
   descripcion: '',
@@ -479,78 +484,6 @@ const responsibleFilterOptions = computed(() => {
   const names = tasks.value.map((task) => task.responsable).filter(Boolean);
   return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
 });
-
-const formatDateOnly = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-};
-
-const monthBounds = (monthValue) => {
-  if (!monthValue || !/^\d{4}-\d{2}$/.test(monthValue)) {
-    return { from: null, to: null };
-  }
-
-  const [yearRaw, monthRaw] = monthValue.split('-');
-  const year = Number(yearRaw);
-  const month = Number(monthRaw);
-  if (Number.isNaN(year) || Number.isNaN(month) || month < 1 || month > 12) {
-    return { from: null, to: null };
-  }
-
-  const lastDay = new Date(year, month, 0).getDate();
-  return {
-    from: `${year}-${String(month).padStart(2, '0')}-01`,
-    to: `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`,
-  };
-};
-
-const normalizePeriodBounds = (from, to) => {
-  if (!from || !to) {
-    return { from, to };
-  }
-  return from > to ? { from: to, to: from } : { from, to };
-};
-
-const resolvePeriodRange = () => {
-  if (periodFilters.mode === 'all') {
-    return { from: null, to: null };
-  }
-
-  if (periodFilters.mode === 'last_week') {
-    const now = new Date();
-    const fromDate = new Date(now);
-    fromDate.setDate(fromDate.getDate() - 6);
-    return {
-      from: formatDateOnly(fromDate),
-      to: formatDateOnly(now),
-    };
-  }
-
-  if (periodFilters.mode === 'month') {
-    return monthBounds(periodFilters.month);
-  }
-
-  if (periodFilters.mode === 'between_months') {
-    const start = monthBounds(periodFilters.fromMonth);
-    const end = monthBounds(periodFilters.toMonth);
-    return normalizePeriodBounds(start.from, end.to);
-  }
-
-  if (periodFilters.mode === 'date') {
-    if (!periodFilters.date) {
-      return { from: null, to: null };
-    }
-    return { from: periodFilters.date, to: periodFilters.date };
-  }
-
-  if (periodFilters.mode === 'between_dates') {
-    return normalizePeriodBounds(periodFilters.fromDate || null, periodFilters.toDate || null);
-  }
-
-  return { from: null, to: null };
-};
 
 const filteredTasks = computed(() => {
   const term = filters.search.trim().toLowerCase();
@@ -676,13 +609,7 @@ const resetFilters = () => {
   filters.search = '';
   filters.responsible = '';
   filters.priority = '';
-  periodFilters.mode = 'all';
-  periodFilters.month = '';
-  periodFilters.fromMonth = '';
-  periodFilters.toMonth = '';
-  periodFilters.date = '';
-  periodFilters.fromDate = '';
-  periodFilters.toDate = '';
+  resetPeriodFilters();
 };
 
 const openForm = (task = null) => {
@@ -854,57 +781,26 @@ const onDragEnd = () => {
   dragOverColumnId.value = '';
 };
 
-const loadResponsibleOptions = async (query = '') => {
-  responsibleLoading.value = true;
-  try {
-    const { data } = await axios.get('/scrum/tareas/responsables', {
-      params: {
-        search: query,
-        per_page: 100,
-      },
-    });
-
-    const rows = Array.isArray(data?.data) ? data.data : [];
-    responsibleOptions.value = rows
-      .filter((user) => user?.id)
-      .map((user) => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-      }));
-  } catch {
-    responsibleOptions.value = [];
-  } finally {
-    responsibleLoading.value = false;
-  }
-};
-
 const onResponsibleInput = () => {
   form.responsable = responsibleQuery.value;
   form.responsableId = null;
-  responsibleDropdownOpen.value = true;
-  if (responsibleSearchTimer) clearTimeout(responsibleSearchTimer);
-  responsibleSearchTimer = setTimeout(() => {
-    loadResponsibleOptions(responsibleQuery.value.trim());
-  }, 250);
+  openResponsibleDropdown();
+  scheduleResponsibleSearch(responsibleQuery.value);
 };
 
 const onResponsibleFocus = () => {
-  responsibleDropdownOpen.value = true;
+  openResponsibleDropdown();
   loadResponsibleOptions(responsibleQuery.value.trim());
 };
 
 const onResponsibleBlur = () => {
-  setTimeout(() => {
-    responsibleDropdownOpen.value = false;
-  }, 120);
+  closeResponsibleDropdown();
 };
 
 const selectResponsible = (user) => {
+  selectResponsibleFromLookup(user);
   form.responsableId = user.id;
   form.responsable = user.name;
-  responsibleQuery.value = user.name;
-  responsibleDropdownOpen.value = false;
 };
 
 const onCreateFromHeader = () => {
@@ -918,7 +814,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (responsibleSearchTimer) clearTimeout(responsibleSearchTimer);
   window.removeEventListener('scrum-tasks:create', onCreateFromHeader);
 });
 </script>

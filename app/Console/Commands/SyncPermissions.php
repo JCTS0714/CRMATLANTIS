@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Route;
 use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class SyncPermissions extends Command
 {
@@ -35,6 +36,24 @@ class SyncPermissions extends Command
                         $found[] = $p;
                     }
                 }
+            }
+        }
+
+        // Include dynamic module permissions from central registry.
+        $dynamicModules = collect(config('modules.dynamic', []))
+            ->filter(fn ($module) => is_array($module) && !empty($module['enabled']))
+            ->values();
+
+        foreach ($dynamicModules as $module) {
+            $menuPermission = trim((string) ($module['menu_permission'] ?? ''));
+            $viewPermission = trim((string) ($module['view_permission'] ?? ''));
+
+            if ($menuPermission !== '') {
+                $found[] = $menuPermission;
+            }
+
+            if ($viewPermission !== '') {
+                $found[] = $viewPermission;
             }
         }
 
@@ -88,6 +107,23 @@ class SyncPermissions extends Command
                 'name' => $menuPermission,
                 'guard_name' => $guard,
             ], []);
+        }
+
+        // Keep admin/superadmin roles updated with newly created permissions.
+        $rolesToSync = ['admin', 'administrador', 'super-admin', 'superadmin'];
+        $allGuardPermissions = Permission::query()
+            ->where('guard_name', $guard)
+            ->pluck('name')
+            ->all();
+
+        foreach ($rolesToSync as $roleName) {
+            $role = Role::query()->where('name', $roleName)->where('guard_name', $guard)->first();
+            if (! $role) {
+                continue;
+            }
+
+            $role->syncPermissions($allGuardPermissions);
+            $this->info("Rol '{$roleName}' actualizado con permisos sincronizados.");
         }
 
         $total = Permission::query()->where('guard_name', $guard)->count();

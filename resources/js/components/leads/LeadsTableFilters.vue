@@ -16,6 +16,7 @@
 
       <div class="flex items-center gap-2">
         <input
+          v-if="canImport"
           ref="importInput"
           type="file"
           accept=".csv,text/csv"
@@ -24,6 +25,7 @@
         />
 
         <button
+          v-if="canImport"
           type="button"
           class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           :disabled="importing"
@@ -174,6 +176,10 @@ defineProps({
   importing: {
     type: Boolean,
     default: false
+  },
+  canImport: {
+    type: Boolean,
+    default: true
   }
 });
 
