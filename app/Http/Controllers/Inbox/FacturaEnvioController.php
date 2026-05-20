@@ -774,7 +774,7 @@ class FacturaEnvioController extends Controller
 
     private function normalizeComparableName(string $value): string
     {
-        return Str::of(Str::ascii($value))
+        return \Illuminate\Support\Str::of(\Illuminate\Support\Str::ascii($value))
             ->lower()
             ->replaceMatches('/[^a-z0-9]+/', '')
             ->toString();
