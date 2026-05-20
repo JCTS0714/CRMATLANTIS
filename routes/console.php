@@ -265,6 +265,22 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
         return null;
     };
 
+    $monthMap = [
+        'enero' => 1,
+        'febrero' => 2,
+        'marzo' => 3,
+        'abril' => 4,
+        'mayo' => 5,
+        'junio' => 6,
+        'julio' => 7,
+        'agosto' => 8,
+        'septiembre' => 9,
+        'setiembre' => 9,
+        'octubre' => 10,
+        'noviembre' => 11,
+        'diciembre' => 12,
+    ];
+
     $idx = [
         'nombre' => $findIndex(['nombre', 'Nombre']),
         'ruc' => $findIndex(['ruc', 'RUC']),
@@ -585,11 +601,28 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         return null;
     };
 
+    $monthMap = [
+        'enero' => 1,
+        'febrero' => 2,
+        'marzo' => 3,
+        'abril' => 4,
+        'mayo' => 5,
+        'junio' => 6,
+        'julio' => 7,
+        'agosto' => 8,
+        'septiembre' => 9,
+        'setiembre' => 9,
+        'octubre' => 10,
+        'noviembre' => 11,
+        'diciembre' => 12,
+    ];
+
     $idx = [
         'id' => $findIndex(['id']),
         'numero' => $findIndex(['n°', 'nº', 'nro', 'nro.', '#']),
         'tipo' => $findIndex(['tipo', 'tipo documento', 'document_type']),
         'comercio' => $findIndex(['comercio', 'comercio(s)', 'comercios']),
+        'contacto' => $findIndex(['contacto', 'nombre contacto', 'contacto cliente']),
         'celular' => $findIndex(['celular', 'teléfono', 'telefono', 'movil', 'telf']),
         'precio' => $findIndex(['precio', 'post_precio']),
         'rubro' => $findIndex(['rubro', 'post_rubro']),
@@ -609,7 +642,18 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         'referencia' => $findIndex(['referencia', 'Referencia']),
         'fecha_contacto' => $findIndex(['fecha_contacto', 'fecha contacto', 'f. contacto', 'f contacto', 'fcontacto']),
         'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'f. creacion', 'f creacion', 'created_at', 'creado_en', 'fechacreacion']),
+        'pago_estado' => $findIndex(['pago_estado', 'estado_pago', 'estado de pago', 'estado pago']),
+        'mes_pagado' => $findIndex(['mes_pagado', 'mes pagado', 'ultimo mes pagado', 'mes cancelado']),
+        'mes_por_pagar' => $findIndex(['mes_por_pagar', 'mes por pagar', 'proximo mes', 'mes pendiente']),
     ];
+
+    $monthColumnIndexes = [];
+    foreach ($header as $index => $columnName) {
+        $normalizedColumn = $normalizeKey((string) $columnName);
+        if (isset($monthMap[$normalizedColumn])) {
+            $monthColumnIndexes[$monthMap[$normalizedColumn]] = $index;
+        }
+    }
 
     $clean = function ($v): ?string {
         if ($v === null) return null;
@@ -626,6 +670,43 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         if ($v === '') return null;
         return $v;
     };
+
+    $inferServidor = function (?string $value): ?string {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(trim($value), 'UTF-8');
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+
+        if (str_contains($normalized, 'atlantisfast') || str_contains($normalized, 'atlantis fast')) {
+            return 'ATLANTIS FAST';
+        }
+
+        if (str_contains($normalized, 'atlantisvip') || str_contains($normalized, 'atlantis vip')) {
+            return 'ATLANTIS VIP';
+        }
+
+        if (str_contains($normalized, 'atlantispos') || str_contains($normalized, 'atlantis pos')) {
+            return 'ATLANTIS POS';
+        }
+
+        if (str_contains($normalized, 'atlantisonline') || str_contains($normalized, 'atlantis online')) {
+            return 'ATLANTIS ONLINE';
+        }
+
+        if (str_contains($normalized, 'lorito')) {
+            return 'LORITO';
+        }
+
+        return null;
+    };
+
+    $serverFromFileName = $inferServidor(pathinfo($file, PATHINFO_FILENAME));
 
     $resolveDocumentType = function (?string $tipoRaw, ?string $documentNumber): ?string {
         $tipo = mb_strtolower(trim((string) $tipoRaw), 'UTF-8');
@@ -695,28 +776,137 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         }
     };
 
-    $monthMap = [
-        'enero' => 1,
-        'febrero' => 2,
-        'marzo' => 3,
-        'abril' => 4,
-        'mayo' => 5,
-        'junio' => 6,
-        'julio' => 7,
-        'agosto' => 8,
-        'septiembre' => 9,
-        'setiembre' => 9,
-        'octubre' => 10,
-        'noviembre' => 11,
-        'diciembre' => 12,
-    ];
-
     $rowNumber = 1;
     $created = 0;
     $updated = 0;
     $skipped = 0;
     $invalid = 0;
     $logPath = storage_path('logs/import_customers.log');
+
+        $normalizePaymentState = function (?string $value): ?string {
+            if ($value === null) {
+                return null;
+            }
+
+            $normalized = mb_strtolower(trim($value), 'UTF-8');
+            if ($normalized === '') {
+                return null;
+            }
+
+            $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+            $normalized = preg_replace('/\s+/', '_', $normalized) ?? $normalized;
+
+            if (in_array($normalized, ['pendiente', 'factura_pendiente', 'por_pagar'], true)) {
+                return 'pendiente';
+            }
+
+            if (in_array($normalized, ['factura_enviada', 'enviado', 'enviada'], true)) {
+                return 'factura_enviada';
+            }
+
+            if (in_array($normalized, ['pagado', 'pago', 'cancelado'], true)) {
+                return 'pagado';
+            }
+
+            if (in_array($normalized, ['inactivo', 'desactivado'], true)) {
+                return 'inactivo';
+            }
+
+            return null;
+        };
+
+        $parseMonthNumber = function (?string $value) use ($monthMap): ?int {
+            if ($value === null) {
+                return null;
+            }
+
+            $normalized = mb_strtolower(trim($value), 'UTF-8');
+            if ($normalized === '') {
+                return null;
+            }
+
+            $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+            if (isset($monthMap[$normalized])) {
+                return $monthMap[$normalized];
+            }
+
+            $monthNumber = (int) preg_replace('/\D+/', '', $normalized);
+            return ($monthNumber >= 1 && $monthNumber <= 12) ? $monthNumber : null;
+        };
+
+        $previousMonth = function (int $month): int {
+            return $month === 1 ? 12 : ($month - 1);
+        };
+
+        $nextMonth = function (int $month): int {
+            return $month === 12 ? 1 : ($month + 1);
+        };
+
+        $derivePaymentFromMonthlyColumns = function (array $row) use ($monthColumnIndexes, $clean, $normalizePaymentState, $previousMonth, $nextMonth): array {
+            $latestMonth = null;
+            $latestValue = null;
+
+            foreach ($monthColumnIndexes as $monthNumber => $columnIndex) {
+                $rawValue = array_key_exists($columnIndex, $row) ? $row[$columnIndex] : null;
+                $cellValue = $clean($rawValue);
+                if ($cellValue === null) {
+                    continue;
+                }
+
+                if ($latestMonth === null || $monthNumber > $latestMonth) {
+                    $latestMonth = $monthNumber;
+                    $latestValue = $cellValue;
+                }
+            }
+
+            if ($latestMonth === null || $latestValue === null) {
+                return [
+                    'pago_estado' => null,
+                    'mes_pagado' => null,
+                    'mes_por_pagar' => null,
+                ];
+            }
+
+            $statusFromText = $normalizePaymentState($latestValue);
+            if ($statusFromText === 'inactivo') {
+                return [
+                    'pago_estado' => 'inactivo',
+                    'mes_pagado' => null,
+                    'mes_por_pagar' => null,
+                ];
+            }
+
+            if ($statusFromText === 'factura_enviada') {
+                return [
+                    'pago_estado' => 'factura_enviada',
+                    'mes_pagado' => $previousMonth($latestMonth),
+                    'mes_por_pagar' => $latestMonth,
+                ];
+            }
+
+            if ($statusFromText === 'pendiente') {
+                return [
+                    'pago_estado' => 'pendiente',
+                    'mes_pagado' => $previousMonth($latestMonth),
+                    'mes_por_pagar' => $latestMonth,
+                ];
+            }
+
+            $numericValue = str_replace(',', '.', preg_replace('/[^\d,\.\-]/', '', $latestValue) ?? $latestValue);
+            if (is_numeric($numericValue) && (float) $numericValue > 0) {
+                return [
+                    'pago_estado' => 'pagado',
+                    'mes_pagado' => $latestMonth,
+                    'mes_por_pagar' => $nextMonth($latestMonth),
+                ];
+            }
+
+            return [
+                'pago_estado' => null,
+                'mes_pagado' => null,
+                'mes_por_pagar' => null,
+            ];
+        };
 
     while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
         $rowNumber++;
@@ -730,20 +920,36 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $csvNumeroRaw = $clean($get($idx['id'])) ?? $clean($get($idx['numero']));
         $csvNumero = is_numeric($csvNumeroRaw) ? (int) $csvNumeroRaw : null;
         $nombre = $clean($get($idx['nombre'])) ?? $comercio;
+        $contacto = $clean($get($idx['contacto']));
         $empresa = $clean($get($idx['empresa'])) ?? $comercio;
         $telefono = $clean($get($idx['celular'])) ?? $clean($get($idx['telefono']));
         $correo = $clean($get($idx['correo']));
         $observacion = $clean($get($idx['observacion']));
         $link = $clean($get($idx['link']));
         $usuario = $clean($get($idx['usuario']));
+        if ($correo === null && $usuario !== null && filter_var($usuario, FILTER_VALIDATE_EMAIL)) {
+            $correo = $usuario;
+        }
         $contrasena = $clean($get($idx['contrasena']));
         $servidor = $clean($get($idx['servidor']));
+        if ($servidor === null) {
+            $servidor = $inferServidor($link) ?? $serverFromFileName;
+        }
         $documento = $digitsOnly($get($idx['documento']));
         $tipoDocumento = $clean($get($idx['tipo']));
         $docType = $resolveDocumentType($tipoDocumento, $documento);
         $rubro = $clean($get($idx['rubro']));
         $mesTexto = $clean($get($idx['mes']));
         $anioTexto = $clean($get($idx['anio']));
+        $monthlyDerivedPayment = $derivePaymentFromMonthlyColumns($row);
+        $pagoEstado = $normalizePaymentState($clean($get($idx['pago_estado']))) ?? $monthlyDerivedPayment['pago_estado'];
+        $mesPagado = $parseMonthNumber($clean($get($idx['mes_pagado']))) ?? $monthlyDerivedPayment['mes_pagado'];
+        $mesPorPagar = $parseMonthNumber($clean($get($idx['mes_por_pagar']))) ?? $monthlyDerivedPayment['mes_por_pagar'];
+
+        if ($mesPagado !== null && $mesPorPagar === null) {
+            $mesPorPagar = $mesPagado === 12 ? 1 : ($mesPagado + 1);
+        }
+
         $precioRaw = $clean($get($idx['precio']));
         $precio = null;
         if ($precioRaw !== null) {
@@ -817,7 +1023,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $payload = [
             'name' => $nombre ?? $empresa ?? ($telefono ? "Cliente {$telefono}" : 'Cliente'),
             'csv_numero' => $csvNumero,
-            'contact_name' => $nombre,
+            'contact_name' => $contacto ?? $nombre,
             'contact_phone' => $telefono,
             'contact_email' => $correo,
             'company_name' => $empresa,
@@ -829,6 +1035,10 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
             'usuario' => $usuario,
             'contrasena' => $contrasena,
             'servidor' => $servidor,
+            'estado' => 'activo',
+            'pago_estado' => $pagoEstado,
+            'mes_pagado' => $mesPagado,
+            'mes_por_pagar' => $mesPorPagar,
             'fecha_creacion' => $fechaCreacion,
             'fecha_contacto' => $fechaContacto,
             'fecha_contacto_mes' => $fechaContactoMes,

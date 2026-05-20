@@ -218,7 +218,10 @@ class FacturaEnvioController extends Controller
         $anio = $currentMonth === 1 ? ($currentYear - 1) : $currentYear;
 
         $customers = Customer::query()
-            ->where('estado', '!=', 'eliminado')
+            ->where(function ($query) {
+                $query->whereNull('estado')
+                    ->orWhere('estado', '!=', 'eliminado');
+            })
             ->select(['id', 'mes', 'pago_estado', 'mes_por_pagar'])
             ->get()
             ->filter(function (Customer $customer) use ($mes) {
