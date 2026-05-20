@@ -1,0 +1,4 @@
+RESUMEN 2026-05-20
+- Documentacion separada del dia anterior.
+- Este archivo se usa para avances de hoy.
+- El resumen de 2026-05-19 queda en plan-pagos-webhook-y-resumen-2026-05-19.txt.

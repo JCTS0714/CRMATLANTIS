@@ -1,0 +1,124 @@
+PLAN Y RESUMEN DE SESION - 2026-05-19
+Proyecto: CRM ATLANTIS
+Modulo: Bandeja de envios facturas / Kapso / Postventa
+
+==================================================
+1) RESUMEN EJECUTIVO DEL DIA
+==================================================
+Objetivo principal del dia:
+- Corregir problemas en produccion de bandeja de facturas, sincronizacion de clientes/pagos, errores Kapso y estabilidad del flujo preparar/enviar.
+
+Resultado al cierre:
+- La bandeja ya muestra clientes/pagos pendientes en produccion.
+- El flujo de preparar factura ya funciona y dejo de caer por error de clase Str.
+- El envio WA ya muestra error funcional correcto cuando no hay ventana 24h (requiere plantilla aprobada).
+- Queda pendiente solo aprobar/configurar plantilla de inicio para abrir sesion automaticamente.
+
+==================================================
+2) CAMBIOS TECNICOS REALIZADOS HOY
+==================================================
+Commits del dia (mas reciente a mas antiguo):
+- eb3c7b4 fix: usar FQCN de Illuminate\Support\Str en FacturaEnvioController
+- cf8ced7 fix: restaurar imports DB/Str en FacturaEnvioController
+- e69cdb1 diagnostico: respuestas JSON para excepciones en APIs de facturas/kapso
+- 9eaa8a1 facturas: manejar errores internos al preparar PDF y exponer detalle
+- 36f0e17 build: actualizar artefactos para deploy automatico
+- d206bc4 facturas: incluir clientes con estado null y fijar estado activo al importar
+- b2c2c9f permisos: endpoint para sincronizar y asignar permisos automaticamente
+- b1af80c diagnostico: endpoint para analizar problemas de sync en produccion
+- 942e2bc kapso: plantillas HSM para sesiones cerradas y retry automatico + mejor visibilidad errores
+- 168de8d facturas+kapso: sync backend tras import y manejo robusto de error test
+- ba36cd5 facturas: permitir sync-mes-actual desde postventa (customers.create)
+- 682e834 clientes: auto-sincronizar facturas al finalizar importacion CSV
+- 05946ad postventa clientes: mostrar boton borrar tabla en produccion
+- 1196ec4 build: actualizar assets compilados para produccion
+- 195c892 Postventa y Facturas: habilita borrado en produccion, valida nombre de archivo por comercio y mejora errores
+
+Cambios funcionales clave:
+A) Facturas / sincronizacion
+- Se habilito sync-mes-actual para usuarios Postventa con permiso customers.create.
+- Se agrego auto-sync de facturas al terminar importacion CSV de clientes.
+- Se detecto y corrigio caso de clientes con estado NULL que quedaban fuera del sync.
+- El importador ahora fuerza estado=activo al guardar clientes.
+
+B) Kapso / errores y fallback
+- El test de Kapso ya no retorna 500 ciego; entrega error controlado y detalle.
+- Se mejoro parser de errores en frontend para mostrar detail real.
+- Se implemento flujo de retry con plantilla cuando la sesion esta cerrada (24h).
+- Mensaje actual esperado cuando no hay plantilla activa/aprobada: CLOSED_SESSION_NEEDS_TEMPLATE.
+
+C) Preparar factura
+- Se agrego manejo robusto de errores internos en preparar() con error_code + details.
+- Se incorporo handler global para APIs de facturas/kapso que devuelve JSON en excepciones.
+- Se corrigio error de clase Str no encontrada (imports + FQCN defensivo).
+
+D) Diagnostico en produccion
+- Se creo endpoint de diagnostico para identificar permisos, conteos y estado de datos.
+- Hallazgos fuertes del dia:
+  1) Habia customers pero pagos_mensuales=0.
+  2) syncMesActual devolvia customers_considered=0 antes del fix de estado NULL.
+  3) El usuario admin tenia permisos efectivos; el problema principal no era frontend.
+
+==================================================
+3) ESTADO ACTUAL (AL CIERRE)
+==================================================
+- Bandeja de facturas: operativa.
+- Preparar PDF: operativo.
+- Enviar WA API: operativo hasta el limite de ventana 24h.
+- Bloqueo restante: plantilla de apertura pendiente de aprobacion/configuracion.
+
+==================================================
+4) PLAN PROPUESTO PARA MANANA (AUTOMATIZACION DE PAGOS CON WEBHOOK)
+==================================================
+Objetivo:
+- Permitir que cliente envie mensaje + captura de pago y acelerar registro de pago con control de riesgo.
+
+Estrategia recomendada:
+- Automatizacion asistida (NO 100% ciega al inicio).
+- Auto-sugerir y auto-aprobar solo cuando score de confianza sea alto.
+
+Fase 1 (minima y segura):
+1. Endpoint webhook Kapso (entrada y estados).
+2. Guardar eventos crudos (payload) en BD.
+3. Guardar metadata de mensaje entrante (from, text, media, message_id, timestamp).
+4. Vincular mensaje con customer por telefono normalizado.
+5. Crear cola de revision de comprobantes (pendiente_revision).
+
+Fase 2 (semi-automatica):
+1. Descargar imagen de comprobante y guardarla en storage.
+2. OCR basico (monto, fecha, numero operacion, banco).
+3. Matching contra deuda pendiente del cliente.
+4. Score de confianza (ejemplo):
+   - monto exacto: +40
+   - cliente unico por telefono: +25
+   - fecha cercana: +15
+   - operacion no repetida: +20
+5. Si score >= 90: marcar pagado_pendiente_conciliacion y responder confirmacion inicial.
+6. Si score < 90: enviar a revision manual con sugerencia pre-cargada.
+
+Fase 3 (operacion madura):
+1. Auto-aprobacion controlada para score alto.
+2. Auditoria completa (quien aprobo, cuando, evidencia, hash del comprobante).
+3. Reglas antifraude (comprobante repetido, monto ambiguo, imagen ilegible).
+4. Dashboard de conciliacion y metricas.
+
+==================================================
+5) TAREAS PRIORITARIAS DE MANANA (CHECKLIST)
+==================================================
+[ ] Confirmar plantilla aprobada en Kapso y nombre tecnico real.
+[ ] Definir variable KAPSO_TEMPLATE_OPENING en produccion.
+[ ] Limpiar caches app (optimize:clear) despues de actualizar env.
+[ ] Probar envio WA en cliente fuera de ventana 24h.
+[ ] Diseñar migraciones de webhook_events y payment_proofs.
+[ ] Implementar endpoint webhook de recepcion (fase 1).
+[ ] Implementar registro de evidencia de comprobante.
+
+==================================================
+6) NOTAS OPERATIVAS IMPORTANTES
+==================================================
+- Trabajo por Git unicamente (sin subir cambios por SSH manual).
+- Deploy automatico activo.
+- Si reaparece comportamiento viejo, primero validar hash desplegado en servidor.
+- Para depuracion de API en este modulo, ahora se devuelve JSON de excepcion con error_code.
+
+Fin del documento.
