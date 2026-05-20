@@ -117,6 +117,9 @@ Route::middleware('permission:menu.inbox')->group(function () {
     Route::get('/api/facturas/diagnostico', [FacturaEnvioController::class, 'diagnostico'])
         ->name('facturas.diagnostico');
 
+    Route::post('/api/facturas/fijar-permisos', [FacturaEnvioController::class, 'fijarPermisos'])
+        ->name('facturas.fijarPermisos');
+
     Route::get('/api/facturas/plantillas', [FacturaEnvioController::class, 'plantillas'])
         ->name('facturas.plantillas');
 

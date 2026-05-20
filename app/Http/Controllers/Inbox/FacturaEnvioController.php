@@ -14,9 +14,9 @@ use App\Services\Integrations\KapsoService;
 use App\Exceptions\Kapso\ClosedSessionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Artisan;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class FacturaEnvioController extends Controller
 {
@@ -924,6 +924,61 @@ class FacturaEnvioController extends Controller
             'endpoints' => [
                 'pendientes' => url('/api/facturas/pendientes'),
                 'diagnostico' => url('/api/facturas/diagnostico'),
+                'fijar_permisos' => url('/api/facturas/fijar-permisos'),
+            ],
+        ]);
+    }
+
+    public function fijarPermisos(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        if (!$user) {
+            return response()->json([
+                'message' => 'Usuario no autenticado.',
+            ], 401);
+        }
+
+        try {
+            Artisan::call('permissions:sync');
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Error al sincronizar permisos.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
+        $menuitboxPerm = Permission::firstOrCreate([
+            'name' => 'menu.inbox',
+            'guard_name' => config('auth.defaults.guard', 'web'),
+        ]);
+
+        $customersCreatePerm = Permission::firstOrCreate([
+            'name' => 'customers.create',
+            'guard_name' => config('auth.defaults.guard', 'web'),
+        ]);
+
+        $user->givePermissionTo([$menuitboxPerm, $customersCreatePerm]);
+
+        $adminRole = Role::firstOrCreate([
+            'name' => 'admin',
+            'guard_name' => config('auth.defaults.guard', 'web'),
+        ]);
+
+        if (!$user->hasRole('admin')) {
+            $user->assignRole($adminRole);
+        }
+
+        $totalPermissions = Permission::count();
+
+        return response()->json([
+            'message' => 'Permisos sincronizados y asignados exitosamente.',
+            'data' => [
+                'user_id' => $user->id,
+                'user_name' => $user->name,
+                'total_permissions_in_db' => $totalPermissions,
+                'user_permissions' => $user->permissions()->pluck('name')->toArray(),
+                'user_roles' => $user->roles()->pluck('name')->toArray(),
+                'timestamp' => now()->toDateTimeString(),
             ],
         ]);
     }
