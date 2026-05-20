@@ -417,57 +417,77 @@ class FacturaEnvioController extends Controller
             ], 422);
         }
 
-        $ext = strtolower((string) $request->file('archivo')->getClientOriginalExtension());
-        $storedName = sprintf('factura_pago_%d_%s.%s', $pago->id, now()->format('Ymd_His'), $ext);
-        $storedPath = $request->file('archivo')->storeAs('facturas', $storedName, 'public');
-        $archivoUrl = '/storage/' . ltrim($storedPath, '/');
+        try {
+            $ext = strtolower((string) $request->file('archivo')->getClientOriginalExtension());
+            $storedName = sprintf('factura_pago_%d_%s.%s', $pago->id, now()->format('Ymd_His'), $ext);
+            $storedPath = $request->file('archivo')->storeAs('facturas', $storedName, 'public');
 
-        $vars = [
-            'cliente' => $cliente?->contact_name ?: $cliente?->name ?: 'cliente',
-            'comercio' => $cliente?->company_name ?: $cliente?->name ?: 'comercio',
-            'mes' => $pago->mes,
-            'anio' => $pago->anio,
-            'precio' => $cliente?->precio,
-        ];
+            if (!is_string($storedPath) || trim($storedPath) === '') {
+                return response()->json([
+                    'message' => 'No se pudo guardar el archivo de la factura en storage.',
+                    'error_code' => 'FACTURA_STORAGE_WRITE_FAILED',
+                ], 422);
+            }
 
-        $mensaje = $this->support->renderMensajeTemplate((string) $validated['mensajeTemplate'], $vars);
+            $archivoUrl = '/storage/' . ltrim($storedPath, '/');
 
-        $envio = EnvioFactura::query()->updateOrCreate(
-            ['pago_id' => $pago->id],
-            [
-                'archivo_url' => $archivoUrl,
-                'mensaje' => $mensaje,
-                'estado' => 'preparado',
-                'fecha_preparado' => now(),
-            ]
-        );
+            $vars = [
+                'cliente' => $cliente?->contact_name ?: $cliente?->name ?: 'cliente',
+                'comercio' => $cliente?->company_name ?: $cliente?->name ?: 'comercio',
+                'mes' => $pago->mes,
+                'anio' => $pago->anio,
+                'precio' => $cliente?->precio,
+            ];
 
-        $baseUrl = $this->support->getBaseUrl($request);
-        $celularConPais = $this->support->normalizePhoneForWhatsApp($cliente?->contact_phone);
-        $kapsoStatus = $this->kapsoService->status();
-        $diagnostics = $this->support->obtenerDiagnosticoWhatsapp(
-            $celularConPais,
-            $baseUrl,
-            (bool) ($kapsoStatus['configured'] ?? false)
-        );
+            $mensaje = $this->support->renderMensajeTemplate((string) $validated['mensajeTemplate'], $vars);
 
-        $facturaUrl = $this->support->buildPublicFacturaUrl($baseUrl, $envio->archivo_url ?? $archivoUrl);
-        $whatsappUrl = $this->support->construirUrlWhatsAppManual($celularConPais, $mensaje);
+            $envio = EnvioFactura::query()->updateOrCreate(
+                ['pago_id' => $pago->id],
+                [
+                    'archivo_url' => $archivoUrl,
+                    'mensaje' => $mensaje,
+                    'estado' => 'preparado',
+                    'fecha_preparado' => now(),
+                ]
+            );
 
-        return response()->json([
-            'message' => 'Factura preparada correctamente.',
-            'data' => [
-                'archivoUrl' => $envio->archivo_url,
-                'facturaUrl' => $facturaUrl,
-                'mensaje' => $mensaje,
-                'whatsappUrl' => $whatsappUrl,
-                'whatsappApiReady' => empty($diagnostics),
-                'whatsappDiagnostics' => $diagnostics,
-                'whatsappDelivery' => [
-                    'reason' => 'prepared_only',
+            $baseUrl = $this->support->getBaseUrl($request);
+            $celularConPais = $this->support->normalizePhoneForWhatsApp($cliente?->contact_phone);
+            $kapsoStatus = $this->kapsoService->status();
+            $diagnostics = $this->support->obtenerDiagnosticoWhatsapp(
+                $celularConPais,
+                $baseUrl,
+                (bool) ($kapsoStatus['configured'] ?? false)
+            );
+
+            $facturaUrl = $this->support->buildPublicFacturaUrl($baseUrl, $envio->archivo_url ?? $archivoUrl);
+            $whatsappUrl = $this->support->construirUrlWhatsAppManual($celularConPais, $mensaje);
+
+            return response()->json([
+                'message' => 'Factura preparada correctamente.',
+                'data' => [
+                    'archivoUrl' => $envio->archivo_url,
+                    'facturaUrl' => $facturaUrl,
+                    'mensaje' => $mensaje,
+                    'whatsappUrl' => $whatsappUrl,
+                    'whatsappApiReady' => empty($diagnostics),
+                    'whatsappDiagnostics' => $diagnostics,
+                    'whatsappDelivery' => [
+                        'reason' => 'prepared_only',
+                    ],
                 ],
-            ],
-        ]);
+            ]);
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'No se pudo preparar la factura por un error interno.',
+                'error_code' => 'FACTURA_PREPARE_INTERNAL_ERROR',
+                'details' => [
+                    'error' => $e->getMessage(),
+                    'pago_id' => $pago->id,
+                    'cliente_id' => $cliente?->id,
+                ],
+            ], 500);
+        }
     }
 
     public function enviarWhatsapp(Request $request, int $pagoId): JsonResponse
