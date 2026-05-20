@@ -49,13 +49,13 @@
         </button>
 
         <button
-          v-if="isLocalOnlyActionsEnabled && canDeleteCustomers"
+          v-if="canDeleteCustomers"
           type="button"
           class="inline-flex items-center rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-900/40"
           :disabled="clearingTable"
           @click="clearCustomersTableLocal"
         >
-          {{ clearingTable ? 'Limpiando…' : 'Borrar tabla (local)' }}
+          {{ clearingTable ? 'Limpiando…' : 'Borrar tabla de clientes' }}
         </button>
 
         <div class="text-sm text-slate-600 dark:text-slate-300">
@@ -316,12 +316,6 @@ const canUpdateCustomers = computed(() => hasPermission('customers.update'));
 const canDeleteCustomers = computed(() => hasPermission('customers.delete'));
 const canCreateIncidencias = computed(() => hasPermission('incidencias.create'));
 
-const isLocalOnlyActionsEnabled = (() => {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  return import.meta.env.DEV || host === 'localhost' || host === '127.0.0.1' || host === '::1';
-})();
-
 const savingIds = ref(new Set());
 const deletingIds = ref(new Set());
 const changingStatusIds = ref(new Set());
@@ -506,8 +500,8 @@ const onImportFileSelected = async (ev) => {
 
 const clearCustomersTableLocal = async () => {
   const ok = await confirmDialog({
-    title: 'Borrar tabla de clientes (solo local)',
-    text: 'Se eliminarán todos los clientes de la tabla en tu entorno local. Esta acción no se puede deshacer.',
+    title: 'Borrar tabla de clientes',
+    text: 'Se eliminarán todos los clientes de la tabla. Esta acción no se puede deshacer.',
     confirmText: 'Sí, borrar todo',
     cancelText: 'Cancelar',
     icon: 'warning',
