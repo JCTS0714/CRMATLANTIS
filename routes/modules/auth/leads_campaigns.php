@@ -128,9 +128,6 @@ Route::middleware('permission:menu.inbox')->group(function () {
         ->whereNumber('plantillaId')
         ->name('facturas.plantillas.eliminar');
 
-    Route::post('/api/facturas/pagos/sync-mes-actual', [FacturaEnvioController::class, 'syncMesActual'])
-        ->name('facturas.pagos.syncMesActual');
-
     Route::post('/api/facturas/preparar', [FacturaEnvioController::class, 'preparar'])
         ->name('facturas.preparar');
 
@@ -158,3 +155,9 @@ Route::middleware('permission:menu.inbox')->group(function () {
         return redirect('/inbox/facturas');
     });
 });
+
+// Permite sincronizar pendientes de facturas al terminar importación en Postventa,
+// incluso para usuarios que no tienen acceso al módulo Inbox completo.
+Route::post('/api/facturas/pagos/sync-mes-actual', [FacturaEnvioController::class, 'syncMesActual'])
+    ->middleware('permission:menu.inbox|customers.create')
+    ->name('facturas.pagos.syncMesActual.postventa');
