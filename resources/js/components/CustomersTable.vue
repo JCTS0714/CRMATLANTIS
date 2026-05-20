@@ -434,6 +434,20 @@ const triggerImport = () => {
   importInput.value?.click?.();
 };
 
+const syncFacturaInboxAfterImport = async () => {
+  try {
+    const { data } = await axios.post('/api/facturas/pagos/sync-mes-actual');
+    const created = Number(data?.data?.created || 0);
+    toastSuccess(created > 0
+      ? `Facturas sincronizadas: ${created} pendiente(s) creadas.`
+      : 'Facturas sincronizadas: no hubo nuevos pendientes.');
+  } catch (e) {
+    // La importacion de clientes ya fue correcta; si falla sync avisamos sin bloquear.
+    const msg = e?.response?.data?.message ?? 'Clientes importados, pero no se pudo sincronizar facturas automaticamente.';
+    toastError(msg);
+  }
+};
+
 const onImportFileSelected = async (ev) => {
   const file = ev?.target?.files?.[0];
   if (!file) return;
@@ -446,6 +460,7 @@ const onImportFileSelected = async (ev) => {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     toastSuccess(data?.output?.trim() ? 'Importación finalizada' : 'Importación finalizada');
+    await syncFacturaInboxAfterImport();
     await fetchCustomers(1);
   } catch (e) {
     const msg = e?.response?.data?.message ?? 'No se pudo importar el CSV.';
