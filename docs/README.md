@@ -11,6 +11,7 @@ Bitácoras ejecutivas por fecha con resumen de cambios de sesiones completas.
 
 **Archivos:**
 - `PROGRESO-2026-03-05.md` - Implementación completa del modulo Scrum Tareas (UI + backend + estado_tiempo)
+- `PROGRESO-2026-05-05.md` - Estabilizacion bandeja de facturas, importador CSV y filtros por servidor
 
 **Uso:** Revisar rapidamente que se hizo en una fecha especifica sin recorrer todos los commits.
 
@@ -102,7 +103,7 @@ Notas de sesiones de trabajo, cambios y decisiones técnicas.
 
 ## 📊 Estado Actual del Proyecto
 
-**Última Actualización:** 2 de Febrero, 2026
+**Última Actualización:** 5 de Mayo, 2026
 
 ### Backend Refactoring
 - **Progreso:** 90% completado
@@ -154,5 +155,5 @@ Para preguntas sobre la documentación o el proyecto:
 
 ---
 
-**Última Sesión:** 1-2 Feb 2026 (23:00-02:30) - Implementación DTOs y Cache  
-**Próxima Sesión Sugerida:** Testing o API Móvil
+**Última Sesión:** 5 May 2026 - Bandeja de facturas, importador CSV y filtro por servidor  
+**Próxima Sesión Sugerida:** Verificacion post-import real y limpieza de calidad de CSV
