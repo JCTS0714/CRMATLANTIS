@@ -852,4 +852,79 @@ class FacturaEnvioController extends Controller
             ],
         ]);
     }
+
+    public function diagnostico(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        
+        $totalCustomers = Customer::count();
+        $totalPagos = PagoMensual::count();
+        $totalEnvios = EnvioFactura::count();
+        
+        $customersWithComercio = Customer::whereNotNull('company_name')->where('company_name', '!=', '')->count();
+        $pagosWithCliente = PagoMensual::whereNotNull('cliente_id')->count();
+        $pagosThisMonth = PagoMensual::whereYear('anio', now()->year)
+            ->whereMonth('mes', now()->month)
+            ->count();
+        
+        $userPermissions = $user?->permissions()?->pluck('name')->toArray() ?? [];
+        $hasMenuInbox = in_array('menu.inbox', $userPermissions);
+        $hasCustomersCreate = in_array('customers.create', $userPermissions);
+        
+        $recentPagos = PagoMensual::with('cliente')
+            ->orderByDesc('id')
+            ->take(5)
+            ->get()
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'cliente_id' => $p->cliente_id,
+                'cliente_nombre' => $p->cliente?->name,
+                'mes' => $p->mes,
+                'anio' => $p->anio,
+                'estado' => $p->estado,
+                'created_at' => $p->created_at?->toDateTimeString(),
+            ]);
+        
+        $testQuery = PagoMensual::query()
+            ->with('cliente', 'envioFactura')
+            ->orderByDesc('anio')
+            ->orderByDesc('mes')
+            ->take(3)
+            ->get();
+        
+        return response()->json([
+            'timestamp' => now()->toDateTimeString(),
+            'user' => [
+                'id' => $user?->id,
+                'name' => $user?->name,
+                'email' => $user?->email,
+            ],
+            'permissions' => [
+                'has_menu_inbox' => $hasMenuInbox,
+                'has_customers_create' => $hasCustomersCreate,
+                'all_permissions' => $userPermissions,
+            ],
+            'database_stats' => [
+                'total_customers' => $totalCustomers,
+                'customers_with_comercio' => $customersWithComercio,
+                'total_pagos_mensuales' => $totalPagos,
+                'pagos_with_cliente' => $pagosWithCliente,
+                'pagos_this_month' => $pagosThisMonth,
+                'total_envios' => $totalEnvios,
+            ],
+            'recent_pagos' => $recentPagos,
+            'test_query_sample' => $testQuery->map(fn($p) => [
+                'id' => $p->id,
+                'cliente' => $p->cliente ? ['id' => $p->cliente->id, 'name' => $p->cliente->name] : null,
+                'mes' => $p->mes,
+                'anio' => $p->anio,
+                'estado' => $p->estado,
+                'envio' => $p->envioFactura ? ['id' => $p->envioFactura->id, 'estado' => $p->envioFactura->estado] : null,
+            ]),
+            'endpoints' => [
+                'pendientes' => url('/api/facturas/pendientes'),
+                'diagnostico' => url('/api/facturas/diagnostico'),
+            ],
+        ]);
+    }
 }

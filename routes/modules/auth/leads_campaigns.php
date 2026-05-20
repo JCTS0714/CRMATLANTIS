@@ -114,6 +114,9 @@ Route::middleware('permission:menu.inbox')->group(function () {
     Route::get('/api/facturas/pendientes', [FacturaEnvioController::class, 'pendientes'])
         ->name('facturas.pendientes');
 
+    Route::get('/api/facturas/diagnostico', [FacturaEnvioController::class, 'diagnostico'])
+        ->name('facturas.diagnostico');
+
     Route::get('/api/facturas/plantillas', [FacturaEnvioController::class, 'plantillas'])
         ->name('facturas.plantillas');
 
