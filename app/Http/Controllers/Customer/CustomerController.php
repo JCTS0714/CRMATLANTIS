@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\DTOs\Customer\CustomerResponseDto;
+use App\Http\Controllers\Inbox\FacturaEnvioController;
 use App\Http\Requests\Customer\CreateCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
@@ -214,10 +215,24 @@ class CustomerController extends Controller
             ], 422);
         }
 
+        $syncResult = null;
+        if (!$dry) {
+            try {
+                $syncResponse = app(FacturaEnvioController::class)->syncMesActual();
+                $syncResult = $syncResponse->getData(true);
+            } catch (\Throwable $e) {
+                $syncResult = [
+                    'message' => 'Importación completada, pero la sincronización automática de facturas falló.',
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
         return response()->json([
             'exit' => $exit,
             'output' => $output,
             'path' => $path,
+            'facturas_sync' => $syncResult,
         ]);
     }
 

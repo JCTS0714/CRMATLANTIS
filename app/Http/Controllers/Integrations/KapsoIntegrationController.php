@@ -7,6 +7,8 @@ use App\Services\Facturas\FacturaDispatchSupport;
 use App\Services\Integrations\KapsoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class KapsoIntegrationController extends Controller
 {
@@ -33,7 +35,27 @@ class KapsoIntegrationController extends Controller
             ], 422);
         }
 
-        $response = $this->kapsoService->sendText($to, 'Prueba de integracion Kapso desde CRM Atlantis.');
+        try {
+            $response = $this->kapsoService->sendText($to, 'Prueba de integracion Kapso desde CRM Atlantis.');
+        } catch (RuntimeException $e) {
+            return response()->json([
+                'message' => 'No se pudo enviar la prueba por Kapso. Revisa configuración o estado del número destino.',
+                'error_code' => 'KAPSO_TEST_FAILED',
+                'details' => [
+                    'to' => $to,
+                    'error' => $e->getMessage(),
+                ],
+            ], 422);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'Error inesperado al probar Kapso.',
+                'error_code' => 'KAPSO_TEST_UNEXPECTED',
+                'details' => [
+                    'to' => $to,
+                    'error' => $e->getMessage(),
+                ],
+            ], 500);
+        }
 
         return response()->json([
             'message' => 'Mensaje de prueba enviado.',
