@@ -41,7 +41,7 @@
           :disabled="syncing"
           @click="syncCurrentMonth"
         >
-          {{ syncing ? 'Sincronizando...' : 'Generar pendientes del mes actual' }}
+          {{ syncing ? 'Sincronizando...' : 'Generar pendientes del mes a cobrar' }}
         </button>
 
         <button
@@ -59,6 +59,7 @@
           <option value="">Estado pago: todos</option>
           <option value="pendiente">Pendiente</option>
           <option value="factura_enviada">Factura enviada</option>
+          <option value="pagado">Pagado</option>
           <option value="inactivo">Inactivo</option>
         </select>
 
@@ -480,12 +481,20 @@
         </section>
 
         <section v-else-if="activeTab === 'clientes'" class="space-y-3">
-          <div class="grid gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/40 lg:grid-cols-5">
+          <div class="grid gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/40 lg:grid-cols-6">
             <input
               v-model="clientFilters.search"
               class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               placeholder="Buscar cliente, comercio, contacto..."
             />
+
+            <select
+              v-model="clientFilters.servidor"
+              class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            >
+              <option value="">Servidor: todos</option>
+              <option v-for="server in clientServerOptions" :key="`client-server-${server}`" :value="server">{{ server }}</option>
+            </select>
 
             <select
               v-model="clientFilters.pagoEstado"
@@ -494,6 +503,7 @@
               <option value="">Estado pago: todos</option>
               <option value="pendiente">Pendiente</option>
               <option value="factura_enviada">Factura enviada</option>
+              <option value="pagado">Pagado</option>
               <option value="inactivo">Inactivo</option>
             </select>
 
@@ -569,6 +579,7 @@
                 >
                   <option value="pendiente">Pendiente</option>
                   <option value="factura_enviada">Factura enviada</option>
+                  <option value="pagado">Pagado</option>
                   <option value="inactivo">Inactivo</option>
                 </select>
               </label>
@@ -591,7 +602,7 @@
         </section>
 
         <div v-if="!loading && rows.length === 0" class="mt-4 rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          No hay pagos mensuales cargados. Usa "Generar pendientes del mes actual" para crear la lista de clientes.
+          No hay pagos mensuales cargados. Usa "Generar pendientes del mes a cobrar" para crear la lista de clientes.
         </div>
 
         <div v-else-if="activeTab === 'clientes' && !loading && filteredClientRows.length === 0" class="mt-4 rounded-lg border border-gray-200 bg-white p-5 text-sm text-gray-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -645,6 +656,7 @@
             <select v-model="editClientModal.form.pago_estado" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100">
               <option value="pendiente">Pendiente</option>
               <option value="factura_enviada">Factura enviada</option>
+              <option value="pagado">Pagado</option>
               <option value="inactivo">Inactivo</option>
             </select>
           </label>
@@ -732,6 +744,7 @@ const monthOptions = [
   { value: 11, label: 'Noviembre' },
   { value: 12, label: 'Diciembre' },
 ];
+const KNOWN_SERVER_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
 const editClientModal = reactive({
   open: false,
   clienteId: null,
@@ -752,6 +765,7 @@ const editClientModal = reactive({
 });
 const clientFilters = reactive({
   search: '',
+  servidor: '',
   pagoEstado: '',
   mes: 0,
   anio: '',
@@ -836,6 +850,14 @@ const uniqueClientRows = computed(() => {
   return result;
 });
 
+const clientServerOptions = computed(() => {
+  const dynamicValues = uniqueClientRows.value
+    .map((entry) => String(entry?.cliente?.servidor || '').trim())
+    .filter((value) => value !== '');
+
+  return [...new Set([...KNOWN_SERVER_OPTIONS, ...dynamicValues])];
+});
+
 const filteredClientRows = computed(() => {
   const search = (clientFilters.search || '').trim().toLowerCase();
   const filterYear = Number(clientFilters.anio || 0);
@@ -859,6 +881,10 @@ const filteredClientRows = computed(() => {
     }
 
     if (clientFilters.pagoEstado && (customer.pago_estado || 'pendiente') !== clientFilters.pagoEstado) {
+      return false;
+    }
+
+    if (clientFilters.servidor && String(customer.servidor || '').trim() !== clientFilters.servidor) {
       return false;
     }
 
@@ -936,6 +962,45 @@ function diagnosticLabel(code) {
     public_base_url_no_publica: 'PUBLIC_BASE_URL no es publica (usa dominio HTTPS real).',
   };
   return map[code] || code;
+}
+
+function buildApiErrorMessage(error, fallbackMessage) {
+  const data = error?.response?.data || {};
+  const parts = [];
+
+  if (data.error_code) {
+    parts.push(`[${data.error_code}]`);
+  }
+
+  const baseMessage = String(data.message || '').trim();
+  if (baseMessage) {
+    parts.push(baseMessage);
+  }
+
+  const validationErrors = Object.values(data.errors || {})
+    .flatMap((messages) => (Array.isArray(messages) ? messages : []))
+    .map((message) => String(message || '').trim())
+    .filter((message) => message !== '');
+
+  if (validationErrors.length > 0) {
+    parts.push(validationErrors.join(' '));
+  }
+
+  if (Array.isArray(data.diagnostic_details) && data.diagnostic_details.length > 0) {
+    const diagnosticDetails = data.diagnostic_details
+      .map((item) => String(item?.message || item?.code || '').trim())
+      .filter((item) => item !== '');
+
+    if (diagnosticDetails.length > 0) {
+      parts.push(`Diagnostico: ${diagnosticDetails.join(' | ')}`);
+    }
+  }
+
+  if (parts.length > 0) {
+    return parts.join(' ');
+  }
+
+  return fallbackMessage;
 }
 
 function onPickFile(pagoId, event) {
@@ -1242,7 +1307,7 @@ async function preparar(row) {
     rowMessages[row.id] = response.data?.message || 'Factura preparada.';
     await loadRows();
   } catch (error) {
-    rowMessages[row.id] = error?.response?.data?.message || 'No se pudo preparar la factura.';
+    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo preparar la factura.');
     rowDiagnostics[row.id] = error?.response?.data?.diagnostics || [];
   } finally {
     busy[row.id] = false;
@@ -1259,7 +1324,7 @@ async function enviarWhatsapp(row) {
     rowMessages[row.id] = response.data?.message || 'Enviado por WhatsApp API.';
     await loadRows();
   } catch (error) {
-    rowMessages[row.id] = error?.response?.data?.message || 'No se pudo enviar por WhatsApp API.';
+    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo enviar por WhatsApp API.');
     rowDiagnostics[row.id] = error?.response?.data?.diagnostics || [];
 
     const fallback = error?.response?.data?.whatsappUrl;
@@ -1282,7 +1347,7 @@ async function enviarEmail(row) {
     rowMessages[row.id] = response.data?.message || 'Email enviado.';
     await loadRows();
   } catch (error) {
-    rowMessages[row.id] = error?.response?.data?.message || 'No se pudo enviar por email.';
+    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo enviar por email.');
   } finally {
     busy[row.id] = false;
   }
@@ -1296,7 +1361,7 @@ async function marcarManual(row) {
     rowMessages[row.id] = response.data?.message || 'Marcada como enviada.';
     await loadRows();
   } catch (error) {
-    rowMessages[row.id] = error?.response?.data?.message || 'No se pudo marcar como enviada.';
+    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo marcar como enviada.');
   } finally {
     busy[row.id] = false;
   }

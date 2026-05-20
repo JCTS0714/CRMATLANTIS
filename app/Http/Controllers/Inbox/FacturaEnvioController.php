@@ -28,7 +28,7 @@ class FacturaEnvioController extends Controller
     public function pendientes(Request $request): JsonResponse
     {
         $query = PagoMensual::query()
-            ->with(['cliente:id,name,company_name,contact_name,contact_phone,contact_email,precio,mes,pago_estado,mes_pagado,mes_por_pagar', 'envioFactura'])
+            ->with(['cliente:id,name,company_name,contact_name,contact_phone,contact_email,precio,mes,servidor,pago_estado,mes_pagado,mes_por_pagar', 'envioFactura'])
             ->orderByDesc('anio')
             ->orderByDesc('mes')
             ->orderByDesc('id');
@@ -72,6 +72,7 @@ class FacturaEnvioController extends Controller
                         'contact_email' => $cliente?->contact_email,
                         'precio' => $cliente?->precio,
                         'mes' => $cliente?->mes,
+                        'servidor' => $cliente?->servidor,
                         'pago_estado' => $cliente?->pago_estado,
                         'mes_pagado' => $cliente?->mes_pagado,
                         'mes_por_pagar' => $cliente?->mes_por_pagar,
@@ -208,26 +209,41 @@ class FacturaEnvioController extends Controller
 
     public function syncMesActual(): JsonResponse
     {
-        $mes = (int) now()->format('m');
-        $anio = (int) now()->format('Y');
+        $currentMonth = (int) now()->format('m');
+        $currentYear = (int) now()->format('Y');
+
+        // Negocio: en el mes actual se cobra el periodo anterior.
+        $mes = $currentMonth === 1 ? 12 : ($currentMonth - 1);
+        $anio = $currentMonth === 1 ? ($currentYear - 1) : $currentYear;
 
         $customers = Customer::query()
             ->where('estado', '!=', 'eliminado')
-            ->where(function ($query) {
-                $query->whereNull('pago_estado')
-                    ->orWhere('pago_estado', '!=', 'inactivo');
-            })
             ->select(['id', 'mes', 'pago_estado', 'mes_por_pagar'])
             ->get()
             ->filter(function (Customer $customer) use ($mes) {
+                if (in_array($customer->pago_estado, ['inactivo', 'factura_enviada'], true)) {
+                    return true;
+                }
+
                 return $this->customerAppliesToMonth($customer->mes_por_pagar, $customer->mes, $mes);
             });
 
         $created = 0;
         foreach ($customers as $customer) {
+            $targetMes = $mes;
+            if (
+                $customer->pago_estado === 'factura_enviada'
+                && is_int($customer->mes_por_pagar)
+                && $customer->mes_por_pagar >= 1
+                && $customer->mes_por_pagar <= 12
+            ) {
+                // Mantener visible el periodo realmente adeudado cuando sigue "enviado".
+                $targetMes = $customer->mes_por_pagar;
+            }
+
             $createdModel = PagoMensual::query()->firstOrCreate([
                 'cliente_id' => $customer->id,
-                'mes' => $mes,
+                'mes' => $targetMes,
                 'anio' => $anio,
             ], [
                 'estado' => $this->customerPaymentStateToPagoMensualState($customer->pago_estado),
@@ -239,8 +255,10 @@ class FacturaEnvioController extends Controller
         }
 
         return response()->json([
-            'message' => 'Pagos mensuales sincronizados para el mes actual.',
+            'message' => 'Pagos mensuales sincronizados para el mes a cobrar.',
             'data' => [
+                'mes_actual' => $currentMonth,
+                'anio_actual' => $currentYear,
                 'mes' => $mes,
                 'anio' => $anio,
                 'created' => $created,
@@ -347,25 +365,50 @@ class FacturaEnvioController extends Controller
         if (!in_array($pago->estado, ['factura_pendiente', 'factura_enviada'], true)) {
             return response()->json([
                 'message' => 'El estado del pago no permite preparar factura.',
+                'error_code' => 'PAGO_ESTADO_NO_PERMITIDO',
+                'details' => [
+                    'estado_actual' => (string) $pago->estado,
+                    'estados_permitidos' => ['factura_pendiente', 'factura_enviada'],
+                    'pago_id' => $pago->id,
+                ],
             ], 422);
         }
 
         $cliente = $pago->cliente;
-        $expectedName = Str::of((string) ($cliente?->company_name ?: $cliente?->name ?: ''))
-            ->lower()
-            ->replaceMatches('/[^a-z0-9]+/', '')
-            ->toString();
+        $expectedRawName = trim((string) ($cliente?->company_name ?: $cliente?->name ?: ''));
+        $expectedName = $this->normalizeComparableName($expectedRawName);
 
-        $originalName = Str::of(pathinfo((string) $request->file('archivo')->getClientOriginalName(), PATHINFO_FILENAME))
-            ->lower()
-            ->replaceMatches('/[^a-z0-9]+/', '')
-            ->toString();
+        $originalRawName = (string) pathinfo((string) $request->file('archivo')->getClientOriginalName(), PATHINFO_FILENAME);
+        $originalName = $this->normalizeComparableName($originalRawName);
 
-        if ($expectedName !== '' && $originalName !== '' && !Str::contains($originalName, $expectedName)) {
+        if ($expectedName === '') {
             return response()->json([
-                'message' => 'El nombre del archivo no coincide con el comercio/cliente.',
+                'message' => 'No se puede validar el archivo porque el cliente no tiene comercio o nombre definido.',
+                'error_code' => 'CLIENTE_SIN_NOMBRE_COMERCIO',
+                'details' => [
+                    'cliente_id' => $cliente?->id,
+                    'company_name' => $cliente?->company_name,
+                    'name' => $cliente?->name,
+                    'pago_id' => $pago->id,
+                ],
+            ], 422);
+        }
+
+        if ($originalName === '' || $originalName !== $expectedName) {
+            return response()->json([
+                'message' => 'El nombre del archivo debe ser igual al nombre del comercio (normalizado).',
+                'error_code' => 'FILE_NAME_MISMATCH',
                 'errors' => [
-                    'archivo' => ['El nombre del archivo debe incluir el nombre del comercio normalizado.'],
+                    'archivo' => ['El nombre del archivo debe ser igual al comercio del cliente.'],
+                ],
+                'details' => [
+                    'expected_raw' => $expectedRawName,
+                    'expected_normalized' => $expectedName,
+                    'received_raw' => $originalRawName,
+                    'received_normalized' => $originalName,
+                    'rule' => 'archivo_sin_extension normalizado debe coincidir exactamente con comercio normalizado',
+                    'pago_id' => $pago->id,
+                    'cliente_id' => $cliente?->id,
                 ],
             ], 422);
         }
@@ -447,9 +490,18 @@ class FacturaEnvioController extends Controller
         $whatsappUrl = $this->support->construirUrlWhatsAppManual($celularConPais, (string) $envio->mensaje);
 
         if (!empty($diagnostics)) {
+            $diagnosticDetails = array_map(function (string $code): array {
+                return [
+                    'code' => $code,
+                    'message' => $this->diagnosticLabel($code),
+                ];
+            }, $diagnostics);
+
             return response()->json([
-                'message' => 'No se puede enviar por API. Revisa diagnostico.',
+                'message' => 'No se puede enviar por API: ' . implode(' | ', array_column($diagnosticDetails, 'message')),
+                'error_code' => 'WHATSAPP_DIAGNOSTIC_BLOCKED',
                 'diagnostics' => $diagnostics,
+                'diagnostic_details' => $diagnosticDetails,
                 'whatsappUrl' => $whatsappUrl,
             ], 400);
         }
@@ -561,7 +613,13 @@ class FacturaEnvioController extends Controller
         $email = trim((string) ($cliente?->contact_email ?? ''));
         if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return response()->json([
-                'message' => 'El cliente no tiene un email valido.',
+                'message' => 'El cliente no tiene un email valido para envio.',
+                'error_code' => 'EMAIL_INVALIDO',
+                'details' => [
+                    'cliente_id' => $cliente?->id,
+                    'email_recibido' => $email,
+                    'pago_id' => $pago->id,
+                ],
             ], 422);
         }
 
@@ -625,7 +683,7 @@ class FacturaEnvioController extends Controller
             'contact_phone' => ['nullable', 'string', 'max:50'],
             'contact_email' => ['nullable', 'email', 'max:255'],
             'precio' => ['nullable', 'numeric', 'min:0'],
-            'pago_estado' => ['nullable', 'in:pendiente,factura_enviada,inactivo'],
+            'pago_estado' => ['nullable', 'in:pendiente,factura_enviada,pagado,inactivo'],
             'mes_pagado' => ['nullable', 'integer', 'between:1,12'],
             'mes_por_pagar' => ['nullable', 'integer', 'between:1,12'],
             'mes' => ['nullable', 'string', 'max:40'],
@@ -665,5 +723,23 @@ class FacturaEnvioController extends Controller
                 'mes_por_pagar' => $cliente->mes_por_pagar,
             ],
         ]);
+    }
+
+    private function normalizeComparableName(string $value): string
+    {
+        return Str::of(Str::ascii($value))
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', '')
+            ->toString();
+    }
+
+    private function diagnosticLabel(string $code): string
+    {
+        return match ($code) {
+            'celular_invalido' => 'El celular del cliente no es valido para WhatsApp API.',
+            'kapso_no_configurado' => 'Kapso no esta configurado correctamente en variables de entorno.',
+            'public_base_url_no_publica' => 'PUBLIC_BASE_URL no es publica o no es accesible desde internet.',
+            default => $code,
+        };
     }
 }

@@ -223,17 +223,11 @@ class CustomerController extends Controller
 
     public function clearTableLocal(Request $request): JsonResponse
     {
-        if (!app()->environment('local')) {
-            return response()->json([
-                'message' => 'Esta acción solo está disponible en entorno local.',
-            ], 403);
-        }
-
         $deleted = Customer::query()->count();
         Customer::query()->delete();
 
         return response()->json([
-            'message' => 'Tabla de clientes limpiada en local.',
+            'message' => 'Tabla de clientes limpiada correctamente.',
             'deleted' => $deleted,
         ]);
     }
