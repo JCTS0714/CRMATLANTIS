@@ -11,6 +11,7 @@ use App\Models\PagoMensual;
 use App\Services\Facturas\FacturaDispatchSupport;
 use App\Services\Integrations\BrevoService;
 use App\Services\Integrations\KapsoService;
+use App\Exceptions\Kapso\ClosedSessionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -509,13 +510,34 @@ class FacturaEnvioController extends Controller
         $facturaUrl = $this->support->buildPublicFacturaUrl($baseUrl, (string) $envio->archivo_url);
         $filename = basename(parse_url($facturaUrl, PHP_URL_PATH) ?: ('factura_' . $pago->id . '.pdf'));
 
-        $kapsoResponse = $this->kapsoService->sendDocument(
-            (string) $celularConPais,
-            $facturaUrl,
-            (string) $envio->mensaje,
-            $filename,
-            'pago_' . $pago->id
-        );
+        try {
+            $kapsoResponse = $this->kapsoService->sendDocument(
+                (string) $celularConPais,
+                $facturaUrl,
+                (string) $envio->mensaje,
+                $filename,
+                'pago_' . $pago->id
+            );
+        } catch (ClosedSessionException $e) {
+            return $this->handleClosedSessionAndRetry(
+                $pago,
+                $envio,
+                $celularConPais,
+                $facturaUrl,
+                (string) $envio->mensaje,
+                $filename,
+                'pago_' . $pago->id,
+                $request
+            );
+        } catch (\RuntimeException $e) {
+            return response()->json([
+                'message' => 'No se pudo enviar por Kapso.',
+                'error_code' => 'KAPSO_SEND_ERROR',
+                'details' => [
+                    'error' => $e->getMessage(),
+                ],
+            ], 422);
+        }
 
         $messageId = data_get($kapsoResponse, 'messages.0.id');
 
@@ -741,5 +763,93 @@ class FacturaEnvioController extends Controller
             'public_base_url_no_publica' => 'PUBLIC_BASE_URL no es publica o no es accesible desde internet.',
             default => $code,
         };
+    }
+
+    private function handleClosedSessionAndRetry(
+        PagoMensual $pago,
+        EnvioFactura $envio,
+        string $celularConPais,
+        string $facturaUrl,
+        string $mensaje,
+        string $filename,
+        string $callbackData,
+        Request $request
+    ): JsonResponse {
+        $templateName = config('services.kapso.template_opening', 'hello_world');
+        
+        try {
+            $this->kapsoService->sendTemplate($celularConPais, $templateName);
+        } catch (\Throwable $templateError) {
+            return response()->json([
+                'message' => 'La sesion con este cliente esta cerrada (sin mensajes en 24h). Debe crear una plantilla aprobada en Kapso para iniciar contacto.',
+                'error_code' => 'CLOSED_SESSION_NEEDS_TEMPLATE',
+                'details' => [
+                    'reason' => 'Cannot send non-template messages outside the 24-hour window.',
+                    'solution' => 'Crea una plantilla HSM en tu cuenta Kapso y configura KAPSO_TEMPLATE_OPENING en .env',
+                    'template_error' => $templateError->getMessage(),
+                ],
+            ], 422);
+        }
+
+        sleep(1);
+
+        try {
+            $kapsoResponse = $this->kapsoService->sendDocument(
+                $celularConPais,
+                $facturaUrl,
+                $mensaje,
+                $filename,
+                $callbackData
+            );
+        } catch (\Throwable $e) {
+            return response()->json([
+                'message' => 'Se envio la plantilla, pero fallo el envio del documento.',
+                'error_code' => 'DOCUMENT_SEND_AFTER_TEMPLATE_FAILED',
+                'details' => [
+                    'error' => $e->getMessage(),
+                ],
+            ], 422);
+        }
+
+        $messageId = data_get($kapsoResponse, 'messages.0.id');
+
+        DB::transaction(function () use ($pago, $envio, $messageId, $kapsoResponse, $request) {
+            $envio->estado = 'enviado';
+            $envio->fecha_enviado = now();
+            $envio->canal_envio = 'whatsapp_api';
+            $envio->message_id = is_string($messageId) ? $messageId : null;
+            $envio->save();
+
+            if ($pago->estado === 'factura_pendiente') {
+                $pago->estado = 'factura_enviada';
+                $pago->save();
+            }
+
+            if ($pago->cliente) {
+                $this->updateCustomerPaymentTracking($pago->cliente, (int) $pago->mes);
+            }
+
+            AuditoriaEnvioFactura::query()->create([
+                'accion' => 'ENVIO_WHATSAPP_KAPSO_CON_TEMPLATE_INIT',
+                'pago_id' => $pago->id,
+                'cliente_id' => $pago->cliente_id,
+                'usuario_id' => $request->user()?->id,
+                'detalles' => [
+                    'messageId' => $messageId,
+                    'response' => $kapsoResponse,
+                    'note' => 'Sesion abierta con plantilla HSM y luego envio de documento.',
+                ],
+                'created_at' => now(),
+            ]);
+        });
+
+        return response()->json([
+            'message' => 'Sesion abierta con plantilla y factura enviada.',
+            'data' => [
+                'messageId' => $messageId,
+                'facturaUrl' => $facturaUrl,
+                'note' => 'Se envio primero una plantilla para abrir la sesion.',
+            ],
+        ]);
     }
 }

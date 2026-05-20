@@ -40,6 +40,7 @@ return [
         'api_key' => env('KAPSO_API_KEY'),
         'phone_number_id' => env('KAPSO_PHONE_NUMBER_ID'),
         'base_url' => env('KAPSO_BASE_URL', 'https://api.kapso.ai/meta/whatsapp/v24.0'),
+        'template_opening' => env('KAPSO_TEMPLATE_OPENING', 'hello_world'),
     ],
 
     'brevo' => [

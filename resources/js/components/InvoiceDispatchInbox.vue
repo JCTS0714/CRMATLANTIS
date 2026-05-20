@@ -996,6 +996,11 @@ function buildApiErrorMessage(error, fallbackMessage) {
     }
   }
 
+  const detailError = String(data?.details?.error || '').trim();
+  if (detailError) {
+    parts.push(`Detalle: ${detailError}`);
+  }
+
   if (parts.length > 0) {
     return parts.join(' ');
   }
@@ -1411,7 +1416,7 @@ async function askKapsoTest() {
     const response = await axios.post('/api/integraciones/kapso/test', { celularDestino });
     globalInfo.value = response.data?.message || 'Prueba Kapso enviada.';
   } catch (error) {
-    globalError.value = error?.response?.data?.message || 'Error al probar Kapso.';
+    globalError.value = buildApiErrorMessage(error, 'Error al probar Kapso.');
   }
 }
 

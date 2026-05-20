@@ -4,6 +4,7 @@ namespace App\Services\Integrations;
 
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
+use App\Exceptions\Kapso\ClosedSessionException;
 
 class KapsoService
 {
@@ -55,6 +56,33 @@ class KapsoService
         ]);
     }
 
+    public function sendTemplate(string $to, string $templateName, array $parameters = []): array
+    {
+        $payload = [
+            'to' => $to,
+            'type' => 'template',
+            'template' => [
+                'name' => $templateName,
+            ],
+        ];
+
+        if (!empty($parameters)) {
+            $payload['template']['language'] = [
+                'code' => 'es_ES',
+            ];
+            $payload['template']['components'] = [
+                [
+                    'type' => 'body',
+                    'parameters' => array_map(function ($value) {
+                        return ['type' => 'text', 'text' => (string) $value];
+                    }, $parameters),
+                ],
+            ];
+        }
+
+        return $this->sendMessage($payload);
+    }
+
     private function sendMessage(array $payload): array
     {
         $status = $this->status();
@@ -77,7 +105,18 @@ class KapsoService
             ], $payload));
 
         if (!$response->successful()) {
-            throw new RuntimeException('Error Kapso: ' . $response->status() . ' - ' . $response->body());
+            $body = $response->body();
+            $jsonBody = $response->json();
+            $errorMessage = 'Error Kapso: ' . $response->status() . ' - ' . $body;
+            
+            if (is_array($jsonBody) && isset($jsonBody['error'])) {
+                $kapsoError = (string) $jsonBody['error'];
+                if (str_contains($kapsoError, '24-hour') || str_contains($kapsoError, 'window')) {
+                    throw new ClosedSessionException($errorMessage, $jsonBody);
+                }
+            }
+            
+            throw new RuntimeException($errorMessage);
         }
 
         return $response->json() ?: [];
