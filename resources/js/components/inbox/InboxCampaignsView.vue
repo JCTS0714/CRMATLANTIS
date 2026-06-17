@@ -152,6 +152,9 @@
               <div class="mt-1">
                 Selecciona una plantilla aprobada y revisa cómo quedará con el contacto actualmente seleccionado. Los parámetros se completan automáticamente con los datos del destinatario.
               </div>
+              <div class="mt-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                Deploy check: cambio visible para confirmar que el build actualizado llegó a producción.
+              </div>
             </div>
 
             <div class="mt-3">
