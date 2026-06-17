@@ -41,6 +41,8 @@ return [
         'phone_number_id' => env('KAPSO_PHONE_NUMBER_ID'),
         'base_url' => env('KAPSO_BASE_URL', 'https://api.kapso.ai/meta/whatsapp/v24.0'),
         'template_opening' => env('KAPSO_TEMPLATE_OPENING', 'hello_world'),
+        'template_language' => env('KAPSO_TEMPLATE_LANGUAGE', 'es'),
+        'waba_id' => env('WABA_ID') ?: env('WHATSAPP_BUSINESS_ACCOUNT_ID') ?: env('KAPSO_BUSINESS_ACCOUNT_ID'),
     ],
 
     'brevo' => [

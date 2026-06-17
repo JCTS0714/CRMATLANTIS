@@ -24,10 +24,10 @@ class RelatedLookupController extends Controller
         $q = trim((string) ($validated['q'] ?? ''));
         $limit = (int) ($validated['limit'] ?? 8);
 
-        if ($type === 'lead' && !$request->user()->can('leads.view')) {
+        if ($type === 'lead' && ! $request->user()->can('leads.view')) {
             abort(403);
         }
-        if ($type === 'customer' && !$request->user()->can('customers.view')) {
+        if ($type === 'customer' && ! $request->user()->can('customers.view')) {
             abort(403);
         }
 

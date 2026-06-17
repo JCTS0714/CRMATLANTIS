@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('permission:customers.view')->group(function () {
     Route::get('/customers', function (Request $request) {
         $query = $request->getQueryString();
-        $target = '/postventa/clientes' . ($query ? ('?' . $query) : '');
+        $target = '/postventa/clientes'.($query ? ('?'.$query) : '');
 
         return redirect($target);
     })->name('customers.index');

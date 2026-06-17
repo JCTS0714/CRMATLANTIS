@@ -2,7 +2,6 @@
 
 namespace App\Services\Lead;
 
-use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Repositories\Lead\LeadRepositoryInterface;
@@ -12,7 +11,8 @@ class LeadService
 {
     public function __construct(
         private readonly LeadValidationService $validationService,
-        private readonly LeadRepositoryInterface $leadRepository
+        private readonly LeadRepositoryInterface $leadRepository,
+        private readonly LeadCustomerConversionService $leadCustomerConversionService
     ) {}
 
     /**
@@ -22,11 +22,11 @@ class LeadService
     {
         // Get or determine stage_id
         $stageId = $data['stage_id'] ?? null;
-        if (!$stageId) {
+        if (! $stageId) {
             $stageId = LeadStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
         }
 
-        if (!$stageId) {
+        if (! $stageId) {
             throw new \RuntimeException('No hay etapas de leads configuradas.');
         }
 
@@ -123,7 +123,7 @@ class LeadService
         }
 
         $stage = LeadStage::find($newStageId);
-        if (!$stage) {
+        if (! $stage) {
             throw new \RuntimeException('La etapa seleccionada no existe.');
         }
 
@@ -151,53 +151,9 @@ class LeadService
     /**
      * Convert lead to customer
      */
-    public function convertToCustomer(Lead $lead): Customer
+    public function convertToCustomer(Lead $lead): \App\Models\Customer
     {
-        if ($lead->archived_at) {
-            throw new \RuntimeException('No se puede convertir un lead archivado.');
-        }
-
-        return DB::transaction(function () use ($lead) {
-            // Check if customer already exists with same document
-            $existingCustomer = null;
-            if ($lead->document_type && $lead->document_number) {
-                $existingCustomer = Customer::where('document_type', $lead->document_type)
-                    ->where('document_number', $lead->document_number)
-                    ->first();
-            }
-
-            if ($existingCustomer) {
-                // Archive the lead and return existing customer
-                $lead->archived_at = now();
-                $lead->save();
-
-                return $existingCustomer;
-            }
-
-            // Create new customer
-            $customer = Customer::create([
-                'name' => $lead->name,
-                'contact_name' => $lead->contact_name,
-                'contact_phone' => $lead->contact_phone,
-                'contact_email' => $lead->contact_email,
-                'company_name' => $lead->company_name,
-                'company_address' => $lead->company_address,
-                'document_type' => $lead->document_type,
-                'document_number' => $lead->document_number,
-            ]);
-
-            // Move lead to won stage and archive
-            $wonStage = LeadStage::where('is_won', true)->first();
-            if ($wonStage) {
-                $lead->stage_id = $wonStage->id;
-            }
-
-            $lead->customer_id = $customer->id;
-            $lead->archived_at = now();
-            $lead->save();
-
-            return $customer;
-        });
+        return $this->leadCustomerConversionService->convert($lead);
     }
 
     /**

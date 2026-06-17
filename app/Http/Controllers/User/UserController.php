@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\User;
 
+use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -10,7 +11,6 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\Models\Role;
-use App\Http\Controllers\Controller;
 
 class UserController extends Controller
 {
@@ -83,7 +83,7 @@ class UserController extends Controller
 
         $data = collect($paginator->items())->map(function (User $user) use ($canUseFunciones) {
             $photoUrl = $user->profile_photo_path
-                ? '/storage/' . ltrim($user->profile_photo_path, '/')
+                ? '/storage/'.ltrim($user->profile_photo_path, '/')
                 : null;
 
             $roles = $user->roles
@@ -204,7 +204,7 @@ class UserController extends Controller
             $user->funciones = $validated['funciones'] ?? null;
         }
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
 

@@ -18,15 +18,13 @@ class SendEmailCampaignRecipientJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public function __construct(public readonly int $recipientId)
-    {
-    }
+    public function __construct(public readonly int $recipientId) {}
 
     public function handle(): void
     {
         /** @var EmailCampaignRecipient|null $recipient */
         $recipient = EmailCampaignRecipient::query()->with('campaign')->find($this->recipientId);
-        if (!$recipient) {
+        if (! $recipient) {
             return;
         }
 
@@ -39,6 +37,7 @@ class SendEmailCampaignRecipientJob implements ShouldQueue
             $recipient->status = 'failed';
             $recipient->error_message = 'Email vacío.';
             $recipient->save();
+
             return;
         }
 
@@ -47,6 +46,7 @@ class SendEmailCampaignRecipientJob implements ShouldQueue
             $recipient->status = 'skipped';
             $recipient->error_message = 'Desuscrito.';
             $recipient->save();
+
             return;
         }
 
@@ -78,6 +78,7 @@ class SendEmailCampaignRecipientJob implements ShouldQueue
     private static function unsubscribeToken(string $email): string
     {
         $secret = (string) config('app.key');
+
         return hash_hmac('sha256', strtolower(trim($email)), $secret);
     }
 }

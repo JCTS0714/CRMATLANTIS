@@ -23,6 +23,7 @@ class MakeModule extends Command
         $name = trim((string) $this->argument('name'));
         if ($name === '') {
             $this->error('Nombre de modulo invalido.');
+
             return self::FAILURE;
         }
 
@@ -30,42 +31,42 @@ class MakeModule extends Command
         $slug = Str::slug($name);
         $resource = Str::snake(Str::pluralStudly($name));
 
-        $path = $this->normalizeDashboardPath((string) ($this->option('path') ?: '/' . Str::kebab(Str::plural($name))));
+        $path = $this->normalizeDashboardPath((string) ($this->option('path') ?: '/'.Str::kebab(Str::plural($name))));
         $prefix = trim((string) ($this->option('prefix') ?: ltrim($path, '/')));
-        $menuPermission = trim((string) ($this->option('menu') ?: ('menu.' . Str::snake($name))));
-        $viewPermission = $resource . '.view';
+        $menuPermission = trim((string) ($this->option('menu') ?: ('menu.'.Str::snake($name))));
+        $viewPermission = $resource.'.view';
 
-        $componentFile = trim((string) ($this->option('component') ?: ($studly . 'Module.vue')));
-        if (!Str::endsWith(Str::lower($componentFile), '.vue')) {
+        $componentFile = trim((string) ($this->option('component') ?: ($studly.'Module.vue')));
+        if (! Str::endsWith(Str::lower($componentFile), '.vue')) {
             $componentFile .= '.vue';
         }
 
-        $controllerClass = $studly . 'Controller';
-        $controllerPath = base_path('app/Http/Controllers/' . $controllerClass . '.php');
-        $componentPath = base_path('resources/js/components/' . $componentFile);
+        $controllerClass = $studly.'Controller';
+        $controllerPath = base_path('app/Http/Controllers/'.$controllerClass.'.php');
+        $componentPath = base_path('resources/js/components/'.$componentFile);
 
         $generatedRoutesDir = base_path('routes/modules/auth/generated');
-        $generatedRoutesPath = $generatedRoutesDir . DIRECTORY_SEPARATOR . $slug . '.php';
+        $generatedRoutesPath = $generatedRoutesDir.DIRECTORY_SEPARATOR.$slug.'.php';
 
-        if (!File::exists($controllerPath)) {
+        if (! File::exists($controllerPath)) {
             File::put($controllerPath, $this->controllerStub($controllerClass, $resource));
             $this->info("Controlador creado: app/Http/Controllers/{$controllerClass}.php");
         } else {
             $this->warn("Controlador ya existe: app/Http/Controllers/{$controllerClass}.php");
         }
 
-        if (!File::exists($componentPath)) {
+        if (! File::exists($componentPath)) {
             File::put($componentPath, $this->componentStub($name));
             $this->info("Componente creado: resources/js/components/{$componentFile}");
         } else {
             $this->warn("Componente ya existe: resources/js/components/{$componentFile}");
         }
 
-        if (!File::isDirectory($generatedRoutesDir)) {
+        if (! File::isDirectory($generatedRoutesDir)) {
             File::makeDirectory($generatedRoutesDir, 0755, true);
         }
 
-        if (!File::exists($generatedRoutesPath)) {
+        if (! File::exists($generatedRoutesPath)) {
             File::put($generatedRoutesPath, $this->generatedRoutesStub($controllerClass, $resource, $prefix));
             $this->info("Rutas API creadas: routes/modules/auth/generated/{$slug}.php");
         } else {
@@ -97,7 +98,7 @@ class MakeModule extends Command
             Artisan::call('optimize:clear');
             $this->info('Cache limpiada con optimize:clear');
         } catch (\Throwable $e) {
-            $this->warn('No se pudo limpiar cache automaticamente: ' . $e->getMessage());
+            $this->warn('No se pudo limpiar cache automaticamente: '.$e->getMessage());
         }
 
         $this->newLine();
@@ -110,14 +111,15 @@ class MakeModule extends Command
 
     protected function normalizeDashboardPath(string $path): string
     {
-        $path = '/' . ltrim(trim($path), '/');
+        $path = '/'.ltrim(trim($path), '/');
+
         return rtrim($path, '/') ?: '/';
     }
 
     protected function registerDynamicModule(array $module): bool
     {
         $configPath = base_path('config/modules.php');
-        if (!File::exists($configPath)) {
+        if (! File::exists($configPath)) {
             return false;
         }
 
@@ -127,16 +129,16 @@ class MakeModule extends Command
         }
 
         $entry = "        [\n"
-            . "            'key' => '{$module['key']}',\n"
-            . "            'label' => '{$module['label']}',\n"
-            . "            'subtitle' => '{$module['subtitle']}',\n"
-            . "            'path' => '{$module['path']}',\n"
-            . "            'component' => '{$module['component']}',\n"
-            . "            'menu_permission' => '{$module['menu_permission']}',\n"
-            . "            'view_permission' => '{$module['view_permission']}',\n"
-            . "            'auto_menu' => " . ($module['auto_menu'] ? 'true' : 'false') . ",\n"
-            . "            'enabled' => " . ($module['enabled'] ? 'true' : 'false') . ",\n"
-            . "        ],\n";
+            ."            'key' => '{$module['key']}',\n"
+            ."            'label' => '{$module['label']}',\n"
+            ."            'subtitle' => '{$module['subtitle']}',\n"
+            ."            'path' => '{$module['path']}',\n"
+            ."            'component' => '{$module['component']}',\n"
+            ."            'menu_permission' => '{$module['menu_permission']}',\n"
+            ."            'view_permission' => '{$module['view_permission']}',\n"
+            ."            'auto_menu' => ".($module['auto_menu'] ? 'true' : 'false').",\n"
+            ."            'enabled' => ".($module['enabled'] ? 'true' : 'false').",\n"
+            ."        ],\n";
 
         $needle = "    ],\n];";
         $position = strrpos($content, $needle);
@@ -144,7 +146,7 @@ class MakeModule extends Command
             return false;
         }
 
-        $updated = substr($content, 0, $position) . $entry . substr($content, $position);
+        $updated = substr($content, 0, $position).$entry.substr($content, $position);
         File::put($configPath, $updated);
 
         return true;

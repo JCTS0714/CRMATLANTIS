@@ -2,6 +2,7 @@
   <GenericTable
     table-id="users-table"
     title="Usuarios"
+    subtitle="Administra accesos, roles y responsabilidades del equipo interno."
     :columns="columns"
     :items="items"
     :loading="loading"
@@ -22,6 +23,7 @@
     <template #headerActions>
       <BaseButton 
         variant="primary"
+        size="sm"
         @click="showCreateModal = true"
       >
         Crear Usuario

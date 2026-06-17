@@ -16,7 +16,7 @@ class BrevoService
 
     public function sendInvoiceLink(string $email, string $name, string $subject, string $facturaUrl, string $mensaje): array
     {
-        if (!$this->isConfigured()) {
+        if (! $this->isConfigured()) {
             throw new RuntimeException('Brevo no esta configurado.');
         }
 
@@ -48,8 +48,8 @@ class BrevoService
                 'htmlContent' => $html,
             ]);
 
-        if (!$response->successful()) {
-            throw new RuntimeException('Error Brevo: ' . $response->status() . ' - ' . $response->body());
+        if (! $response->successful()) {
+            throw new RuntimeException('Error Brevo: '.$response->status().' - '.$response->body());
         }
 
         return $response->json() ?: [];

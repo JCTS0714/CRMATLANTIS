@@ -192,6 +192,9 @@
                   <div class="truncate text-gray-900 dark:text-slate-100">
                     {{ c.display_name || 'Sin nombre' }}
                     <span v-if="c.secondary" class="text-gray-500 dark:text-slate-400">· {{ c.secondary }}</span>
+                    <span v-if="c.multiple_businesses" class="ml-2 inline-flex items-center rounded px-1 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                      Varios negocios
+                    </span>
                   </div>
                   <div class="mt-0.5 flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
                     <span :class="c.email ? '' : 'text-amber-600 dark:text-amber-300'">{{ c.email || 'Sin email' }}</span>

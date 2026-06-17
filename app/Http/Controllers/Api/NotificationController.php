@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\CalendarEvent;
-use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
@@ -17,13 +16,13 @@ class NotificationController extends Controller
     {
         $request->validate([
             'notificationId' => 'required|string',
-            'closedAt' => 'required|date'
+            'closedAt' => 'required|date',
         ]);
 
         Log::info('Notificación cerrada', [
             'notification_id' => $request->notificationId,
             'closed_at' => $request->closedAt,
-            'user_id' => auth()->id()
+            'user_id' => auth()->id(),
         ]);
 
         return response()->json(['status' => 'success']);
@@ -36,7 +35,7 @@ class NotificationController extends Controller
     {
         $user = auth()->user();
         $minutesAhead = $request->input('minutes', 60); // Por defecto 1 hora
-        
+
         $upcomingEvents = CalendarEvent::where('user_id', $user->id)
             ->where('start_datetime', '>', now())
             ->where('start_datetime', '<=', now()->addMinutes($minutesAhead))
@@ -54,9 +53,9 @@ class NotificationController extends Controller
                     'start_time' => $event->start_at->format('H:i'),
                     'end_time' => $event->end_at->format('H:i'),
                     'color' => $event->color ?? '#3b82f6',
-                    'reminder_minutes' => $event->reminder_minutes
+                    'reminder_minutes' => $event->reminder_minutes,
                 ];
-            })
+            }),
         ]);
     }
 
@@ -68,7 +67,7 @@ class NotificationController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'body' => 'required|string|max:500',
-            'type' => 'string|in:test,calendar,reminder'
+            'type' => 'string|in:test,calendar,reminder',
         ]);
 
         $user = auth()->user();
@@ -79,7 +78,7 @@ class NotificationController extends Controller
             'user_id' => $user->id,
             'title' => $request->title,
             'body' => $request->body,
-            'type' => $request->type ?? 'test'
+            'type' => $request->type ?? 'test',
         ]);
 
         return response()->json([
@@ -89,8 +88,8 @@ class NotificationController extends Controller
                 'title' => $request->title,
                 'body' => $request->body,
                 'type' => $request->type ?? 'test',
-                'timestamp' => now()->toISOString()
-            ]
+                'timestamp' => now()->toISOString(),
+            ],
         ]);
     }
 
@@ -103,22 +102,22 @@ class NotificationController extends Controller
             'calendar_notifications' => 'boolean',
             'sound_enabled' => 'boolean',
             'reminder_minutes' => 'array',
-            'reminder_minutes.*' => 'integer|min:0|max:1440' // Máximo 24 horas
+            'reminder_minutes.*' => 'integer|min:0|max:1440', // Máximo 24 horas
         ]);
 
         $user = auth()->user();
 
         // Actualizar preferencias en el perfil del usuario
         $preferences = $user->preferences ?? [];
-        
+
         if ($request->has('calendar_notifications')) {
             $preferences['calendar_notifications'] = $request->calendar_notifications;
         }
-        
+
         if ($request->has('sound_enabled')) {
             $preferences['notification_sound'] = $request->sound_enabled;
         }
-        
+
         if ($request->has('reminder_minutes')) {
             $preferences['reminder_minutes'] = $request->reminder_minutes;
         }
@@ -128,7 +127,7 @@ class NotificationController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Preferencias actualizadas',
-            'preferences' => $preferences
+            'preferences' => $preferences,
         ]);
     }
 
@@ -143,11 +142,11 @@ class NotificationController extends Controller
         $defaultPreferences = [
             'calendar_notifications' => true,
             'notification_sound' => true,
-            'reminder_minutes' => [15, 5]
+            'reminder_minutes' => [15, 5],
         ];
 
         return response()->json([
-            'preferences' => array_merge($defaultPreferences, $preferences)
+            'preferences' => array_merge($defaultPreferences, $preferences),
         ]);
     }
 
@@ -157,12 +156,12 @@ class NotificationController extends Controller
     public function getNotificationStatus()
     {
         $user = auth()->user();
-        
+
         return response()->json([
             'user_id' => $user->id,
             'server_time' => now()->toISOString(),
             'timezone' => config('app.timezone'),
-            'notifications_enabled' => $user->preferences['calendar_notifications'] ?? true
+            'notifications_enabled' => $user->preferences['calendar_notifications'] ?? true,
         ]);
     }
 }

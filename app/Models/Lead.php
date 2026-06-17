@@ -58,10 +58,6 @@ class Lead extends Model
 
     /**
      * Scope to search leads by multiple fields
-     *
-     * @param  Builder  $query
-     * @param  string  $search
-     * @return Builder
      */
     public function scopeSearch(Builder $query, string $search): Builder
     {
@@ -70,7 +66,7 @@ class Lead extends Model
             return $query;
         }
 
-        $like = '%' . $search . '%';
+        $like = '%'.$search.'%';
 
         return $query->where(function ($q) use ($like) {
             $q->where('name', 'like', $like)
@@ -84,10 +80,6 @@ class Lead extends Model
 
     /**
      * Scope to filter leads by stage
-     *
-     * @param  Builder  $query
-     * @param  int|array  $stageId
-     * @return Builder
      */
     public function scopeByStage(Builder $query, int|array $stageId): Builder
     {
@@ -100,9 +92,6 @@ class Lead extends Model
 
     /**
      * Scope to get only active (non-archived) leads
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeActive(Builder $query): Builder
     {
@@ -111,9 +100,6 @@ class Lead extends Model
 
     /**
      * Scope to get only archived leads
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeArchived(Builder $query): Builder
     {
@@ -122,11 +108,6 @@ class Lead extends Model
 
     /**
      * Scope to filter by date range (created_at)
-     *
-     * @param  Builder  $query
-     * @param  string|null  $from
-     * @param  string|null  $to
-     * @return Builder
      */
     public function scopeDateRange(Builder $query, ?string $from = null, ?string $to = null): Builder
     {
@@ -143,9 +124,6 @@ class Lead extends Model
 
     /**
      * Scope to eager load common relationships
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeWithRelations(Builder $query): Builder
     {
@@ -154,9 +132,6 @@ class Lead extends Model
 
     /**
      * Scope to order by board position
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeByPosition(Builder $query): Builder
     {

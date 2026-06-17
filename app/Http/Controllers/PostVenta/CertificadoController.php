@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\PostVenta;
 
+use App\Http\Controllers\Controller;
 use App\Models\Certificado;
 use App\Services\Calendar\CalendarCertificateSyncService;
 use Illuminate\Http\JsonResponse;
@@ -11,13 +12,10 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Http\Controllers\Controller;
 
 class CertificadoController extends Controller
 {
-    public function __construct(private readonly CalendarCertificateSyncService $calendarCertificateSyncService)
-    {
-    }
+    public function __construct(private readonly CalendarCertificateSyncService $calendarCertificateSyncService) {}
 
     public function data(Request $request): JsonResponse
     {
@@ -183,7 +181,7 @@ class CertificadoController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'certificados_data_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'certificados_data_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);
@@ -230,26 +228,30 @@ class CertificadoController extends Controller
             $unmatched = 0;
 
             foreach ($files as $file) {
-                if (!$file instanceof UploadedFile) {
+                if (! $file instanceof UploadedFile) {
                     $skipped++;
+
                     continue;
                 }
 
                 $original = (string) $file->getClientOriginalName();
-                if (!preg_match('/(\d{11})/', $original, $m)) {
+                if (! preg_match('/(\d{11})/', $original, $m)) {
                     $unmatched++;
+
                     continue;
                 }
                 $ruc = $m[1];
 
                 $cert = Certificado::query()->where('ruc', $ruc)->orderByDesc('id')->first();
-                if (!$cert) {
+                if (! $cert) {
                     $unmatched++;
+
                     continue;
                 }
 
-                if (!empty($cert->imagen)) {
+                if (! empty($cert->imagen)) {
                     $skipped++;
+
                     continue;
                 }
 
@@ -259,11 +261,12 @@ class CertificadoController extends Controller
                     $ext = $file->getClientMimeType() === 'application/pdf' ? 'pdf' : 'jpg';
                 }
 
-                $targetName = $ruc . '.' . $ext;
-                $targetPath = 'certificados/' . $targetName;
+                $targetName = $ruc.'.'.$ext;
+                $targetPath = 'certificados/'.$targetName;
 
                 if ($dry) {
                     $updated++;
+
                     continue;
                 }
 
@@ -287,7 +290,7 @@ class CertificadoController extends Controller
             'zip' => ['required', 'file', 'mimes:zip'],
         ]);
 
-        if (!class_exists(\ZipArchive::class)) {
+        if (! class_exists(\ZipArchive::class)) {
             return response()->json([
                 'message' => 'ZipArchive no está disponible en esta instalación de PHP. Usa selección múltiple (images[]) en vez de ZIP.',
             ], 422);
@@ -295,7 +298,7 @@ class CertificadoController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('zip');
-        $filename = 'certificados_images_' . Str::random(8) . '.zip';
+        $filename = 'certificados_images_'.Str::random(8).'.zip';
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);

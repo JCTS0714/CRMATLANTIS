@@ -8,5 +8,5 @@ require __DIR__.'/auth/calendar_scrum_incidencias.php';
 require __DIR__.'/auth/settings_profile_notifications.php';
 
 foreach (glob(__DIR__.'/auth/generated/*.php') ?: [] as $generatedRouteFile) {
-	require $generatedRouteFile;
+    require $generatedRouteFile;
 }

@@ -164,7 +164,12 @@
           >
             <td class="px-4 py-3">{{ getRowNumber(index) }}</td>
             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-              {{ c.contact_name || c.name || '—' }}
+              <div class="flex items-center gap-2">
+                <span>{{ c.contact_name || c.name || '—' }}</span>
+                <span v-if="c.multiple_businesses" class="inline-flex items-center rounded px-1 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  Varios negocios
+                </span>
+              </div>
             </td>
             <td class="px-4 py-3">{{ c.company_name || '—' }}</td>
             <td class="px-4 py-3">{{ c.company_address || '—' }}</td>

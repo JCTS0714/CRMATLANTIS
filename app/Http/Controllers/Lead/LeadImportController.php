@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Lead;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Lead\ImportLeadsRequest;
-use App\Services\ProspectosCsvImporter;
+use App\Services\Lead\Imports\ProspectosCsvImporter;
 use Illuminate\Http\JsonResponse;
 
 class LeadImportController extends Controller
@@ -17,7 +17,7 @@ class LeadImportController extends Controller
         $file = $request->file('file');
         $path = $file->getRealPath();
 
-        if (!$path) {
+        if (! $path) {
             return response()->json([
                 'message' => 'No se pudo leer el archivo CSV.',
             ], 422);

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\PostVenta;
 
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
 use App\Models\Contador;
+use App\Models\Customer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 class ContadorController extends Controller
 {
     private const SERVIDOR_OPTIONS = ['ATLANTIS ONLINE', 'ATLANTIS VIP', 'ATLANTIS POS', 'ATLANTIS FAST', 'LORITO'];
+
     private const ESTADO_EMPRESA_OPTIONS = ['activo', 'retirado', 'eliminado'];
 
     public function data(Request $request): JsonResponse
@@ -67,7 +68,7 @@ class ContadorController extends Controller
                 $customer = $c->customers->first();
                 $estadoEmpresa = $customer?->estado;
 
-                if (!$estadoEmpresa) {
+                if (! $estadoEmpresa) {
                     $comercio = trim((string) ($c->comercio ?? ''));
                     if ($comercio !== '') {
                         $fallbackCustomer = Customer::query()
@@ -186,7 +187,7 @@ class ContadorController extends Controller
 
     private function applyPresenceFilter(Builder $query, string $column, string $value): void
     {
-        if (!in_array($value, ['1', '0'], true)) {
+        if (! in_array($value, ['1', '0'], true)) {
             return;
         }
 
@@ -246,7 +247,7 @@ class ContadorController extends Controller
             ]);
         });
 
-        if (!$contador) {
+        if (! $contador) {
             return response()->json([
                 'message' => 'No se pudo crear el contador.',
             ], 500);
@@ -345,7 +346,7 @@ class ContadorController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'contadores_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'contadores_import_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);
@@ -372,7 +373,7 @@ class ContadorController extends Controller
 
     public function clearTableLocal(Request $request): JsonResponse
     {
-        if (!app()->environment('local')) {
+        if (! app()->environment('local')) {
             return response()->json([
                 'message' => 'Esta acción solo está disponible en entorno local.',
             ], 403);
@@ -393,7 +394,7 @@ class ContadorController extends Controller
             ->select(['id', 'name', 'company_name'])
             ->find($customerId);
 
-        if (!$customer) {
+        if (! $customer) {
             return null;
         }
 
@@ -403,6 +404,7 @@ class ContadorController extends Controller
         }
 
         $customerName = trim((string) ($customer->name ?? ''));
+
         return $customerName !== '' ? $customerName : null;
     }
 }

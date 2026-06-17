@@ -3,18 +3,18 @@
 namespace App\Http\Controllers\Customer;
 
 use App\DTOs\Customer\CustomerResponseDto;
+use App\Http\Controllers\Controller;
 use App\Http\Controllers\Inbox\FacturaEnvioController;
 use App\Http\Requests\Customer\CreateCustomerRequest;
 use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Models\Customer;
 use App\Services\Customer\CustomerService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Http\Controllers\Controller;
 use Illuminate\Validation\Rule;
 
 class CustomerController extends Controller
@@ -22,6 +22,7 @@ class CustomerController extends Controller
     public function __construct(
         private readonly CustomerService $customerService
     ) {}
+
     public function data(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
@@ -88,14 +89,14 @@ class CustomerController extends Controller
         $documentType = $validated['document_type'] ?? null;
         $documentNumber = $validated['document_number'] ?? null;
 
-        if ($documentNumber && !$documentType) {
+        if ($documentNumber && ! $documentType) {
             return response()->json([
                 'message' => 'El tipo de documento es requerido si envías número de documento.',
                 'errors' => ['document_type' => ['El tipo de documento es requerido si envías número de documento.']],
             ], 422);
         }
 
-        if ($documentType && !$documentNumber) {
+        if ($documentType && ! $documentNumber) {
             return response()->json([
                 'message' => 'El número de documento es requerido.',
                 'errors' => ['document_number' => ['El número de documento es requerido.']],
@@ -175,7 +176,7 @@ class CustomerController extends Controller
     public function search(Request $request): JsonResponse
     {
         $q = trim((string) $request->query('q', ''));
-        
+
         if (strlen($q) < 2) {
             return response()->json(['customers' => []]);
         }
@@ -189,6 +190,7 @@ class CustomerController extends Controller
 
         return response()->json(['customers' => $customers]);
     }
+
     public function importCsv(Request $request): JsonResponse
     {
         $request->validate([
@@ -197,7 +199,7 @@ class CustomerController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'customers_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'customers_import_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);
@@ -216,7 +218,7 @@ class CustomerController extends Controller
         }
 
         $syncResult = null;
-        if (!$dry) {
+        if (! $dry) {
             try {
                 $syncResponse = app(FacturaEnvioController::class)->syncMesActual();
                 $syncResult = $syncResponse->getData(true);

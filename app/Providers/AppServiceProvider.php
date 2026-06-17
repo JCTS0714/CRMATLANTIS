@@ -16,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // Register ConfigService as singleton
         $this->app->singleton(ConfigService::class, function ($app) {
-            return new ConfigService();
+            return new ConfigService;
         });
     }
 
@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
 
             if (file_exists($manifestPath)) {
                 $payload = json_decode(file_get_contents($manifestPath), true);
-                if (is_array($payload) && !empty($payload['path']) && file_exists(public_path($payload['path']))) {
+                if (is_array($payload) && ! empty($payload['path']) && file_exists(public_path($payload['path']))) {
                     $manifestLogo = asset($payload['path']);
                 }
             }

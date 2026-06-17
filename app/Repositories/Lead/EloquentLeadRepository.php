@@ -3,7 +3,6 @@
 namespace App\Repositories\Lead;
 
 use App\Models\Lead;
-use Carbon\Carbon;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,7 +16,7 @@ class EloquentLeadRepository implements LeadRepositoryInterface
     private function applyFilters(Builder $query, array $filters): Builder
     {
         // Filter by stage IDs
-        if (!empty($filters['stageIds'])) {
+        if (! empty($filters['stageIds'])) {
             $query->whereIn('stage_id', $filters['stageIds']);
         }
 
@@ -27,12 +26,12 @@ class EloquentLeadRepository implements LeadRepositoryInterface
         }
 
         // Search filter using scope
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $query->search($filters['search']);
         }
 
         // Date range filter using scope
-        if (!empty($filters['dateFrom']) || !empty($filters['dateTo'])) {
+        if (! empty($filters['dateFrom']) || ! empty($filters['dateTo'])) {
             $query->dateRange(
                 $filters['dateFrom'] ?? null,
                 $filters['dateTo'] ?? null
@@ -52,7 +51,7 @@ class EloquentLeadRepository implements LeadRepositoryInterface
         $this->applyFilters($query, $filters);
 
         // Use active() scope unless explicitly including archived
-        if (!isset($filters['includeArchived']) || !$filters['includeArchived']) {
+        if (! isset($filters['includeArchived']) || ! $filters['includeArchived']) {
             $query->active();
         }
 
@@ -125,7 +124,7 @@ class EloquentLeadRepository implements LeadRepositoryInterface
         $this->applyFilters($query, $filters);
 
         // Use active() scope unless explicitly including archived
-        if (!isset($filters['includeArchived']) || !$filters['includeArchived']) {
+        if (! isset($filters['includeArchived']) || ! $filters['includeArchived']) {
             $query->active();
         }
 
@@ -141,7 +140,7 @@ class EloquentLeadRepository implements LeadRepositoryInterface
     {
         $query = Lead::query();
 
-        if (!empty($with)) {
+        if (! empty($with)) {
             $query->with($with);
         }
 

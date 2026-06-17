@@ -32,12 +32,12 @@ return new class extends Migration
             );
         } elseif ($driver === 'pgsql') {
             DB::statement(
-                "UPDATE customers
+                'UPDATE customers
                 SET
                     fecha_contacto_mes = EXTRACT(MONTH FROM fecha_contacto)::INTEGER,
                     fecha_contacto_anio = EXTRACT(YEAR FROM fecha_contacto)::INTEGER
                 WHERE fecha_contacto IS NOT NULL
-                  AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)"
+                  AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)'
             );
         } else {
             DB::statement('UPDATE customers SET fecha_contacto_mes = MONTH(fecha_contacto), fecha_contacto_anio = YEAR(fecha_contacto) WHERE fecha_contacto IS NOT NULL AND (fecha_contacto_mes IS NULL OR fecha_contacto_anio IS NULL)');

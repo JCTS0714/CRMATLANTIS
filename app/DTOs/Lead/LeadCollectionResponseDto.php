@@ -8,8 +8,8 @@ use Illuminate\Support\Collection;
 class LeadCollectionResponseDto
 {
     /**
-     * @param Collection<StageResponseDto> $stages
-     * @param Collection<LeadResponseDto> $leads
+     * @param  Collection<StageResponseDto>  $stages
+     * @param  Collection<LeadResponseDto>  $leads
      */
     public function __construct(
         public readonly Collection $stages,
@@ -25,16 +25,16 @@ class LeadCollectionResponseDto
     public function toArray(): array
     {
         $data = [
-            'stages' => $this->stages->map(fn($stage) => $stage->toArray())->values(),
+            'stages' => $this->stages->map(fn ($stage) => $stage->toArray())->values(),
             'total_count' => $this->totalCount,
-            'leads' => $this->leads->map(fn($lead) => $lead->toArray())->values(),
+            'leads' => $this->leads->map(fn ($lead) => $lead->toArray())->values(),
         ];
 
         if ($this->pagination) {
             $data['pagination'] = $this->pagination->toArray();
         }
 
-        if (!empty($this->filters)) {
+        if (! empty($this->filters)) {
             $data['filters'] = $this->filters;
         }
 
@@ -47,8 +47,8 @@ class LeadCollectionResponseDto
     public function toCompactArray(): array
     {
         return [
-            'stages' => $this->stages->map(fn($stage) => $stage->toArray())->values(),
-            'leads' => $this->leads->map(fn($lead) => $lead->toCompactArray())->values(),
+            'stages' => $this->stages->map(fn ($stage) => $stage->toArray())->values(),
+            'leads' => $this->leads->map(fn ($lead) => $lead->toCompactArray())->values(),
             'total' => $this->totalCount,
         ];
     }

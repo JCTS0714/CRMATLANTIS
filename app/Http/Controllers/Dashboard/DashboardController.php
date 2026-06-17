@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Dashboard;
 
+use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use App\Models\Certificado;
 use App\Models\Contador;
@@ -11,7 +12,6 @@ use App\Models\Lead;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use App\Http\Controllers\Controller;
 
 class DashboardController extends Controller
 {
@@ -25,7 +25,7 @@ class DashboardController extends Controller
         $periodEnd = null;
 
         if ($month !== null) {
-            if (!preg_match('/^\d{4}-\d{2}$/', $month)) {
+            if (! preg_match('/^\d{4}-\d{2}$/', $month)) {
                 return response()->json([
                     'message' => 'Parámetro month inválido. Usa formato YYYY-MM.',
                 ], 422);

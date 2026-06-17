@@ -1,6 +1,6 @@
-import { ref, reactive, computed, type Ref, type ComputedRef } from 'vue';
-import axios, { AxiosError } from 'axios';
-import type { PaginationData, TableFilters, ApiResponse } from '@/types';
+import { computed, ref, shallowRef, type ComputedRef, type Ref } from 'vue';
+import axios from 'axios';
+import type { PaginationData, TableFilters } from '@/types';
 
 export interface GenericTableConfig {
   endpoint: string;
@@ -21,17 +21,17 @@ export interface UseGenericTableReturn<T = any> {
   data: Ref<T[]>;
   loading: Ref<boolean>;
   error: Ref<string | null>;
-  
+
   // Pagination
   pagination: Ref<PaginationData<T>>;
   paginationInfo: ComputedRef<string>;
-  
+
   // Filters and state
   filters: Ref<TableFilters>;
   tableState: Ref<TableState>;
   searchQuery: Ref<string>;
   perPage: Ref<number>;
-  
+
   // Methods
   fetchData: (params?: Record<string, any>) => Promise<void>;
   refetchData: () => Promise<void>;
@@ -49,8 +49,8 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
   const data = ref<T[]>([]) as Ref<T[]>;
   const loading = ref<boolean>(false);
   const error = ref<string | null>(null);
-  
-  const pagination = ref<PaginationData<T>>({
+
+  const pagination = shallowRef<PaginationData<T>>({
     data: [],
     current_page: 1,
     last_page: 1,
@@ -66,7 +66,7 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
     search: '',
     per_page: config.defaultPerPage || 25,
     page: 1,
-    sort_by: null as string | null,
+    sort_by: null,
     sort_direction: 'asc',
     ...config.defaultFilters
   });
@@ -107,7 +107,7 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
 
     try {
       const params = { ...filters.value, ...additionalParams };
-      
+
       // Clean up empty params
       Object.keys(params).forEach(key => {
         if (params[key] === '' || params[key] === null || params[key] === undefined) {
@@ -116,10 +116,10 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
       });
 
       const response = await axios.get<PaginationData<T>>(config.endpoint, { params });
-      
+
       data.value = response.data.data;
       pagination.value = response.data;
-      
+
     } catch (err: any) {
       error.value = err.response?.data?.message || 'Error al cargar los datos';
       console.error('Error fetching data:', err);
@@ -159,13 +159,13 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
 
     filters.value.sort_by = field;
     filters.value.sort_direction = tableState.value.sortDirection;
-    
+
     await fetchData();
   };
 
   const performAction = async (
-    action: string, 
-    id: string | number, 
+    action: string,
+    id: string | number,
     data?: any
   ): Promise<any> => {
     if (!config.actions || !config.actions[action]) {
@@ -199,17 +199,17 @@ export function useGenericTable<T = any>(config: GenericTableConfig): UseGeneric
     data,
     loading,
     error,
-    
+
     // Pagination
     pagination,
     paginationInfo,
-    
+
     // Filters and state
     filters,
     tableState,
     searchQuery,
     perPage,
-    
+
     // Methods
     fetchData,
     refetchData,

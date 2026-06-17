@@ -35,10 +35,6 @@ class WhatsAppCampaign extends Model
 
     /**
      * Scope to filter by status
-     *
-     * @param  Builder  $query
-     * @param  string  $status
-     * @return Builder
      */
     public function scopeByStatus(Builder $query, string $status): Builder
     {
@@ -47,9 +43,6 @@ class WhatsAppCampaign extends Model
 
     /**
      * Scope to get draft campaigns
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeDraft(Builder $query): Builder
     {
@@ -58,9 +51,6 @@ class WhatsAppCampaign extends Model
 
     /**
      * Scope to get sent campaigns
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeSent(Builder $query): Builder
     {
@@ -69,9 +59,6 @@ class WhatsAppCampaign extends Model
 
     /**
      * Scope to eager load recipients with counts
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeWithRecipients(Builder $query): Builder
     {

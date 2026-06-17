@@ -1,0 +1,18 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    paths:
+        - app/Console/Commands
+        - app/Http/Requests
+        - app/Models
+        - app/Services
+        - tests/Feature/LeadMoveStageTest.php
+        - tests/Feature/PermissionSyncTest.php
+        - tests/Feature/ProspectosCsvImporterTest.php
+
+    level: 1
+    tmpDir: storage/framework/cache/phpstan
+    excludePaths:
+        analyse:
+            - app/Services/Facturas/*

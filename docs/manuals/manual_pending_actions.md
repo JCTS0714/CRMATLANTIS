@@ -8,8 +8,8 @@ Este documento lista acciones concretas para completar la mejora del manual de u
 - Prioridad: `Leads`, `Clientes`, `Incidencias`, `Calendario`.
 
 2) Reindexar documentación de usuario
-- Ejecutar `scripts/index_user_docs.py` después de actualizar el manual.
-- Verificar que `scripts/index_user.faiss` y `scripts/index_user_metadata.json` se regeneren correctamente.
+- Ejecutar `python scripts/docs/index_user_docs.py` después de actualizar el manual.
+- Verificar que `storage/app/ai/docs-search/index_user.faiss` y `storage/app/ai/docs-search/index_user_metadata.json` se regeneren correctamente.
 
 3) Elegir y configurar modelo para síntesis de respuestas
 - Opciones:
@@ -19,7 +19,7 @@ Este documento lista acciones concretas para completar la mejora del manual de u
 - Recomendación inicial: `gpt-3.5-turbo` (buen trade-off). Cambiar a `gpt-4` si se necesita mayor calidad y presupuesto lo permite.
 - Acciones:
   - Añadir `OPENAI_API_KEY` y `OPENAI_MODEL` a las variables de entorno en el servidor.
-  - Probar con `scripts/query_docs.py` y revisar prompts y temperatura (`temperature=0.2` recomendado para respuestas determinísticas).
+  - Probar con `python scripts/docs/query_docs.py` y revisar prompts y temperatura (`temperature=0.2` recomendado para respuestas determinísticas).
 
 4) Integración y fallback
 - Verificar que `app/Http/Controllers/ChatbotController.php` prefiera la `answer` y, si no, presente `data` limpia.
@@ -27,7 +27,7 @@ Este documento lista acciones concretas para completar la mejora del manual de u
 
 5) Tests y CI
 - Añadir pruebas automáticas que:
-  - Verifiquen que `scripts/index_user.faiss` existe tras indexado.
+  - Verifiquen que `storage/app/ai/docs-search/index_user.faiss` existe tras indexado.
   - Chequeen que `POST /api/chatbot/query` responde con `answer` o `data`.
 - Agregar job en CI para validar indexado en PRs (opcional con cache).
 

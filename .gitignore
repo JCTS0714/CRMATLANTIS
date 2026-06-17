@@ -27,3 +27,23 @@ Thumbs.db
 
 # Local-only testing helpers (never deploy)
 /resources/js/local/*.local.js
+
+# Local diagnostics and scratch files
+/debug_*.html
+/test_*.html
+/simple_*_test.html
+/changed_files.txt
+/cop
+/vendor.rar
+
+# Local backups and archives
+/backups/
+*.zip
+*.rar
+
+# Python local artifacts
+__pycache__/
+*.pyc
+
+# Generated local search indexes
+/storage/app/ai/docs-search/

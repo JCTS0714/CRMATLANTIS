@@ -10,7 +10,7 @@ class CalendarCertificateSyncService
 {
     public function syncCertificateExpiryEvent(Certificado $certificado, ?int $assignedToUserId): array
     {
-        if (!$assignedToUserId || !$certificado->fecha_vencimiento) {
+        if (! $assignedToUserId || ! $certificado->fecha_vencimiento) {
             return [
                 'created' => false,
                 'event' => null,
@@ -26,10 +26,10 @@ class CalendarCertificateSyncService
             ->where('assigned_to', $assignedToUserId)
             ->first();
 
-        $created = !$event;
+        $created = ! $event;
 
-        if (!$event) {
-            $event = new CalendarEvent();
+        if (! $event) {
+            $event = new CalendarEvent;
             $event->created_by = $assignedToUserId;
             $event->assigned_to = $assignedToUserId;
             $event->event_type = 'certificate_expiry';
@@ -37,7 +37,7 @@ class CalendarCertificateSyncService
             $event->related_id = $certificado->id;
         }
 
-        $event->title = 'Vencimiento certificado: ' . $certificado->nombre;
+        $event->title = 'Vencimiento certificado: '.$certificado->nombre;
         $event->description = $this->buildDescription($certificado);
         $event->location = null;
         $event->all_day = true;
@@ -65,13 +65,13 @@ class CalendarCertificateSyncService
     private function buildDescription(Certificado $certificado): string
     {
         $parts = [
-            'RUC: ' . ($certificado->ruc ?: 'N/D'),
-            'Usuario: ' . ($certificado->usuario ?: 'N/D'),
-            'Tipo: ' . ($certificado->tipo ?: 'N/D'),
+            'RUC: '.($certificado->ruc ?: 'N/D'),
+            'Usuario: '.($certificado->usuario ?: 'N/D'),
+            'Tipo: '.($certificado->tipo ?: 'N/D'),
         ];
 
         if ($certificado->observacion) {
-            $parts[] = 'Observación: ' . $certificado->observacion;
+            $parts[] = 'Observación: '.$certificado->observacion;
         }
 
         return implode(' | ', $parts);

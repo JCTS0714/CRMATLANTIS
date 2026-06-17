@@ -26,7 +26,7 @@ return new class extends Migration
             }
         }
 
-        if (!Schema::hasColumn('leads', 'referencia')) {
+        if (! Schema::hasColumn('leads', 'referencia')) {
             Schema::table('leads', function (Blueprint $table) {
                 $table->string('referencia', 50)->nullable()->after('migracion');
             });
@@ -41,7 +41,7 @@ return new class extends Migration
                 if (Schema::hasColumn('leads', 'fecha_contacto_anio')) {
                     $drop[] = 'fecha_contacto_anio';
                 }
-                if (!empty($drop)) {
+                if (! empty($drop)) {
                     $table->dropColumn($drop);
                 }
             });
@@ -52,12 +52,12 @@ return new class extends Migration
     {
         $driver = DB::getDriverName();
 
-        if (!Schema::hasColumn('leads', 'fecha_contacto_mes') || !Schema::hasColumn('leads', 'fecha_contacto_anio')) {
+        if (! Schema::hasColumn('leads', 'fecha_contacto_mes') || ! Schema::hasColumn('leads', 'fecha_contacto_anio')) {
             Schema::table('leads', function (Blueprint $table) {
-                if (!Schema::hasColumn('leads', 'fecha_contacto_mes')) {
+                if (! Schema::hasColumn('leads', 'fecha_contacto_mes')) {
                     $table->unsignedTinyInteger('fecha_contacto_mes')->nullable()->after('company_address');
                 }
-                if (!Schema::hasColumn('leads', 'fecha_contacto_anio')) {
+                if (! Schema::hasColumn('leads', 'fecha_contacto_anio')) {
                     $table->unsignedSmallInteger('fecha_contacto_anio')->nullable()->after('fecha_contacto_mes');
                 }
             });

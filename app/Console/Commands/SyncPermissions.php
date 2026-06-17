@@ -32,7 +32,9 @@ class SyncPermissions extends Command
                     $parts = preg_split('/[|,]/', $payload);
                     foreach ($parts as $p) {
                         $p = trim($p);
-                        if ($p === '') continue;
+                        if ($p === '') {
+                            continue;
+                        }
                         $found[] = $p;
                     }
                 }
@@ -41,7 +43,7 @@ class SyncPermissions extends Command
 
         // Include dynamic module permissions from central registry.
         $dynamicModules = collect(config('modules.dynamic', []))
-            ->filter(fn ($module) => is_array($module) && !empty($module['enabled']))
+            ->filter(fn ($module) => is_array($module) && ! empty($module['enabled']))
             ->values();
 
         foreach ($dynamicModules as $module) {
@@ -59,7 +61,7 @@ class SyncPermissions extends Command
 
         $found = array_values(array_unique($found));
 
-        $this->info('Permisos detectados: ' . count($found));
+        $this->info('Permisos detectados: '.count($found));
 
         // Ensure each detected permission exists
         foreach ($found as $perm) {
@@ -90,7 +92,7 @@ class SyncPermissions extends Command
             }
 
             // menu permission
-            $menuName = 'menu.' . $res;
+            $menuName = 'menu.'.$res;
             Permission::query()->updateOrCreate([
                 'name' => $menuName,
                 'guard_name' => $guard,

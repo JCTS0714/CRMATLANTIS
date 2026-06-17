@@ -1,82 +1,135 @@
 <template>
-  <div class="p-4">
-    <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div class="w-full sm:max-w-md">
-        <input
-          v-model="searchInput"
-          type="text"
-          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          placeholder="Buscar contacto (nombre, contacto, empresa, documento…)"
-        />
-      </div>
-
-      <div class="flex items-center gap-2">
-        <input
-          v-if="canCreateCustomers"
-          ref="importInput"
-          type="file"
-          accept=".csv,text/csv"
-          class="hidden"
-          @change="onImportFileSelected"
-        />
-
-        <button
-          v-if="canCreateCustomers"
-          type="button"
-          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          :disabled="importing"
-          @click="triggerImport"
-        >
-          {{ importing ? 'Importando…' : 'Importar CSV' }}
-        </button>
-
-        <button
-          type="button"
-          class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-          @click="showAdvancedFilters = !showAdvancedFilters"
-        >
-          {{ showAdvancedFilters ? 'Ocultar filtros' : 'Filtros avanzados' }}
-        </button>
-
-        <button
-          v-if="canCreateCustomers"
-          type="button"
-          class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-60"
-          :disabled="creating"
-          @click="createCustomer"
-        >
-          {{ creating ? 'Creando…' : 'Crear cliente' }}
-        </button>
-
-        <button
-          v-if="canDeleteCustomers"
-          type="button"
-          class="inline-flex items-center rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-900/40"
-          :disabled="clearingTable"
-          @click="clearCustomersTableLocal"
-        >
-          {{ clearingTable ? 'Limpiando…' : 'Borrar tabla de clientes' }}
-        </button>
-
-        <div class="text-sm text-slate-600 dark:text-slate-300">
-          <span v-if="pagination.total">Mostrando {{ pagination.from }}–{{ pagination.to }} de {{ pagination.total }}</span>
-          <span v-else>Sin resultados</span>
+  <div class="space-y-5 p-4">
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <div class="space-y-3">
+          <span class="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-emerald-700 dark:border-emerald-900/40 dark:bg-emerald-950/30 dark:text-emerald-200">
+            Postventa · Clientes
+          </span>
+          <div>
+            <h2 class="text-2xl font-semibold text-slate-900 dark:text-slate-50">Cartera operativa de clientes</h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Centraliza seguimiento comercial, incidencias y mantenimiento de datos sin cambiar de contexto.
+              Esta vista prioriza búsqueda rápida, filtros útiles y acciones de operación diaria.
+            </p>
+          </div>
         </div>
 
-        <TableColumnsDropdown
-          :columns="columns"
-          :visible-keys="visibleKeys"
-          @toggle="toggleColumn"
-          @reset="resetColumns"
-        />
-      </div>
-    </div>
+        <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Clientes</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ pagination.total || 0 }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Base registrada</div>
+          </div>
 
-    <div v-if="showAdvancedFilters" class="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700 dark:bg-slate-800/50">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Filtros</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ activeFiltersCount }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Reglas activas</div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Columnas</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ visibleColumnCount }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Visibles en tabla</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+        <div class="space-y-2">
+          <label for="postventa-customer-search" class="text-sm font-medium text-slate-700 dark:text-slate-200">Buscar cliente</label>
+          <input
+            id="postventa-customer-search"
+            v-model="searchInput"
+            type="text"
+            class="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 text-base text-slate-900 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+            placeholder="Buscar por nombre, empresa, documento, correo o teléfono"
+          />
+          <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 dark:bg-slate-800">{{ pagination.total ? `Mostrando ${pagination.from}–${pagination.to} de ${pagination.total}` : 'Sin resultados cargados' }}</span>
+            <span v-if="searchInput" class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-blue-700 dark:bg-blue-950/30 dark:text-blue-200">Búsqueda activa</span>
+            <span v-if="hasActiveAdvancedFilters" class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">{{ activeFiltersCount }} filtros aplicados</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 xl:justify-end">
+          <input
+            v-if="canCreateCustomers"
+            ref="importInput"
+            type="file"
+            accept=".csv,text/csv"
+            class="hidden"
+            @change="onImportFileSelected"
+          />
+
+          <button
+            type="button"
+            class="inline-flex items-center rounded-2xl border px-3 py-2 text-sm font-medium shadow-sm transition"
+            :class="showAdvancedFilters || hasActiveAdvancedFilters
+              ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200 dark:hover:bg-blue-950/50'
+              : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'"
+            :aria-expanded="showAdvancedFilters"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          >
+            {{ showAdvancedFilters ? 'Ocultar filtros' : hasActiveAdvancedFilters ? `Filtros activos (${activeFiltersCount})` : 'Filtros avanzados' }}
+          </button>
+
+          <TableColumnsDropdown
+            :columns="columns"
+            :visible-keys="visibleKeys"
+            @toggle="toggleColumn"
+            @reset="resetColumns"
+          />
+
+          <button
+            v-if="canCreateCustomers"
+            type="button"
+            class="inline-flex items-center rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            :disabled="importing"
+            @click="triggerImport"
+          >
+            {{ importing ? 'Importando…' : 'Importar CSV' }}
+          </button>
+
+          <button
+            v-if="canCreateCustomers"
+            type="button"
+            class="inline-flex items-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-300 disabled:opacity-60"
+            :disabled="creating"
+            @click="createCustomer"
+          >
+            {{ creating ? 'Creando…' : 'Crear cliente' }}
+          </button>
+
+          <button
+            v-if="canDeleteCustomers"
+            type="button"
+            class="inline-flex items-center rounded-2xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-300 dark:hover:bg-red-900/40"
+            :disabled="clearingTable"
+            @click="clearCustomersTableLocal"
+          >
+            {{ clearingTable ? 'Limpiando…' : 'Borrar tabla' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div v-if="showAdvancedFilters" class="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Filtros avanzados</h3>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Afina la cartera por servidor, membresía, estado y fecha de contacto.</p>
+        </div>
+        <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:bg-slate-950 dark:text-slate-300">
+          {{ activeFiltersCount }} activos
+        </span>
+      </div>
+
       <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Servidor</label>
-          <select v-model="advancedFilters.servidor" class="w-auto min-w-52 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.servidor" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="option in serverOptions" :key="option" :value="option">{{ option }}</option>
           </select>
@@ -84,7 +137,7 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Menbresia</label>
-          <select v-model="advancedFilters.menbresia" class="w-auto min-w-40 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.menbresia" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             <option value="">Todas</option>
             <option v-for="option in menbresiaOptions" :key="option" :value="option">{{ option }}</option>
           </select>
@@ -92,7 +145,7 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Estado</label>
-          <select v-model="advancedFilters.estado" class="w-auto min-w-36 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.estado" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="option in estadoOptions" :key="option" :value="option">{{ option }}</option>
           </select>
@@ -100,7 +153,7 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Tipo documento</label>
-          <select v-model="advancedFilters.document_type" class="w-auto min-w-36 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.document_type" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="option in documentTypeOptions" :key="option" :value="option">{{ option.toUpperCase() }}</option>
           </select>
@@ -108,12 +161,12 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Rubro</label>
-          <input v-model="advancedFilters.rubro" type="text" class="w-auto min-w-48 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="Ej. restaurante" />
+          <input v-model="advancedFilters.rubro" type="text" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Ej. restaurante" />
         </div>
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Mes contacto</label>
-          <select v-model="advancedFilters.fecha_contacto_mes" class="w-auto min-w-40 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+          <select v-model="advancedFilters.fecha_contacto_mes" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100">
             <option value="">Todos</option>
             <option v-for="month in monthOptions" :key="month.value" :value="month.value">{{ month.label }}</option>
           </select>
@@ -121,15 +174,15 @@
 
         <div>
           <label class="mb-1 block text-xs font-medium text-slate-600 dark:text-slate-300">Año contacto</label>
-          <input v-model="advancedFilters.fecha_contacto_anio" type="number" min="2000" max="2100" class="w-auto min-w-32 max-w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="2026" />
+          <input v-model="advancedFilters.fecha_contacto_anio" type="number" min="2000" max="2100" class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="2026" />
         </div>
       </div>
 
-      <div class="mt-3 flex items-center gap-2">
-        <button type="button" class="inline-flex items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" @click="applyAdvancedFilters">
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <button type="button" class="inline-flex items-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700" @click="applyAdvancedFilters">
           Aplicar filtros
         </button>
-        <button type="button" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="!hasActiveAdvancedFilters" @click="clearAdvancedFilters">
+        <button type="button" class="inline-flex items-center rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800" :disabled="!hasActiveAdvancedFilters" @click="clearAdvancedFilters">
           Limpiar
         </button>
       </div>
@@ -137,7 +190,7 @@
 
     <div
       ref="tableScrollRef"
-      class="relative overflow-x-auto rounded-lg border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
+      class="relative overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950"
       :class="{ 'table-updated-flash': tableJustUpdated }"
     >
       <div v-show="loading" class="search-loading-track">
@@ -177,6 +230,16 @@
           </tr>
         </thead>
         <tbody class="transition-opacity duration-200" :class="{ 'opacity-55': loading }">
+          <tr v-if="!customers.length">
+            <td :colspan="visibleColumnSpan" class="px-6 py-12 text-center">
+              <div class="mx-auto max-w-md space-y-2">
+                <div class="text-base font-semibold text-slate-900 dark:text-slate-100">No hay clientes para mostrar</div>
+                <p class="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  Ajusta la búsqueda, limpia filtros o importa una nueva base para volver a poblar esta vista.
+                </p>
+              </div>
+            </td>
+          </tr>
           <tr
             v-for="(c, index) in customers"
             :key="c.id"
@@ -184,7 +247,12 @@
           >
             <td class="px-4 py-3">{{ getRowNumber(index) }}</td>
             <td class="px-4 py-3 font-medium text-slate-900 dark:text-slate-100">
-              {{ c.contact_name || c.name || '—' }}
+              <div class="flex items-center gap-2">
+                <span>{{ c.contact_name || c.name || '—' }}</span>
+                <span v-if="c.multiple_businesses" class="inline-flex items-center rounded px-1 py-0.5 text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-200">
+                  Varios negocios
+                </span>
+              </div>
             </td>
             <td class="px-4 py-3">{{ c.company_name || '—' }}</td>
             <td class="px-4 py-3">{{ c.company_address || '—' }}</td>
@@ -259,31 +327,33 @@
     <div
       v-show="showStickyXScroll"
       ref="stickyScrollRef"
-      class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/95 dark:border-slate-700 dark:bg-slate-900/95"
+      class="sticky bottom-0 z-20 mt-2 overflow-x-auto rounded-2xl border border-slate-200 bg-white/95 shadow-sm dark:border-slate-700 dark:bg-slate-950/95"
     >
       <div :style="{ width: `${stickyScrollWidth}px`, height: '1px' }"></div>
     </div>
 
-    <div class="mt-4 flex items-center justify-between">
-      <button
-        class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-        :disabled="pagination.current_page <= 1 || loading"
-        @click="goToPage(pagination.current_page - 1)"
-      >
-        Anterior
-      </button>
-
+    <div class="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-950">
       <div class="text-sm text-slate-600 dark:text-slate-300">
-        Página {{ pagination.current_page }} / {{ pagination.last_page }}
+        Página {{ pagination.current_page }} de {{ pagination.last_page }}
       </div>
 
-      <button
-        class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-        :disabled="pagination.current_page >= pagination.last_page || loading"
-        @click="goToPage(pagination.current_page + 1)"
-      >
-        Siguiente
-      </button>
+      <div class="flex items-center justify-between gap-3 sm:justify-end">
+        <button
+          class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+        :disabled="pagination.current_page <= 1 || loading"
+        @click="goToPage(pagination.current_page - 1)"
+        >
+          Anterior
+        </button>
+
+        <button
+          class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          :disabled="pagination.current_page >= pagination.last_page || loading"
+          @click="goToPage(pagination.current_page + 1)"
+        >
+          Siguiente
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -353,6 +423,9 @@ const monthOptions = [
   { value: 12, label: 'Diciembre' },
 ];
 
+const activeFiltersCount = computed(() => {
+  return Object.values(advancedFilters.value).filter((value) => String(value).trim() !== '').length;
+});
 const hasActiveAdvancedFilters = computed(() => Object.values(advancedFilters.value).some((value) => String(value).trim() !== ''));
 
 const pagination = ref({
@@ -397,6 +470,9 @@ const {
   tableId: 'postventa-customers-table',
   columns,
 });
+
+const visibleColumnCount = computed(() => visibleKeys.value.length || columns.length);
+const visibleColumnSpan = computed(() => Math.max(visibleKeys.value.length || columns.length, 1));
 
 const {
   tableScrollRef,

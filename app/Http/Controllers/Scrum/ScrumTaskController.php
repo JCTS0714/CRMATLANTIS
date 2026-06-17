@@ -24,7 +24,7 @@ class ScrumTaskController extends Controller
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $like = '%' . $search . '%';
+                $like = '%'.$search.'%';
                 $q->where('name', 'like', $like)
                     ->orWhere('email', 'like', $like);
             });
@@ -63,22 +63,22 @@ class ScrumTaskController extends Controller
 
         if ($search !== '') {
             $query->where(function ($q) use ($search) {
-                $like = '%' . $search . '%';
+                $like = '%'.$search.'%';
                 $q->where('nombre', 'like', $like)
                     ->orWhere('descripcion', 'like', $like)
                     ->orWhere('observacion', 'like', $like);
             });
         }
 
-        if (!empty($validated['priority'])) {
+        if (! empty($validated['priority'])) {
             $query->where('prioridad', $validated['priority']);
         }
 
-        if (!empty($validated['estado'])) {
+        if (! empty($validated['estado'])) {
             $query->where('estado', $validated['estado']);
         }
 
-        if (!empty($validated['responsable_id'])) {
+        if (! empty($validated['responsable_id'])) {
             $query->where('responsable_id', $validated['responsable_id']);
         }
 
@@ -236,7 +236,7 @@ class ScrumTaskController extends Controller
 
     private function resolveEstadoTiempo(ScrumTask $task): int
     {
-        if (!$task->tiempo_ejecucion) {
+        if (! $task->tiempo_ejecucion) {
             return 0;
         }
 

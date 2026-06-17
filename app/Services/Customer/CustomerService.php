@@ -3,7 +3,6 @@
 namespace App\Services\Customer;
 
 use App\Models\Customer;
-use Illuminate\Support\Collection;
 
 class CustomerService
 {
@@ -186,8 +185,54 @@ class CustomerService
             ->orderByDesc('id')
             ->paginate($perPage);
 
+        // Convertir items a arrays y calcular flag `multiple_businesses`.
+        $items = $paginator->items();
+        $customersArray = array_map(fn ($m) => $m->toArray(), $items);
+
+        // Extraer los teléfonos normalizados presentes en la página actual.
+        $needNormals = [];
+        foreach ($customersArray as $c) {
+            $phone = trim((string) ($c['contact_phone'] ?? ''));
+            $norm = preg_replace('/\D+/', '', $phone);
+            if ($norm !== '') $needNormals[$norm] = true;
+        }
+
+        $counts = [];
+        if (! empty($needNormals)) {
+            // Buscar en la tabla `customers` coincidencias que contengan cualquiera de
+            // los dígitos (esto captura variantes con espacios/códigos de país).
+            $matchesQuery = Customer::query()
+                ->whereNotNull('contact_phone')
+                ->where('contact_phone', '!=', '')
+                ->where(function ($q) use ($needNormals) {
+                    $first = true;
+                    foreach (array_keys($needNormals) as $norm) {
+                        if ($first) {
+                            $q->where('contact_phone', 'like', "%{$norm}%");
+                            $first = false;
+                        } else {
+                            $q->orWhere('contact_phone', 'like', "%{$norm}%");
+                        }
+                    }
+                });
+
+            $matches = $matchesQuery->pluck('contact_phone');
+            foreach ($matches as $p) {
+                $n = preg_replace('/\D+/', '', trim((string) $p));
+                if ($n === '') continue;
+                $counts[$n] = ($counts[$n] ?? 0) + 1;
+            }
+        }
+
+        // Añadir flag al array de salida
+        foreach ($customersArray as &$c) {
+            $phone = trim((string) ($c['contact_phone'] ?? ''));
+            $norm = preg_replace('/\D+/', '', $phone);
+            $c['multiple_businesses'] = ($norm !== '' && isset($counts[$norm]) && $counts[$norm] > 1);
+        }
+
         return [
-            'customers' => $paginator->items(),
+            'customers' => $customersArray,
             'pagination' => [
                 'current_page' => $paginator->currentPage(),
                 'last_page' => $paginator->lastPage(),
@@ -233,7 +278,7 @@ class CustomerService
     {
         $query = Customer::query();
 
-        if (!empty($with)) {
+        if (! empty($with)) {
             $query->with($with);
         }
 
@@ -252,10 +297,11 @@ class CustomerService
         foreach ($customersData as $index => $data) {
             try {
                 // Check if customer exists by document
-                if (!empty($data['document_type']) && !empty($data['document_number']) && strtolower((string) $data['document_type']) !== 'ruc') {
+                if (! empty($data['document_type']) && ! empty($data['document_number']) && strtolower((string) $data['document_type']) !== 'ruc') {
                     $exists = $this->findByDocument($data['document_type'], $data['document_number']);
                     if ($exists) {
                         $skipped++;
+
                         continue;
                     }
                 }

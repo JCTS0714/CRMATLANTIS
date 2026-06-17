@@ -71,10 +71,6 @@ class Customer extends Model
 
     /**
      * Scope to search customers by multiple fields
-     *
-     * @param  Builder  $query
-     * @param  string  $search
-     * @return Builder
      */
     public function scopeSearch(Builder $query, string $search): Builder
     {
@@ -83,7 +79,7 @@ class Customer extends Model
             return $query;
         }
 
-        $like = '%' . $search . '%';
+        $like = '%'.$search.'%';
 
         return $query->where(function ($q) use ($like) {
             $q->where('name', 'like', $like)
@@ -100,11 +96,6 @@ class Customer extends Model
 
     /**
      * Scope to filter by document
-     *
-     * @param  Builder  $query
-     * @param  string  $documentType
-     * @param  string  $documentNumber
-     * @return Builder
      */
     public function scopeByDocument(Builder $query, string $documentType, string $documentNumber): Builder
     {
@@ -114,9 +105,6 @@ class Customer extends Model
 
     /**
      * Scope to eager load common relationships
-     *
-     * @param  Builder  $query
-     * @return Builder
      */
     public function scopeWithRelations(Builder $query): Builder
     {

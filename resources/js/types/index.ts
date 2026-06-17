@@ -106,7 +106,7 @@ export interface TableFilters {
   search?: string;
   per_page?: number;
   page?: number;
-  sort_by?: string;
+  sort_by?: string | null;
   sort_direction?: 'asc' | 'desc';
   [key: string]: any;
 }

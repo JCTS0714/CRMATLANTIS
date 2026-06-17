@@ -138,7 +138,7 @@ class LeadDataController extends Controller
             ], $limit);
 
             // Transform leads to DTOs
-            $leadDtos = $leads->map(fn($lead) => LeadResponseDto::fromModel($lead, includeRelations: false));
+            $leadDtos = $leads->map(fn ($lead) => LeadResponseDto::fromModel($lead, includeRelations: false));
 
             return StageResponseDto::fromModel(
                 $stage,

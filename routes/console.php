@@ -1,9 +1,7 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-use App\Models\Contador;
 use App\Models\Certificado;
+use App\Models\Contador;
 use App\Models\Customer;
 use App\Models\Incidence;
 use App\Models\IncidenceStage;
@@ -12,9 +10,11 @@ use App\Models\LostLead;
 use App\Models\User;
 use App\Models\WaitingLead;
 use App\Services\ProspectosCsvImporter;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Foundation\Inspiring;
 use Illuminate\Http\File;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Storage;
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
@@ -36,6 +36,7 @@ Artisan::command('crm:import:prospectos {file : Ruta al CSV exportado del sistem
         ]);
     } catch (\Throwable $e) {
         $this->error($e->getMessage() ?: 'No se pudo importar el CSV.');
+
         return 1;
     }
 
@@ -55,19 +56,22 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:contadores C:/ruta/archivo.csv');
+
         return 1;
     }
 
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -75,6 +79,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -85,6 +90,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = str_replace(['º', '°'], ['o', 'o'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
@@ -95,7 +101,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
             continue;
         }
         // keep the first occurrence
-        if (!array_key_exists($k, $indexByKey)) {
+        if (! array_key_exists($k, $indexByKey)) {
             $indexByKey[$k] = $i;
         }
     }
@@ -107,6 +113,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
                 return $indexByKey[$k];
             }
         }
+
         return null;
     };
 
@@ -134,6 +141,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
         if (in_array($upper, ['NO TIENE', 'SIN CONTRASENA', 'SIN CONTRASEÑA', 'N/A', 'NA'], true)) {
             return null;
         }
+
         return $s;
     };
 
@@ -150,6 +158,7 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
             if ($i === null) {
                 return null;
             }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
@@ -166,25 +175,27 @@ Artisan::command('import:contadores {file? : Ruta al CSV de contadores} {--dry-r
         ];
 
         // normalize usuario as lowercase when it looks like an email
-        if (!empty($data['usuario']) && str_contains($data['usuario'], '@')) {
+        if (! empty($data['usuario']) && str_contains($data['usuario'], '@')) {
             $data['usuario'] = mb_strtolower($data['usuario'], 'UTF-8');
         }
 
         // skip empty-ish rows
         $hasAny = false;
         foreach (['nro', 'comercio', 'nom_contador', 'usuario', 'servidor'] as $k) {
-            if (!empty($data[$k])) {
+            if (! empty($data[$k])) {
                 $hasAny = true;
                 break;
             }
         }
-        if (!$hasAny) {
+        if (! $hasAny) {
             $skipped++;
+
             continue;
         }
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($data, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
@@ -219,18 +230,21 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:certificados C:/ruta/archivo.csv');
+
         return 1;
     }
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -238,6 +252,7 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -247,21 +262,29 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
         $s = mb_strtolower($s, 'UTF-8');
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
     $headerKeys = array_map(fn ($h) => $normalizeKey((string) $h), $header);
     $indexByKey = [];
     foreach ($headerKeys as $i => $k) {
-        if ($k === '') continue;
-        if (!array_key_exists($k, $indexByKey)) $indexByKey[$k] = $i;
+        if ($k === '') {
+            continue;
+        }
+        if (! array_key_exists($k, $indexByKey)) {
+            $indexByKey[$k] = $i;
+        }
     }
 
     $findIndex = function (array $variants) use ($normalizeKey, $indexByKey): ?int {
         foreach ($variants as $v) {
             $k = $normalizeKey((string) $v);
-            if ($k !== '' && array_key_exists($k, $indexByKey)) return $indexByKey[$k];
+            if ($k !== '' && array_key_exists($k, $indexByKey)) {
+                return $indexByKey[$k];
+            }
         }
+
         return null;
     };
 
@@ -300,14 +323,19 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
     ];
 
     $clean = function ($v): ?string {
-        if ($v === null) return null;
+        if ($v === null) {
+            return null;
+        }
         $s = trim((string) $v);
+
         return $s === '' ? null : $s;
     };
 
     $parseDate = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return \Illuminate\Support\Carbon::parse($s)->toDateString();
         } catch (\Throwable $e) {
@@ -317,7 +345,9 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return \Illuminate\Support\Carbon::parse($s)->toDateTimeString();
         } catch (\Throwable $e) {
@@ -336,7 +366,10 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
         $rowNumber++;
 
         $get = function (?int $i) use ($row) {
-            if ($i === null) return null;
+            if ($i === null) {
+                return null;
+            }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
@@ -344,8 +377,9 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
         $ruc = $clean($get($idx['ruc']));
         $tipo = $clean($get($idx['tipo']));
 
-        if (!$nombre) {
+        if (! $nombre) {
             $skipped++;
+
             continue;
         }
 
@@ -382,6 +416,7 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($payload, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
@@ -394,14 +429,18 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
             ];
 
             $cert = Certificado::query()->firstOrNew($match);
-            $isNew = !$cert->exists;
+            $isNew = ! $cert->exists;
             $cert->fill($payload);
 
             // set timestamps if provided
             if ($createdAt || $updatedAt) {
                 $cert->timestamps = false;
-                if ($createdAt) $cert->setAttribute('created_at', $createdAt);
-                if ($updatedAt) $cert->setAttribute('updated_at', $updatedAt);
+                if ($createdAt) {
+                    $cert->setAttribute('created_at', $createdAt);
+                }
+                if ($updatedAt) {
+                    $cert->setAttribute('updated_at', $updatedAt);
+                }
             }
 
             $cert->save();
@@ -421,7 +460,9 @@ Artisan::command('import:certificados {file? : Ruta al CSV de certificados} {--d
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa certificados desde CSV (sin imágenes)');
@@ -431,31 +472,36 @@ Artisan::command('import:certificados:imagenes {file? : Ruta al ZIP con imágene
     $zipPath = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$zipPath) {
+    if (! $zipPath) {
         $this->error('Debes indicar la ruta del ZIP: php artisan import:certificados:imagenes C:/ruta/imagenes.zip');
+
         return 1;
     }
-    if (!file_exists($zipPath)) {
+    if (! file_exists($zipPath)) {
         $this->error('Archivo no encontrado: '.$zipPath);
+
         return 1;
     }
 
-    if (!class_exists(\ZipArchive::class)) {
+    if (! class_exists(\ZipArchive::class)) {
         $this->error('ZipArchive no está disponible en esta instalación de PHP.');
+
         return 1;
     }
 
-    $zip = new \ZipArchive();
+    $zip = new \ZipArchive;
     $open = $zip->open($zipPath);
     if ($open !== true) {
         $this->error('No se pudo abrir el ZIP.');
+
         return 1;
     }
 
     $tmpDir = storage_path('app/imports/tmp_certificados_'.uniqid());
-    if (!is_dir($tmpDir) && !mkdir($tmpDir, 0775, true) && !is_dir($tmpDir)) {
+    if (! is_dir($tmpDir) && ! mkdir($tmpDir, 0775, true) && ! is_dir($tmpDir)) {
         $zip->close();
         $this->error('No se pudo crear directorio temporal.');
+
         return 1;
     }
 
@@ -470,28 +516,35 @@ Artisan::command('import:certificados:imagenes {file? : Ruta al ZIP con imágene
 
     $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($tmpDir));
     foreach ($it as $fileInfo) {
-        if (!$fileInfo->isFile()) continue;
+        if (! $fileInfo->isFile()) {
+            continue;
+        }
         $ext = mb_strtolower($fileInfo->getExtension(), 'UTF-8');
-        if (!in_array($ext, $allowed, true)) continue;
+        if (! in_array($ext, $allowed, true)) {
+            continue;
+        }
 
         $full = $fileInfo->getPathname();
         $base = $fileInfo->getBasename('.'.$fileInfo->getExtension());
 
         // Match RUC (11 digits) anywhere in filename
-        if (!preg_match('/(\d{11})/', $base, $m)) {
+        if (! preg_match('/(\d{11})/', $base, $m)) {
             $skipped++;
+
             continue;
         }
         $ruc = $m[1];
 
         $cert = Certificado::query()->where('ruc', $ruc)->orderByDesc('id')->first();
-        if (!$cert) {
+        if (! $cert) {
             $skipped++;
+
             continue;
         }
 
-        if (!empty($cert->imagen)) {
+        if (! empty($cert->imagen)) {
             $skipped++;
+
             continue;
         }
 
@@ -500,6 +553,7 @@ Artisan::command('import:certificados:imagenes {file? : Ruta al ZIP con imágene
 
         if ($dryRun) {
             $this->line('[DRY] '.$ruc.' -> '.$targetPath);
+
             continue;
         }
 
@@ -534,7 +588,9 @@ Artisan::command('import:certificados:imagenes {file? : Ruta al ZIP con imágene
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa imágenes de certificados desde ZIP (match por RUC en filename)');
@@ -544,12 +600,14 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:customers C:/ruta/clientes.csv');
+
         return 1;
     }
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
@@ -566,6 +624,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -573,6 +632,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -583,21 +643,30 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = str_replace(['º', '°'], ['o', 'o'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
     $headerKeys = array_map(fn ($h) => $normalizeKey((string) $h), $header);
+    $firstUnnamedIndex = ($headerKeys[0] ?? null) === '' ? 0 : null;
     $indexByKey = [];
     foreach ($headerKeys as $i => $k) {
-        if ($k === '') continue;
-        if (!array_key_exists($k, $indexByKey)) $indexByKey[$k] = $i;
+        if ($k === '') {
+            continue;
+        }
+        if (! array_key_exists($k, $indexByKey)) {
+            $indexByKey[$k] = $i;
+        }
     }
 
     $findIndex = function (array $variants) use ($normalizeKey, $indexByKey): ?int {
         foreach ($variants as $v) {
             $k = $normalizeKey((string) $v);
-            if ($k !== '' && array_key_exists($k, $indexByKey)) return $indexByKey[$k];
+            if ($k !== '' && array_key_exists($k, $indexByKey)) {
+                return $indexByKey[$k];
+            }
         }
+
         return null;
     };
 
@@ -618,8 +687,8 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     ];
 
     $idx = [
-        'id' => $findIndex(['id']),
-        'numero' => $findIndex(['n°', 'nº', 'nro', 'nro.', '#']),
+        'id' => $findIndex(['id']) ?? $firstUnnamedIndex,
+        'numero' => $findIndex(['n°', 'nº', 'nro', 'nro.', '#', 'numero']) ?? $firstUnnamedIndex,
         'tipo' => $findIndex(['tipo', 'tipo documento', 'document_type']),
         'comercio' => $findIndex(['comercio', 'comercio(s)', 'comercios']),
         'contacto' => $findIndex(['contacto', 'nombre contacto', 'contacto cliente']),
@@ -638,10 +707,10 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         'usuario' => $findIndex(['usuario', 'Usuario', 'user', 'login', 'post_usuario']),
         'contrasena' => $findIndex(['contrasena', 'contraseña', 'password', 'clave', 'post_contrasena']),
         'servidor' => $findIndex(['servidor', 'Servidor', 'server']),
-        'ciudad' => $findIndex(['ciudad', 'Ciudad']),
+        'ciudad' => $findIndex(['ciudad', 'Ciudad', 'cuidad']),
         'referencia' => $findIndex(['referencia', 'Referencia']),
         'fecha_contacto' => $findIndex(['fecha_contacto', 'fecha contacto', 'f. contacto', 'f contacto', 'fcontacto']),
-        'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'f. creacion', 'f creacion', 'created_at', 'creado_en', 'fechacreacion']),
+        'fecha_creacion' => $findIndex(['fecha_creacion', 'fecha creacion', 'f. creacion', 'f creacion', 'created_at', 'creado_en', 'fechacreacion', 'fecha de emicion', 'fecha de emision']),
         'pago_estado' => $findIndex(['pago_estado', 'estado_pago', 'estado de pago', 'estado pago']),
         'mes_pagado' => $findIndex(['mes_pagado', 'mes pagado', 'ultimo mes pagado', 'mes cancelado']),
         'mes_por_pagar' => $findIndex(['mes_por_pagar', 'mes por pagar', 'proximo mes', 'mes pendiente']),
@@ -656,18 +725,28 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     }
 
     $clean = function ($v): ?string {
-        if ($v === null) return null;
+        if ($v === null) {
+            return null;
+        }
         $s = trim((string) $v);
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         $upper = mb_strtoupper($s, 'UTF-8');
-        if (in_array($upper, ['NO TIENE', 'N/A', 'NA', 'NULL'], true)) return null;
+        if (in_array($upper, ['NO TIENE', 'N/A', 'NA', 'NULL'], true)) {
+            return null;
+        }
+
         return $s;
     };
 
     $digitsOnly = function ($value): ?string {
         $v = preg_replace('/\D+/', '', (string) $value);
         $v = is_string($v) ? trim($v) : '';
-        if ($v === '') return null;
+        if ($v === '') {
+            return null;
+        }
+
         return $v;
     };
 
@@ -681,7 +760,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
             return null;
         }
 
-        $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+        $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', '_', '-'], ['a', 'e', 'i', 'o', 'u', 'n', ' ', ' '], $normalized);
 
         if (str_contains($normalized, 'atlantisfast') || str_contains($normalized, 'atlantis fast')) {
             return 'ATLANTIS FAST';
@@ -710,13 +789,21 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
 
     $resolveDocumentType = function (?string $tipoRaw, ?string $documentNumber): ?string {
         $tipo = mb_strtolower(trim((string) $tipoRaw), 'UTF-8');
-        if ($tipo === 'dni') return 'dni';
-        if ($tipo === 'ruc') return 'ruc';
+        if ($tipo === 'dni') {
+            return 'dni';
+        }
+        if ($tipo === 'ruc') {
+            return 'ruc';
+        }
 
         if ($documentNumber) {
             $len = strlen($documentNumber);
-            if ($len === 8) return 'dni';
-            if ($len === 11) return 'ruc';
+            if ($len === 8) {
+                return 'dni';
+            }
+            if ($len === 11) {
+                return 'ruc';
+            }
         }
 
         return null;
@@ -724,7 +811,9 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
 
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $s, $m) === 1) {
             try {
@@ -751,7 +840,9 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
 
     $parseDate = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
 
         if (preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $s, $m) === 1) {
             try {
@@ -783,136 +874,140 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     $invalid = 0;
     $logPath = storage_path('logs/import_customers.log');
 
-        $normalizePaymentState = function (?string $value): ?string {
-            if ($value === null) {
-                return null;
-            }
-
-            $normalized = mb_strtolower(trim($value), 'UTF-8');
-            if ($normalized === '') {
-                return null;
-            }
-
-            $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
-            $normalized = preg_replace('/\s+/', '_', $normalized) ?? $normalized;
-
-            if (in_array($normalized, ['pendiente', 'factura_pendiente', 'por_pagar'], true)) {
-                return 'pendiente';
-            }
-
-            if (in_array($normalized, ['factura_enviada', 'enviado', 'enviada'], true)) {
-                return 'factura_enviada';
-            }
-
-            if (in_array($normalized, ['pagado', 'pago', 'cancelado'], true)) {
-                return 'pagado';
-            }
-
-            if (in_array($normalized, ['inactivo', 'desactivado'], true)) {
-                return 'inactivo';
-            }
-
+    $normalizePaymentState = function (?string $value): ?string {
+        if ($value === null) {
             return null;
-        };
+        }
 
-        $parseMonthNumber = function (?string $value) use ($monthMap): ?int {
-            if ($value === null) {
-                return null;
+        $normalized = mb_strtolower(trim($value), 'UTF-8');
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+        $normalized = preg_replace('/\s+/', '_', $normalized) ?? $normalized;
+
+        if (in_array($normalized, ['pendiente', 'factura_pendiente', 'por_pagar'], true)) {
+            return 'pendiente';
+        }
+
+        if (in_array($normalized, ['factura_enviada', 'enviado', 'enviada'], true)) {
+            return 'factura_enviada';
+        }
+
+        if (in_array($normalized, ['pagado', 'pago', 'cancelado'], true)) {
+            return 'pagado';
+        }
+
+        if (in_array($normalized, ['inactivo', 'desactivado'], true)) {
+            return 'inactivo';
+        }
+
+        return null;
+    };
+
+    $parseMonthNumber = function (?string $value) use ($monthMap): ?int {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(trim($value), 'UTF-8');
+        if ($normalized === '') {
+            return null;
+        }
+
+        $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
+        if (isset($monthMap[$normalized])) {
+            return $monthMap[$normalized];
+        }
+
+        $monthNumber = (int) preg_replace('/\D+/', '', $normalized);
+
+        return ($monthNumber >= 1 && $monthNumber <= 12) ? $monthNumber : null;
+    };
+
+    $previousMonth = function (int $month): int {
+        return $month === 1 ? 12 : ($month - 1);
+    };
+
+    $nextMonth = function (int $month): int {
+        return $month === 12 ? 1 : ($month + 1);
+    };
+
+    $derivePaymentFromMonthlyColumns = function (array $row) use ($monthColumnIndexes, $clean, $normalizePaymentState, $previousMonth, $nextMonth): array {
+        $latestMonth = null;
+        $latestValue = null;
+
+        foreach ($monthColumnIndexes as $monthNumber => $columnIndex) {
+            $rawValue = array_key_exists($columnIndex, $row) ? $row[$columnIndex] : null;
+            $cellValue = $clean($rawValue);
+            if ($cellValue === null) {
+                continue;
             }
 
-            $normalized = mb_strtolower(trim($value), 'UTF-8');
-            if ($normalized === '') {
-                return null;
+            if ($latestMonth === null || $monthNumber > $latestMonth) {
+                $latestMonth = $monthNumber;
+                $latestValue = $cellValue;
             }
+        }
 
-            $normalized = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ'], ['a', 'e', 'i', 'o', 'u', 'n'], $normalized);
-            if (isset($monthMap[$normalized])) {
-                return $monthMap[$normalized];
-            }
-
-            $monthNumber = (int) preg_replace('/\D+/', '', $normalized);
-            return ($monthNumber >= 1 && $monthNumber <= 12) ? $monthNumber : null;
-        };
-
-        $previousMonth = function (int $month): int {
-            return $month === 1 ? 12 : ($month - 1);
-        };
-
-        $nextMonth = function (int $month): int {
-            return $month === 12 ? 1 : ($month + 1);
-        };
-
-        $derivePaymentFromMonthlyColumns = function (array $row) use ($monthColumnIndexes, $clean, $normalizePaymentState, $previousMonth, $nextMonth): array {
-            $latestMonth = null;
-            $latestValue = null;
-
-            foreach ($monthColumnIndexes as $monthNumber => $columnIndex) {
-                $rawValue = array_key_exists($columnIndex, $row) ? $row[$columnIndex] : null;
-                $cellValue = $clean($rawValue);
-                if ($cellValue === null) {
-                    continue;
-                }
-
-                if ($latestMonth === null || $monthNumber > $latestMonth) {
-                    $latestMonth = $monthNumber;
-                    $latestValue = $cellValue;
-                }
-            }
-
-            if ($latestMonth === null || $latestValue === null) {
-                return [
-                    'pago_estado' => null,
-                    'mes_pagado' => null,
-                    'mes_por_pagar' => null,
-                ];
-            }
-
-            $statusFromText = $normalizePaymentState($latestValue);
-            if ($statusFromText === 'inactivo') {
-                return [
-                    'pago_estado' => 'inactivo',
-                    'mes_pagado' => null,
-                    'mes_por_pagar' => null,
-                ];
-            }
-
-            if ($statusFromText === 'factura_enviada') {
-                return [
-                    'pago_estado' => 'factura_enviada',
-                    'mes_pagado' => $previousMonth($latestMonth),
-                    'mes_por_pagar' => $latestMonth,
-                ];
-            }
-
-            if ($statusFromText === 'pendiente') {
-                return [
-                    'pago_estado' => 'pendiente',
-                    'mes_pagado' => $previousMonth($latestMonth),
-                    'mes_por_pagar' => $latestMonth,
-                ];
-            }
-
-            $numericValue = str_replace(',', '.', preg_replace('/[^\d,\.\-]/', '', $latestValue) ?? $latestValue);
-            if (is_numeric($numericValue) && (float) $numericValue > 0) {
-                return [
-                    'pago_estado' => 'pagado',
-                    'mes_pagado' => $latestMonth,
-                    'mes_por_pagar' => $nextMonth($latestMonth),
-                ];
-            }
-
+        if ($latestMonth === null || $latestValue === null) {
             return [
                 'pago_estado' => null,
                 'mes_pagado' => null,
                 'mes_por_pagar' => null,
             ];
-        };
+        }
+
+        $statusFromText = $normalizePaymentState($latestValue);
+        if ($statusFromText === 'inactivo') {
+            return [
+                'pago_estado' => 'inactivo',
+                'mes_pagado' => null,
+                'mes_por_pagar' => null,
+            ];
+        }
+
+        if ($statusFromText === 'factura_enviada') {
+            return [
+                'pago_estado' => 'factura_enviada',
+                'mes_pagado' => $previousMonth($latestMonth),
+                'mes_por_pagar' => $latestMonth,
+            ];
+        }
+
+        if ($statusFromText === 'pendiente') {
+            return [
+                'pago_estado' => 'pendiente',
+                'mes_pagado' => $previousMonth($latestMonth),
+                'mes_por_pagar' => $latestMonth,
+            ];
+        }
+
+        $numericValue = str_replace(',', '.', preg_replace('/[^\d,\.\-]/', '', $latestValue) ?? $latestValue);
+        if (is_numeric($numericValue) && (float) $numericValue > 0) {
+            return [
+                'pago_estado' => 'pagado',
+                'mes_pagado' => $latestMonth,
+                'mes_por_pagar' => $nextMonth($latestMonth),
+            ];
+        }
+
+        return [
+            'pago_estado' => null,
+            'mes_pagado' => null,
+            'mes_por_pagar' => null,
+        ];
+    };
 
     while (($row = fgetcsv($handle, 0, $delimiter)) !== false) {
         $rowNumber++;
 
         $get = function (?int $i) use ($row) {
-            if ($i === null) return null;
+            if ($i === null) {
+                return null;
+            }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
@@ -959,8 +1054,9 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
             }
         }
 
-        if (!$nombre && !$empresa && !$telefono && !$correo && !$documento) {
+        if (! $nombre && ! $empresa && ! $telefono && ! $correo && ! $documento) {
             $skipped++;
+
             continue;
         }
 
@@ -996,7 +1092,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
         if ($mesTexto) {
             $mesNormalizado = mb_strtolower(trim((string) $mesTexto), 'UTF-8');
             $mesPost = $monthMap[$mesNormalizado] ?? null;
-            if (!$mesPost) {
+            if (! $mesPost) {
                 $mesNumero = (int) preg_replace('/\D+/', '', $mesNormalizado);
                 if ($mesNumero >= 1 && $mesNumero <= 12) {
                     $mesPost = $mesNumero;
@@ -1012,7 +1108,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
                 $fechaContactoAnio = $anioNumero;
             }
         }
-        if (!$fechaContactoAnio && $fechaCreacion) {
+        if (! $fechaContactoAnio && $fechaCreacion) {
             try {
                 $fechaContactoAnio = (int) Carbon::parse($fechaCreacion)->format('Y');
             } catch (\Throwable $e) {
@@ -1050,6 +1146,7 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($payload, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
@@ -1074,11 +1171,11 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
                         'usuario' => $usuario,
                     ]);
                 } else {
-                    $customer = new Customer();
+                    $customer = new Customer;
                 }
             }
 
-            $isNew = !$customer->exists;
+            $isNew = ! $customer->exists;
             $customer->fill($payload);
 
             $customer->timestamps = false;
@@ -1102,7 +1199,9 @@ Artisan::command('import:customers {file? : Ruta al CSV de clientes} {--dry-run 
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa clientes desde CSV legado');
@@ -1112,12 +1211,14 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:incidencias C:/ruta/incidencias.csv');
+
         return 1;
     }
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
@@ -1134,6 +1235,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -1141,6 +1243,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -1151,21 +1254,29 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = str_replace(['º', '°'], ['o', 'o'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
     $headerKeys = array_map(fn ($h) => $normalizeKey((string) $h), $header);
     $indexByKey = [];
     foreach ($headerKeys as $i => $k) {
-        if ($k === '') continue;
-        if (!array_key_exists($k, $indexByKey)) $indexByKey[$k] = $i;
+        if ($k === '') {
+            continue;
+        }
+        if (! array_key_exists($k, $indexByKey)) {
+            $indexByKey[$k] = $i;
+        }
     }
 
     $findIndex = function (array $variants) use ($normalizeKey, $indexByKey): ?int {
         foreach ($variants as $v) {
             $k = $normalizeKey((string) $v);
-            if ($k !== '' && array_key_exists($k, $indexByKey)) return $indexByKey[$k];
+            if ($k !== '' && array_key_exists($k, $indexByKey)) {
+                return $indexByKey[$k];
+            }
         }
+
         return null;
     };
 
@@ -1179,7 +1290,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
             'titulo',
             'título',
             'title',
-            'nombre'
+            'nombre',
         ]),
         'cliente_id' => $findIndex(['cliente_id', 'clienteid', 'customer_id', 'customerid', 'nombre del cliente', 'nombredelcliente', 'cliente']),
         'usuario_id' => $findIndex(['usuario_id', 'usuarioid', 'created_by', 'creado_por']),
@@ -1191,17 +1302,26 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
     ];
 
     $clean = function ($v): ?string {
-        if ($v === null) return null;
+        if ($v === null) {
+            return null;
+        }
         $s = trim((string) $v);
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         $upper = mb_strtoupper($s, 'UTF-8');
-        if (in_array($upper, ['NO TIENE', 'N/A', 'NA', 'NULL'], true)) return null;
+        if (in_array($upper, ['NO TIENE', 'N/A', 'NA', 'NULL'], true)) {
+            return null;
+        }
+
         return $s;
     };
 
     $parseDate = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return Carbon::parse($s)->toDateString();
         } catch (\Throwable $e) {
@@ -1211,7 +1331,9 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return Carbon::parse($s)->toDateTimeString();
         } catch (\Throwable $e) {
@@ -1225,6 +1347,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = preg_replace('/[^a-z0-9]+/', '_', $s) ?? $s;
         $s = trim($s, '_');
+
         return $s;
     };
 
@@ -1248,14 +1371,20 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         ];
 
         $mappedKey = $syn[$key] ?? null;
-        if ($mappedKey && isset($stageIdByKey[$mappedKey])) return (int) $stageIdByKey[$mappedKey];
-        if ($key !== '' && isset($stageIdByKey[$key])) return (int) $stageIdByKey[$key];
+        if ($mappedKey && isset($stageIdByKey[$mappedKey])) {
+            return (int) $stageIdByKey[$mappedKey];
+        }
+        if ($key !== '' && isset($stageIdByKey[$key])) {
+            return (int) $stageIdByKey[$key];
+        }
+
         return $fallbackStageId ?: (int) ($stageIdByKey['nuevo'] ?? array_values($stageIdByKey)[0] ?? 0);
     };
 
-    if (!$fallbackStageId && count($stageIdByKey) === 0) {
+    if (! $fallbackStageId && count($stageIdByKey) === 0) {
         fclose($handle);
         $this->error('No hay etapas de incidencias en la BD. Ejecuta seeders primero.');
+
         return 1;
     }
 
@@ -1270,13 +1399,17 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         $rowNumber++;
 
         $get = function (?int $i) use ($row) {
-            if ($i === null) return null;
+            if ($i === null) {
+                return null;
+            }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
         $title = $clean($get($idx['nombre']));
-        if (!$title) {
+        if (! $title) {
             $skipped++;
+
             continue;
         }
 
@@ -1285,8 +1418,12 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         $createdBy = $clean($get($idx['usuario_id']));
         $priorityRaw = mb_strtolower((string) ($clean($get($idx['prioridad'])) ?? ''), 'UTF-8');
         $priority = 'media';
-        if (in_array($priorityRaw, ['alta', 'high', 'urgente'], true)) $priority = 'alta';
-        if (in_array($priorityRaw, ['baja', 'low'], true)) $priority = 'baja';
+        if (in_array($priorityRaw, ['alta', 'high', 'urgente'], true)) {
+            $priority = 'alta';
+        }
+        if (in_array($priorityRaw, ['baja', 'low'], true)) {
+            $priority = 'baja';
+        }
 
         $payload = [
             'correlative' => $correlative,
@@ -1302,7 +1439,9 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
 
         if (is_numeric($customerId)) {
             $cid = (int) $customerId;
-            if (Customer::query()->whereKey($cid)->exists()) $payload['customer_id'] = $cid;
+            if (Customer::query()->whereKey($cid)->exists()) {
+                $payload['customer_id'] = $cid;
+            }
         } elseif (is_string($customerId) && trim($customerId) !== '') {
             $customerName = trim($customerId);
             $customer = Customer::query()
@@ -1310,7 +1449,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
                 ->orWhere('company_name', $customerName)
                 ->first();
 
-            if (!$customer) {
+            if (! $customer) {
                 $customer = Customer::query()
                     ->where('name', 'like', '%'.$customerName.'%')
                     ->orWhere('company_name', 'like', '%'.$customerName.'%')
@@ -1323,7 +1462,9 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
         }
         if (is_numeric($createdBy)) {
             $uid = (int) $createdBy;
-            if (User::query()->whereKey($uid)->exists()) $payload['created_by'] = $uid;
+            if (User::query()->whereKey($uid)->exists()) {
+                $payload['created_by'] = $uid;
+            }
         }
 
         $createdAt = $parseDateTime($clean($get($idx['fecha_creacion']))) ?? now()->toDateTimeString();
@@ -1331,6 +1472,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($payload, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
@@ -1339,10 +1481,10 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
             if ($correlative) {
                 $incidence = Incidence::query()->firstOrNew(['correlative' => $correlative]);
             } else {
-                $incidence = new Incidence();
+                $incidence = new Incidence;
             }
 
-            $isNew = !$incidence->exists;
+            $isNew = ! $incidence->exists;
             $incidence->fill($payload);
 
             $incidence->timestamps = false;
@@ -1350,7 +1492,7 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
             $incidence->setAttribute('updated_at', $updatedAt);
             $incidence->save();
 
-            if (!$correlative) {
+            if (! $correlative) {
                 $incidence->correlative = 'INC-'.str_pad((string) $incidence->id, 6, '0', STR_PAD_LEFT);
                 $incidence->save();
             }
@@ -1371,7 +1513,9 @@ Artisan::command('import:incidencias {file? : Ruta al CSV de incidencias} {--dry
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa incidencias desde CSV legado');
@@ -1381,12 +1525,14 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:waiting-leads C:/ruta/espera.csv');
+
         return 1;
     }
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
@@ -1403,6 +1549,7 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -1410,6 +1557,7 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -1419,21 +1567,29 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
         $s = mb_strtolower($s, 'UTF-8');
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
     $headerKeys = array_map(fn ($h) => $normalizeKey((string) $h), $header);
     $indexByKey = [];
     foreach ($headerKeys as $i => $k) {
-        if ($k === '') continue;
-        if (!array_key_exists($k, $indexByKey)) $indexByKey[$k] = $i;
+        if ($k === '') {
+            continue;
+        }
+        if (! array_key_exists($k, $indexByKey)) {
+            $indexByKey[$k] = $i;
+        }
     }
 
     $findIndex = function (array $variants) use ($normalizeKey, $indexByKey): ?int {
         foreach ($variants as $v) {
             $k = $normalizeKey((string) $v);
-            if ($k !== '' && array_key_exists($k, $indexByKey)) return $indexByKey[$k];
+            if ($k !== '' && array_key_exists($k, $indexByKey)) {
+                return $indexByKey[$k];
+            }
         }
+
         return null;
     };
 
@@ -1449,28 +1605,41 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
     ];
 
     $clean = function ($v): ?string {
-        if ($v === null) return null;
+        if ($v === null) {
+            return null;
+        }
         $s = trim((string) $v);
+
         return $s === '' ? null : $s;
     };
 
     $digitsOnly = function ($value): ?string {
         $v = preg_replace('/\D+/', '', (string) $value);
         $v = is_string($v) ? trim($v) : '';
+
         return $v === '' ? null : $v;
     };
 
     $inferDocumentType = function (?string $documentNumber): ?string {
-        if (!$documentNumber) return null;
+        if (! $documentNumber) {
+            return null;
+        }
         $len = strlen($documentNumber);
-        if ($len === 8) return 'dni';
-        if ($len === 11) return 'ruc';
+        if ($len === 8) {
+            return 'dni';
+        }
+        if ($len === 11) {
+            return 'ruc';
+        }
+
         return null;
     };
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return Carbon::parse($s)->toDateTimeString();
         } catch (\Throwable $e) {
@@ -1488,7 +1657,10 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
         $rowNumber++;
 
         $get = function (?int $i) use ($row) {
-            if ($i === null) return null;
+            if ($i === null) {
+                return null;
+            }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
@@ -1499,12 +1671,13 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
         $documento = $digitsOnly($get($idx['documento']));
         $docType = $inferDocumentType($documento);
 
-        if (!$nombre && !$empresa && !$telefono && !$correo && !$documento) {
+        if (! $nombre && ! $empresa && ! $telefono && ! $correo && ! $documento) {
             $skipped++;
+
             continue;
         }
 
-        if ($documento && !$docType) {
+        if ($documento && ! $docType) {
             $documento = null;
         }
 
@@ -1519,6 +1692,7 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
 
         if ($leadId && WaitingLead::query()->where('lead_id', $leadId)->exists()) {
             $skipped++;
+
             continue;
         }
 
@@ -1539,7 +1713,9 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
         $createdBy = $clean($get($idx['created_by']));
         if (is_numeric($createdBy)) {
             $uid = (int) $createdBy;
-            if (User::query()->whereKey($uid)->exists()) $payload['created_by'] = $uid;
+            if (User::query()->whereKey($uid)->exists()) {
+                $payload['created_by'] = $uid;
+            }
         }
 
         $createdAt = $parseDateTime($clean($get($idx['created_at']))) ?? now()->toDateTimeString();
@@ -1547,11 +1723,12 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($payload, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
         try {
-            $waiting = new WaitingLead();
+            $waiting = new WaitingLead;
             $waiting->fill($payload);
             $waiting->timestamps = false;
             $waiting->setAttribute('created_at', $createdAt);
@@ -1572,7 +1749,9 @@ Artisan::command('import:waiting-leads {file? : Ruta al CSV de leads en espera} 
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa leads en espera desde CSV legado');
@@ -1582,12 +1761,14 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
     $file = is_string($fileArg) && trim($fileArg) !== '' ? trim($fileArg) : null;
     $dryRun = (bool) $this->option('dry-run');
 
-    if (!$file) {
+    if (! $file) {
         $this->error('Debes indicar la ruta del CSV: php artisan import:lost-leads C:/ruta/desistidos.csv');
+
         return 1;
     }
-    if (!file_exists($file)) {
+    if (! file_exists($file)) {
         $this->error('Archivo no encontrado: '.$file);
+
         return 1;
     }
 
@@ -1604,6 +1785,7 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
     $handle = fopen($file, 'r');
     if ($handle === false) {
         $this->error('No se pudo abrir el archivo.');
+
         return 1;
     }
 
@@ -1611,6 +1793,7 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
     if ($header === false) {
         fclose($handle);
         $this->error('CSV vacío o inválido.');
+
         return 1;
     }
 
@@ -1620,21 +1803,29 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
         $s = mb_strtolower($s, 'UTF-8');
         $s = str_replace(['á', 'é', 'í', 'ó', 'ú', 'ñ', 'ü'], ['a', 'e', 'i', 'o', 'u', 'n', 'u'], $s);
         $s = preg_replace('/[^\p{L}\p{N}]+/u', '', $s) ?? $s;
+
         return $s;
     };
 
     $headerKeys = array_map(fn ($h) => $normalizeKey((string) $h), $header);
     $indexByKey = [];
     foreach ($headerKeys as $i => $k) {
-        if ($k === '') continue;
-        if (!array_key_exists($k, $indexByKey)) $indexByKey[$k] = $i;
+        if ($k === '') {
+            continue;
+        }
+        if (! array_key_exists($k, $indexByKey)) {
+            $indexByKey[$k] = $i;
+        }
     }
 
     $findIndex = function (array $variants) use ($normalizeKey, $indexByKey): ?int {
         foreach ($variants as $v) {
             $k = $normalizeKey((string) $v);
-            if ($k !== '' && array_key_exists($k, $indexByKey)) return $indexByKey[$k];
+            if ($k !== '' && array_key_exists($k, $indexByKey)) {
+                return $indexByKey[$k];
+            }
         }
+
         return null;
     };
 
@@ -1650,28 +1841,41 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
     ];
 
     $clean = function ($v): ?string {
-        if ($v === null) return null;
+        if ($v === null) {
+            return null;
+        }
         $s = trim((string) $v);
+
         return $s === '' ? null : $s;
     };
 
     $digitsOnly = function ($value): ?string {
         $v = preg_replace('/\D+/', '', (string) $value);
         $v = is_string($v) ? trim($v) : '';
+
         return $v === '' ? null : $v;
     };
 
     $inferDocumentType = function (?string $documentNumber): ?string {
-        if (!$documentNumber) return null;
+        if (! $documentNumber) {
+            return null;
+        }
         $len = strlen($documentNumber);
-        if ($len === 8) return 'dni';
-        if ($len === 11) return 'ruc';
+        if ($len === 8) {
+            return 'dni';
+        }
+        if ($len === 11) {
+            return 'ruc';
+        }
+
         return null;
     };
 
     $parseDateTime = function (?string $s): ?string {
         $s = $s ? trim($s) : '';
-        if ($s === '') return null;
+        if ($s === '') {
+            return null;
+        }
         try {
             return Carbon::parse($s)->toDateTimeString();
         } catch (\Throwable $e) {
@@ -1689,7 +1893,10 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
         $rowNumber++;
 
         $get = function (?int $i) use ($row) {
-            if ($i === null) return null;
+            if ($i === null) {
+                return null;
+            }
+
             return array_key_exists($i, $row) ? $row[$i] : null;
         };
 
@@ -1700,12 +1907,13 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
         $documento = $digitsOnly($get($idx['documento']));
         $docType = $inferDocumentType($documento);
 
-        if (!$nombre && !$empresa && !$telefono && !$correo && !$documento) {
+        if (! $nombre && ! $empresa && ! $telefono && ! $correo && ! $documento) {
             $skipped++;
+
             continue;
         }
 
-        if ($documento && !$docType) {
+        if ($documento && ! $docType) {
             $documento = null;
         }
 
@@ -1720,6 +1928,7 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
 
         if ($leadId && LostLead::query()->where('lead_id', $leadId)->exists()) {
             $skipped++;
+
             continue;
         }
 
@@ -1740,7 +1949,9 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
         $createdBy = $clean($get($idx['created_by']));
         if (is_numeric($createdBy)) {
             $uid = (int) $createdBy;
-            if (User::query()->whereKey($uid)->exists()) $payload['created_by'] = $uid;
+            if (User::query()->whereKey($uid)->exists()) {
+                $payload['created_by'] = $uid;
+            }
         }
 
         $createdAt = $parseDateTime($clean($get($idx['created_at']))) ?? now()->toDateTimeString();
@@ -1748,11 +1959,12 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
 
         if ($dryRun) {
             $this->line('[DRY] Row '.$rowNumber.' -> '.json_encode($payload, JSON_UNESCAPED_UNICODE));
+
             continue;
         }
 
         try {
-            $lost = new LostLead();
+            $lost = new LostLead;
             $lost->fill($payload);
             $lost->timestamps = false;
             $lost->setAttribute('created_at', $createdAt);
@@ -1773,7 +1985,9 @@ Artisan::command('import:lost-leads {file? : Ruta al CSV de leads desistidos} {-
     $this->line('Saltados: '.$skipped);
     $this->line('Inválidos: '.$invalid);
     $this->line('Modo: '.($dryRun ? 'dry-run' : 'write'));
-    if ($invalid > 0) $this->line('Log: '.$logPath);
+    if ($invalid > 0) {
+        $this->line('Log: '.$logPath);
+    }
 
     return 0;
 })->purpose('Importa leads desistidos desde CSV legado');

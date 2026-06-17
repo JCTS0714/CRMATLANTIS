@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers\Incidence;
 
-use App\Models\Customer;
+use App\Http\Controllers\Controller;
 use App\Models\Incidence;
 use App\Models\IncidenceStage;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use App\Http\Controllers\Controller;
 
 class IncidenceController extends Controller
 {
@@ -153,15 +152,15 @@ class IncidenceController extends Controller
             ->whereNull('archived_at');
 
         // Apply date filters
-        if (!empty($validated['date_from'])) {
+        if (! empty($validated['date_from'])) {
             $query->whereDate('date', '>=', $validated['date_from']);
         }
-        if (!empty($validated['date_to'])) {
+        if (! empty($validated['date_to'])) {
             $query->whereDate('date', '<=', $validated['date_to']);
         }
 
         // Apply priority filter
-        if (!empty($validated['priority'])) {
+        if (! empty($validated['priority'])) {
             $query->where('priority', $validated['priority']);
         }
 
@@ -250,41 +249,41 @@ class IncidenceController extends Controller
         $validated = $validator->validate();
 
         $stageId = $validated['stage_id'] ?? null;
-        if (!$stageId) {
-                $stageId = IncidenceStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
+        if (! $stageId) {
+            $stageId = IncidenceStage::query()->orderBy('sort_order')->orderBy('id')->value('id');
         }
 
-            if (!$stageId) {
-                return response()->json([
-                    'message' => 'No hay etapas de incidencias configuradas. Ejecuta las migraciones/seeders (IncidenceStagesSeeder) y vuelve a intentar.',
-                ], 422);
-            }
+        if (! $stageId) {
+            return response()->json([
+                'message' => 'No hay etapas de incidencias configuradas. Ejecuta las migraciones/seeders (IncidenceStagesSeeder) y vuelve a intentar.',
+            ], 422);
+        }
 
-            try {
-                $incidence = DB::transaction(function () use ($request, $validated, $stageId) {
-                    $created = Incidence::create([
-                        'correlative' => null,
-                        'stage_id' => (int) $stageId,
-                        'customer_id' => $validated['customer_id'] ?? null,
-                        'created_by' => $request->user()?->id,
-                        'title' => $validated['title'],
-                        'date' => $validated['date'] ?? null,
-                        'priority' => $validated['priority'] ?? 'media',
-                        'notes' => $validated['notes'] ?? null,
-                        'archived_at' => null,
-                    ]);
+        try {
+            $incidence = DB::transaction(function () use ($request, $validated, $stageId) {
+                $created = Incidence::create([
+                    'correlative' => null,
+                    'stage_id' => (int) $stageId,
+                    'customer_id' => $validated['customer_id'] ?? null,
+                    'created_by' => $request->user()?->id,
+                    'title' => $validated['title'],
+                    'date' => $validated['date'] ?? null,
+                    'priority' => $validated['priority'] ?? 'media',
+                    'notes' => $validated['notes'] ?? null,
+                    'archived_at' => null,
+                ]);
 
-                    // Generate a correlativo similar to the legacy system if not provided.
-                    $created->correlative = 'INC-'.str_pad((string) $created->id, 6, '0', STR_PAD_LEFT);
-                    $created->save();
+                // Generate a correlativo similar to the legacy system if not provided.
+                $created->correlative = 'INC-'.str_pad((string) $created->id, 6, '0', STR_PAD_LEFT);
+                $created->save();
 
-                    return $created->fresh(['customer:id,name,company_name']);
-                });
-            } catch (QueryException $e) {
-                return response()->json([
-                    'message' => 'No se pudo crear la incidencia. Revisa la configuración de la base de datos (migraciones/seeders y permisos de INSERT).',
-                ], 422);
-            }
+                return $created->fresh(['customer:id,name,company_name']);
+            });
+        } catch (QueryException $e) {
+            return response()->json([
+                'message' => 'No se pudo crear la incidencia. Revisa la configuración de la base de datos (migraciones/seeders y permisos de INSERT).',
+            ], 422);
+        }
 
         return response()->json([
             'message' => 'Incidencia creada.',
@@ -345,6 +344,7 @@ class IncidenceController extends Controller
         $updated = DB::transaction(function () use ($incidence, $targetStage) {
             $incidence->stage_id = $targetStage->id;
             $incidence->save();
+
             return $incidence->fresh(['customer:id,name,company_name']);
         });
 
@@ -364,7 +364,7 @@ class IncidenceController extends Controller
         }
 
         $currentStageIsDone = (bool) IncidenceStage::query()->whereKey($incidence->stage_id)->value('is_done');
-        if (!$currentStageIsDone) {
+        if (! $currentStageIsDone) {
             return response()->json([
                 'message' => 'Solo puedes archivar incidencias en una columna final (resuelta).',
             ], 422);
@@ -423,7 +423,7 @@ class IncidenceController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'incidencias_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'incidencias_import_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);
@@ -459,12 +459,12 @@ class IncidenceController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Incidencia eliminada correctamente'
+                'message' => 'Incidencia eliminada correctamente',
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Error al eliminar la incidencia: ' . $e->getMessage()
+                'message' => 'Error al eliminar la incidencia: '.$e->getMessage(),
             ], 500);
         }
     }

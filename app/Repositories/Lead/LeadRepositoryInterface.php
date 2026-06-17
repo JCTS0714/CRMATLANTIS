@@ -11,28 +11,28 @@ interface LeadRepositoryInterface
     /**
      * Find leads with filters and search
      *
-     * @param array{stageIds?: array<int>, search?: string, dateFrom?: string, dateTo?: string} $filters
+     * @param  array{stageIds?: array<int>, search?: string, dateFrom?: string, dateTo?: string}  $filters
      */
     public function findWithFilters(array $filters = []): Collection;
 
     /**
      * Get paginated leads with filters
      *
-     * @param array{stageId?: int, search?: string} $filters
+     * @param  array{stageId?: int, search?: string}  $filters
      */
     public function findForTable(array $filters, int $perPage = 15): LengthAwarePaginator;
 
     /**
      * Get leads for board/kanban view
      *
-     * @param array{stageIds: array<int>, dateFrom?: string, dateTo?: string} $filters
+     * @param  array{stageIds: array<int>, dateFrom?: string, dateTo?: string}  $filters
      */
     public function findForBoard(array $filters, int $limit = 20): Collection;
 
     /**
      * Count leads grouped by stage
      *
-     * @param array{stageIds: array<int>, search?: string, dateFrom?: string, dateTo?: string} $filters
+     * @param  array{stageIds: array<int>, search?: string, dateFrom?: string, dateTo?: string}  $filters
      * @return \Illuminate\Support\Collection<int, int>
      */
     public function countByStage(array $filters): \Illuminate\Support\Collection;

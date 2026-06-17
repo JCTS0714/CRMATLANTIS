@@ -19,7 +19,7 @@ class FacturaDispatchSupport
     public function esBaseUrlPublica(string $baseUrl): bool
     {
         $host = parse_url($baseUrl, PHP_URL_HOST);
-        if (!is_string($host) || $host === '') {
+        if (! is_string($host) || $host === '') {
             return false;
         }
 
@@ -28,13 +28,13 @@ class FacturaDispatchSupport
             return false;
         }
 
-        return !str_ends_with($host, '.local');
+        return ! str_ends_with($host, '.local');
     }
 
     public function normalizePhoneForWhatsApp(?string $rawPhone): ?string
     {
         $digits = preg_replace('/\D+/', '', (string) $rawPhone);
-        if (!is_string($digits) || $digits === '') {
+        if (! is_string($digits) || $digits === '') {
             return null;
         }
 
@@ -43,7 +43,7 @@ class FacturaDispatchSupport
         }
 
         if (strlen($digits) === 9) {
-            $digits = '51' . $digits;
+            $digits = '51'.$digits;
         }
 
         if (strlen($digits) < 11 || strlen($digits) > 15) {
@@ -55,26 +55,26 @@ class FacturaDispatchSupport
 
     public function construirUrlWhatsAppManual(?string $celularConPais, string $mensaje): ?string
     {
-        if (!$celularConPais) {
+        if (! $celularConPais) {
             return null;
         }
 
-        return 'https://wa.me/' . $celularConPais . '?text=' . rawurlencode($mensaje);
+        return 'https://wa.me/'.$celularConPais.'?text='.rawurlencode($mensaje);
     }
 
     public function obtenerDiagnosticoWhatsapp(?string $celularConPais, string $baseUrl, bool $kapsoConfigured): array
     {
         $diagnostics = [];
 
-        if (!$celularConPais) {
+        if (! $celularConPais) {
             $diagnostics[] = 'celular_invalido';
         }
 
-        if (!$kapsoConfigured) {
+        if (! $kapsoConfigured) {
             $diagnostics[] = 'kapso_no_configurado';
         }
 
-        if (!$this->esBaseUrlPublica($baseUrl)) {
+        if (! $this->esBaseUrlPublica($baseUrl)) {
             $diagnostics[] = 'public_base_url_no_publica';
         }
 
@@ -85,7 +85,7 @@ class FacturaDispatchSupport
     {
         $rendered = $template;
         foreach ($vars as $key => $value) {
-            $rendered = str_replace('{{' . $key . '}}', (string) $value, $rendered);
+            $rendered = str_replace('{{'.$key.'}}', (string) $value, $rendered);
         }
 
         return trim($rendered);
@@ -97,6 +97,6 @@ class FacturaDispatchSupport
             return $archivoUrl;
         }
 
-        return rtrim($baseUrl, '/') . '/' . ltrim($archivoUrl, '/');
+        return rtrim($baseUrl, '/').'/'.ltrim($archivoUrl, '/');
     }
 }

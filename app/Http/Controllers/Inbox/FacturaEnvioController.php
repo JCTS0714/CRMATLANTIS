@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Inbox;
 
+use App\Exceptions\Kapso\ClosedSessionException;
 use App\Http\Controllers\Controller;
 use App\Models\AuditoriaEnvioFactura;
 use App\Models\Customer;
@@ -11,12 +12,10 @@ use App\Models\PagoMensual;
 use App\Services\Facturas\FacturaDispatchSupport;
 use App\Services\Integrations\BrevoService;
 use App\Services\Integrations\KapsoService;
-use App\Exceptions\Kapso\ClosedSessionException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 
@@ -129,7 +128,7 @@ class FacturaEnvioController extends Controller
         ]);
 
         $isDefault = (bool) ($validated['is_default'] ?? false);
-        if (!$isDefault && !FacturaMensajePlantilla::query()->exists()) {
+        if (! $isDefault && ! FacturaMensajePlantilla::query()->exists()) {
             $isDefault = true;
         }
 
@@ -324,6 +323,7 @@ class FacturaEnvioController extends Controller
 
             if (isset($monthMap[$token])) {
                 $months[] = $monthMap[$token];
+
                 continue;
             }
 
@@ -368,7 +368,7 @@ class FacturaEnvioController extends Controller
 
         $pago = PagoMensual::query()->with('cliente')->findOrFail((int) $validated['pagoId']);
 
-        if (!in_array($pago->estado, ['factura_pendiente', 'factura_enviada'], true)) {
+        if (! in_array($pago->estado, ['factura_pendiente', 'factura_enviada'], true)) {
             return response()->json([
                 'message' => 'El estado del pago no permite preparar factura.',
                 'error_code' => 'PAGO_ESTADO_NO_PERMITIDO',
@@ -424,14 +424,14 @@ class FacturaEnvioController extends Controller
             $storedName = sprintf('factura_pago_%d_%s.%s', $pago->id, now()->format('Ymd_His'), $ext);
             $storedPath = $request->file('archivo')->storeAs('facturas', $storedName, 'public');
 
-            if (!is_string($storedPath) || trim($storedPath) === '') {
+            if (! is_string($storedPath) || trim($storedPath) === '') {
                 return response()->json([
                     'message' => 'No se pudo guardar el archivo de la factura en storage.',
                     'error_code' => 'FACTURA_STORAGE_WRITE_FAILED',
                 ], 422);
             }
 
-            $archivoUrl = '/storage/' . ltrim($storedPath, '/');
+            $archivoUrl = '/storage/'.ltrim($storedPath, '/');
 
             $vars = [
                 'cliente' => $cliente?->contact_name ?: $cliente?->name ?: 'cliente',
@@ -498,7 +498,7 @@ class FacturaEnvioController extends Controller
         $cliente = $pago->cliente;
         $envio = $pago->envioFactura;
 
-        if (!$envio || !$envio->archivo_url) {
+        if (! $envio || ! $envio->archivo_url) {
             return response()->json([
                 'message' => 'Debes preparar la factura antes de enviarla por WhatsApp.',
             ], 422);
@@ -515,7 +515,7 @@ class FacturaEnvioController extends Controller
 
         $whatsappUrl = $this->support->construirUrlWhatsAppManual($celularConPais, (string) $envio->mensaje);
 
-        if (!empty($diagnostics)) {
+        if (! empty($diagnostics)) {
             $diagnosticDetails = array_map(function (string $code): array {
                 return [
                     'code' => $code,
@@ -524,7 +524,7 @@ class FacturaEnvioController extends Controller
             }, $diagnostics);
 
             return response()->json([
-                'message' => 'No se puede enviar por API: ' . implode(' | ', array_column($diagnosticDetails, 'message')),
+                'message' => 'No se puede enviar por API: '.implode(' | ', array_column($diagnosticDetails, 'message')),
                 'error_code' => 'WHATSAPP_DIAGNOSTIC_BLOCKED',
                 'diagnostics' => $diagnostics,
                 'diagnostic_details' => $diagnosticDetails,
@@ -533,7 +533,7 @@ class FacturaEnvioController extends Controller
         }
 
         $facturaUrl = $this->support->buildPublicFacturaUrl($baseUrl, (string) $envio->archivo_url);
-        $filename = basename(parse_url($facturaUrl, PHP_URL_PATH) ?: ('factura_' . $pago->id . '.pdf'));
+        $filename = basename(parse_url($facturaUrl, PHP_URL_PATH) ?: ('factura_'.$pago->id.'.pdf'));
 
         try {
             $kapsoResponse = $this->kapsoService->sendDocument(
@@ -541,7 +541,7 @@ class FacturaEnvioController extends Controller
                 $facturaUrl,
                 (string) $envio->mensaje,
                 $filename,
-                'pago_' . $pago->id
+                'pago_'.$pago->id
             );
         } catch (ClosedSessionException $e) {
             return $this->handleClosedSessionAndRetry(
@@ -551,7 +551,7 @@ class FacturaEnvioController extends Controller
                 $facturaUrl,
                 (string) $envio->mensaje,
                 $filename,
-                'pago_' . $pago->id,
+                'pago_'.$pago->id,
                 $request
             );
         } catch (\RuntimeException $e) {
@@ -609,7 +609,7 @@ class FacturaEnvioController extends Controller
         $pago = PagoMensual::query()->with('envioFactura')->findOrFail($pagoId);
         $envio = $pago->envioFactura;
 
-        if (!$envio) {
+        if (! $envio) {
             return response()->json([
                 'message' => 'No existe una factura preparada para este pago.',
             ], 422);
@@ -651,14 +651,14 @@ class FacturaEnvioController extends Controller
         $cliente = $pago->cliente;
         $envio = $pago->envioFactura;
 
-        if (!$envio || !$envio->archivo_url) {
+        if (! $envio || ! $envio->archivo_url) {
             return response()->json([
                 'message' => 'Debes preparar la factura antes de enviar email.',
             ], 422);
         }
 
         $email = trim((string) ($cliente?->contact_email ?? ''));
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
             return response()->json([
                 'message' => 'El cliente no tiene un email valido para envio.',
                 'error_code' => 'EMAIL_INVALIDO',
@@ -676,7 +676,7 @@ class FacturaEnvioController extends Controller
         $response = $this->brevoService->sendInvoiceLink(
             $email,
             (string) ($cliente?->contact_name ?: $cliente?->name ?: ''),
-            'Factura ' . $pago->mes . '/' . $pago->anio,
+            'Factura '.$pago->mes.'/'.$pago->anio,
             $facturaUrl,
             (string) ($envio->mensaje ?: 'Te compartimos tu factura.'),
         );
@@ -801,9 +801,14 @@ class FacturaEnvioController extends Controller
         Request $request
     ): JsonResponse {
         $templateName = config('services.kapso.template_opening', 'hello_world');
-        
+
         try {
-            $this->kapsoService->sendTemplate($celularConPais, $templateName);
+            $this->kapsoService->sendTemplate(
+                $celularConPais,
+                $templateName,
+                [],
+                (string) config('services.kapso.template_language', 'en_US')
+            );
         } catch (\Throwable $templateError) {
             return response()->json([
                 'message' => 'La sesion con este cliente esta cerrada (sin mensajes en 24h). Debe crear una plantilla aprobada en Kapso para iniciar contacto.',
@@ -881,26 +886,26 @@ class FacturaEnvioController extends Controller
     public function diagnostico(Request $request): JsonResponse
     {
         $user = $request->user();
-        
+
         $totalCustomers = Customer::count();
         $totalPagos = PagoMensual::count();
         $totalEnvios = EnvioFactura::count();
-        
+
         $customersWithComercio = Customer::whereNotNull('company_name')->where('company_name', '!=', '')->count();
         $pagosWithCliente = PagoMensual::whereNotNull('cliente_id')->count();
         $pagosThisMonth = PagoMensual::whereYear('anio', now()->year)
             ->whereMonth('mes', now()->month)
             ->count();
-        
+
         $userPermissions = $user?->permissions()?->pluck('name')->toArray() ?? [];
         $hasMenuInbox = in_array('menu.inbox', $userPermissions);
         $hasCustomersCreate = in_array('customers.create', $userPermissions);
-        
+
         $recentPagos = PagoMensual::with('cliente')
             ->orderByDesc('id')
             ->take(5)
             ->get()
-            ->map(fn($p) => [
+            ->map(fn ($p) => [
                 'id' => $p->id,
                 'cliente_id' => $p->cliente_id,
                 'cliente_nombre' => $p->cliente?->name,
@@ -909,14 +914,14 @@ class FacturaEnvioController extends Controller
                 'estado' => $p->estado,
                 'created_at' => $p->created_at?->toDateTimeString(),
             ]);
-        
+
         $testQuery = PagoMensual::query()
             ->with('cliente', 'envioFactura')
             ->orderByDesc('anio')
             ->orderByDesc('mes')
             ->take(3)
             ->get();
-        
+
         return response()->json([
             'timestamp' => now()->toDateTimeString(),
             'user' => [
@@ -938,7 +943,7 @@ class FacturaEnvioController extends Controller
                 'total_envios' => $totalEnvios,
             ],
             'recent_pagos' => $recentPagos,
-            'test_query_sample' => $testQuery->map(fn($p) => [
+            'test_query_sample' => $testQuery->map(fn ($p) => [
                 'id' => $p->id,
                 'cliente' => $p->cliente ? ['id' => $p->cliente->id, 'name' => $p->cliente->name] : null,
                 'mes' => $p->mes,
@@ -957,7 +962,7 @@ class FacturaEnvioController extends Controller
     public function fijarPermisos(Request $request): JsonResponse
     {
         $user = $request->user();
-        if (!$user) {
+        if (! $user) {
             return response()->json([
                 'message' => 'Usuario no autenticado.',
             ], 401);
@@ -989,7 +994,7 @@ class FacturaEnvioController extends Controller
             'guard_name' => config('auth.defaults.guard', 'web'),
         ]);
 
-        if (!$user->hasRole('admin')) {
+        if (! $user->hasRole('admin')) {
             $user->assignRole($adminRole);
         }
 

@@ -26,7 +26,7 @@ class InternalUserSeeder extends Seeder
         $generatedPassword = false;
         $plainPasswordToShow = '';
 
-        if (!$user) {
+        if (! $user) {
             $plainPassword = $plainPasswordFromEnv;
 
             if ($plainPassword === '') {
@@ -60,6 +60,7 @@ class InternalUserSeeder extends Seeder
             $this->command?->warn('Generated admin password (store it securely and change it after first login):');
             $this->command?->warn("Email: {$email}");
             $this->command?->warn("Password: {$plainPasswordToShow}");
+
             return;
         }
 
@@ -67,6 +68,7 @@ class InternalUserSeeder extends Seeder
             $this->command?->warn('Admin password was set from SEED_ADMIN_PASSWORD:');
             $this->command?->warn("Email: {$email}");
             $this->command?->warn("Password: {$plainPasswordToShow}");
+
             return;
         }
 

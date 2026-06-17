@@ -2,8 +2,6 @@
 
 namespace App\Http\Controllers\Campaign;
 
-use App\Http\Requests\Campaign\CreateWhatsAppCampaignRequest;
-use App\Models\Customer;
 use App\Models\Lead;
 use App\Models\LeadStage;
 use App\Models\WhatsAppCampaign;
@@ -69,6 +67,16 @@ class WhatsAppCampaignController extends BaseCampaignController
             $data['stage_name'] = null;
         }
 
+        if (! $item instanceof Lead) {
+            $data['pago_estado'] = $item->pago_estado;
+            $data['mes_pagado'] = $item->mes_pagado;
+            $data['mes_por_pagar'] = $item->mes_por_pagar;
+        } else {
+            $data['pago_estado'] = null;
+            $data['mes_pagado'] = null;
+            $data['mes_por_pagar'] = null;
+        }
+
         return $data;
     }
 
@@ -80,11 +88,25 @@ class WhatsAppCampaignController extends BaseCampaignController
             throw new \InvalidArgumentException('El template de mensaje no puede estar vacío.');
         }
 
+        // Track seen phone numbers (normalized) to avoid sending multiple messages
+        // to the same recipient when a customer has multiple negocios with same number.
+        $seenPhones = [];
+
         foreach ($items as $item) {
             $phone = trim((string) ($item->contact_phone ?? ''));
             if ($phone === '') {
                 $missingContactIds[] = $item->id;
+
                 continue;
+            }
+
+            $normalizedPhone = preg_replace('/\D+/', '', $phone);
+            if ($normalizedPhone !== '' && isset($seenPhones[$normalizedPhone])) {
+                // skip duplicate phone
+                continue;
+            }
+            if ($normalizedPhone !== '') {
+                $seenPhones[$normalizedPhone] = true;
             }
 
             $displayName = trim((string) ($item->contact_name ?: $item->name));
@@ -94,6 +116,7 @@ class WhatsAppCampaignController extends BaseCampaignController
 
             if (trim($rendered) === '') {
                 $missingContactIds[] = $item->id;
+
                 continue;
             }
 
@@ -146,11 +169,11 @@ class WhatsAppCampaignController extends BaseCampaignController
         $recipient->status = $status;
         $recipient->error_message = $validated['error_message'] ?? null;
 
-        if ($status === 'opened' && !$recipient->opened_at) {
+        if ($status === 'opened' && ! $recipient->opened_at) {
             $recipient->opened_at = Carbon::now();
         }
 
-        if ($status === 'sent' && !$recipient->sent_at) {
+        if ($status === 'sent' && ! $recipient->sent_at) {
             $recipient->sent_at = Carbon::now();
         }
 

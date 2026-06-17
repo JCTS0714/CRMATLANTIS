@@ -67,7 +67,7 @@ abstract class BaseCampaignController extends Controller
      */
     protected function getContactFilterParam(): string
     {
-        return 'only_with_' . $this->getContactField();
+        return 'only_with_'.$this->getContactField();
     }
 
     /**
@@ -91,7 +91,7 @@ abstract class BaseCampaignController extends Controller
         $limit = (int) ($validated['limit'] ?? 200);
         $onlyWithContact = $request->boolean($this->getContactFilterParam(), true);
 
-        if ($source === 'customers' && !$request->user()?->can('customers.view')) {
+        if ($source === 'customers' && ! $request->user()?->can('customers.view')) {
             return response()->json([
                 'message' => 'No tienes permisos para ver clientes.',
             ], 403);
@@ -131,8 +131,8 @@ abstract class BaseCampaignController extends Controller
                 'contacts' => $contacts,
                 'counts' => [
                     'total' => (int) $totalCount,
-                    'with_' . $this->getContactField() => (int) $withContactCount,
-                    'without_' . $this->getContactField() => (int) $withoutContactCount,
+                    'with_'.$this->getContactField() => (int) $withContactCount,
+                    'without_'.$this->getContactField() => (int) $withoutContactCount,
                     'returned' => (int) $contacts->count(),
                 ],
                 'filters' => [
@@ -165,7 +165,7 @@ abstract class BaseCampaignController extends Controller
 
         return response()->json([
             'data' => [
-                'campaigns' => $campaigns->map(fn($c) => $dtoClass::fromModel($c, includeBody: false)->toArray()),
+                'campaigns' => $campaigns->map(fn ($c) => $dtoClass::fromModel($c, includeBody: false)->toArray()),
             ],
         ]);
     }
@@ -210,7 +210,7 @@ abstract class BaseCampaignController extends Controller
 
         $source = (string) $validated['source'];
 
-        if ($source === 'customers' && !$request->user()?->can('customers.view')) {
+        if ($source === 'customers' && ! $request->user()?->can('customers.view')) {
             return response()->json([
                 'message' => 'No tienes permisos para ver clientes.',
             ], 403);
@@ -253,7 +253,7 @@ abstract class BaseCampaignController extends Controller
             'data' => [
                 'campaign' => $dtoClass::fromModel($campaign->fresh(), includeBody: false)->toArray(),
                 'campaign_id' => $campaign->id,
-                'skipped_missing_' . $this->getContactField() . '_ids' => $missingContactIds,
+                'skipped_missing_'.$this->getContactField().'_ids' => $missingContactIds,
             ],
         ]);
     }
@@ -287,7 +287,7 @@ abstract class BaseCampaignController extends Controller
             ->whereNull('archived_at');
 
         if ($stageId) {
-            if (!$stageIds->contains($stageId)) {
+            if (! $stageIds->contains($stageId)) {
                 throw new \Exception('La etapa seleccionada no es válida para este filtro (Ganado se excluye).');
             }
             $filtered->where('stage_id', $stageId);
@@ -300,14 +300,14 @@ abstract class BaseCampaignController extends Controller
         $baseQuery = clone $filtered;
         $totalCount = (int) (clone $baseQuery)->count();
         $withContactCount = (int) (clone $baseQuery)
-            ->whereNotNull('contact_' . $this->getContactField())
-            ->where('contact_' . $this->getContactField(), '!=', '')
+            ->whereNotNull('contact_'.$this->getContactField())
+            ->where('contact_'.$this->getContactField(), '!=', '')
             ->count();
         $withoutContactCount = max(0, $totalCount - $withContactCount);
 
         if ($onlyWithContact) {
-            $filtered->whereNotNull('contact_' . $this->getContactField())
-                ->where('contact_' . $this->getContactField(), '!=', '');
+            $filtered->whereNotNull('contact_'.$this->getContactField())
+                ->where('contact_'.$this->getContactField(), '!=', '');
         }
 
         $items = $filtered
@@ -318,7 +318,7 @@ abstract class BaseCampaignController extends Controller
                 'stage_id',
                 'name',
                 'contact_name',
-                'contact_' . $this->getContactField(),
+                'contact_'.$this->getContactField(),
                 'company_name',
                 'updated_at',
             ]);
@@ -342,15 +342,16 @@ abstract class BaseCampaignController extends Controller
         $baseQuery = clone $filtered;
         $totalCount = (int) (clone $baseQuery)->count();
         $withContactCount = (int) (clone $baseQuery)
-            ->whereNotNull('contact_' . $this->getContactField())
-            ->where('contact_' . $this->getContactField(), '!=', '')
+            ->whereNotNull('contact_'.$this->getContactField())
+            ->where('contact_'.$this->getContactField(), '!=', '')
             ->count();
         $withoutContactCount = max(0, $totalCount - $withContactCount);
 
         if ($onlyWithContact) {
-            $filtered->whereNotNull('contact_' . $this->getContactField())
-                ->where('contact_' . $this->getContactField(), '!=', '');
+            $filtered->whereNotNull('contact_'.$this->getContactField())
+                ->where('contact_'.$this->getContactField(), '!=', '');
         }
+
 
         $items = $filtered
             ->orderByDesc('updated_at')
@@ -359,12 +360,77 @@ abstract class BaseCampaignController extends Controller
                 'id',
                 'name',
                 'contact_name',
-                'contact_' . $this->getContactField(),
+                'contact_'.$this->getContactField(),
                 'company_name',
                 'updated_at',
+                'pago_estado',
+                'mes_pagado',
+                'mes_por_pagar',
             ]);
 
-        $contacts = $items->map(fn ($customer) => $this->mapContactData($customer))->values();
+        $contactField = $this->getContactField();
+
+        // Calcular conteos por contacto (normalizado) para detectar múltiples negocios.
+        // Hacemos el conteo a nivel global (todos los clientes) para que la
+        // indicación no dependa de la paginación/limit del endpoint.
+        $counts = [];
+        if ($contactField === 'phone') {
+            $allPhones = Customer::query()
+                ->whereNotNull('contact_phone')
+                ->where('contact_phone', '!=', '')
+                ->pluck('contact_phone');
+
+            foreach ($allPhones as $p) {
+                $normalized = preg_replace('/\D+/', '', trim((string) $p));
+                if ($normalized === '') continue;
+                $counts[$normalized] = ($counts[$normalized] ?? 0) + 1;
+            }
+        }
+
+        // Evitar duplicados por número de teléfono cuando el campo de contacto es "phone".
+        // Algunos clientes tienen varios negocios con el mismo número y no queremos enviar
+        // múltiples recordatorios al mismo destinatario.
+        if ($contactField === 'phone') {
+            $seen = [];
+            $uniqueItems = collect();
+
+            foreach ($items as $it) {
+                $phoneValue = trim((string) ($it->{'contact_'.$contactField} ?? ''));
+                $normalized = preg_replace('/\D+/', '', $phoneValue);
+
+                if ($normalized === '') {
+                    // Keep entries without a phone so they can be handled elsewhere
+                    $uniqueItems->push($it);
+                    continue;
+                }
+
+                if (isset($seen[$normalized])) {
+                    // Skip duplicate phone
+                    continue;
+                }
+
+                $seen[$normalized] = true;
+                $uniqueItems->push($it);
+            }
+
+            $items = $uniqueItems;
+        }
+
+        // Añadir flag `multiple_businesses` al resultado mapeado cuando corresponda
+        $contacts = $items->map(function ($customer) use ($counts, $contactField) {
+            $mapped = $this->mapContactData($customer);
+
+            $mapped['multiple_businesses'] = false;
+            if ($contactField === 'phone') {
+                $phoneValue = trim((string) ($customer->{'contact_'.$contactField} ?? ''));
+                $normalized = preg_replace('/\D+/', '', $phoneValue);
+                if ($normalized !== '' && isset($counts[$normalized]) && $counts[$normalized] > 1) {
+                    $mapped['multiple_businesses'] = true;
+                }
+            }
+
+            return $mapped;
+        })->values();
 
         return [$contacts, $totalCount, $withContactCount, $withoutContactCount];
     }
@@ -375,7 +441,7 @@ abstract class BaseCampaignController extends Controller
     protected function applySearchFilter(Builder $query, string $searchTerm): void
     {
         $query->where(function ($q) use ($searchTerm) {
-            $like = '%' . $searchTerm . '%';
+            $like = '%'.$searchTerm.'%';
 
             $q->where('name', 'like', $like)
                 ->orWhere('company_name', 'like', $like)
@@ -397,7 +463,7 @@ abstract class BaseCampaignController extends Controller
             'id',
             'name',
             'contact_name',
-            'contact_' . $this->getContactField(),
+            'contact_'.$this->getContactField(),
             'company_name',
         ]);
 
@@ -415,6 +481,7 @@ abstract class BaseCampaignController extends Controller
         }
 
         $parts = preg_split('/\s+/', $name) ?: [];
+
         return (string) ($parts[0] ?? $name);
     }
 
@@ -425,7 +492,7 @@ abstract class BaseCampaignController extends Controller
     {
         $out = $template;
         foreach ($vars as $key => $value) {
-            $out = str_replace('{{' . $key . '}}', (string) $value, $out);
+            $out = str_replace('{{'.$key.'}}', (string) $value, $out);
         }
 
         $out = preg_replace('/\{\{\s*[a-zA-Z0-9_]+\s*\}\}/', '', $out) ?? $out;

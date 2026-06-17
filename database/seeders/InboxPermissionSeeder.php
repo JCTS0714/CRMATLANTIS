@@ -18,13 +18,13 @@ class InboxPermissionSeeder extends Seeder
 
         // Asignar al rol admin
         $adminRole = Role::where('name', 'admin')->first();
-        if ($adminRole && !$adminRole->hasPermissionTo('menu.inbox')) {
+        if ($adminRole && ! $adminRole->hasPermissionTo('menu.inbox')) {
             $adminRole->givePermissionTo('menu.inbox');
         }
 
         // Asignar al rol dev
         $devRole = Role::where('name', 'dev')->first();
-        if ($devRole && !$devRole->hasPermissionTo('menu.inbox')) {
+        if ($devRole && ! $devRole->hasPermissionTo('menu.inbox')) {
             $devRole->givePermissionTo('menu.inbox');
         }
 

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Campaign\WhatsAppCampaignController;
 use App\Http\Controllers\Inbox\FacturaEnvioController;
 use App\Http\Controllers\Integrations\KapsoIntegrationController;
 use App\Http\Controllers\Lead\LeadController;
@@ -108,8 +109,31 @@ Route::middleware('permission:menu.inbox')->group(function () {
     Route::get('/api/integraciones/kapso/status', [KapsoIntegrationController::class, 'status'])
         ->name('integraciones.kapso.status');
 
+    Route::get('/api/integraciones/kapso/templates', [KapsoIntegrationController::class, 'templates'])
+        ->name('integraciones.kapso.templates');
+
+    Route::post('/api/integraciones/kapso/templates/send', [KapsoIntegrationController::class, 'sendTemplateBroadcast'])
+        ->name('integraciones.kapso.templates.send');
+
     Route::post('/api/integraciones/kapso/test', [KapsoIntegrationController::class, 'test'])
         ->name('integraciones.kapso.test');
+
+    Route::get('/leads/whatsapp/recipients', [WhatsAppCampaignController::class, 'recipients'])
+        ->name('whatsapp.campaigns.recipients');
+
+    Route::get('/leads/whatsapp-campaigns', [WhatsAppCampaignController::class, 'index'])
+        ->name('whatsapp.campaigns.index');
+
+    Route::post('/leads/whatsapp-campaigns', [WhatsAppCampaignController::class, 'store'])
+        ->name('whatsapp.campaigns.store');
+
+    Route::get('/leads/whatsapp-campaigns/{campaignId}', [WhatsAppCampaignController::class, 'show'])
+        ->whereNumber('campaignId')
+        ->name('whatsapp.campaigns.show');
+
+    Route::patch('/leads/whatsapp-campaign-recipients/{recipient}', [WhatsAppCampaignController::class, 'updateRecipient'])
+        ->whereNumber('recipient')
+        ->name('whatsapp.campaigns.recipients.update');
 
     Route::get('/api/facturas/pendientes', [FacturaEnvioController::class, 'pendientes'])
         ->name('facturas.pendientes');

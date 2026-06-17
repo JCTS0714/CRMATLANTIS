@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\Controller;
 
 class SettingsController extends Controller
 {
@@ -52,16 +52,16 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: produce a 112x112 PNG (centered, maintain aspect ratio)
         $file = $request->file('logo');
-        $filename = 'logo_mark_' . now()->format('Ymd_His') . '.png';
-        $destPath = storage_path('app/public/settings/' . $filename);
-        $publicPath = 'storage/settings/' . $filename;
+        $filename = 'logo_mark_'.now()->format('Ymd_His').'.png';
+        $destPath = storage_path('app/public/settings/'.$filename);
+        $publicPath = 'storage/settings/'.$filename;
         try {
             $processed = $this->processLogoMark($file->getRealPath(), $destPath);
         } catch (\Throwable $e) {
             $processed = false;
-            \Log::warning('Logo mark processing failed: ' . $e->getMessage());
+            \Log::warning('Logo mark processing failed: '.$e->getMessage());
         }
-        if (!$processed) {
+        if (! $processed) {
             $file->storeAs('settings', $filename, 'public');
         }
 
@@ -88,16 +88,16 @@ class SettingsController extends Controller
         Storage::disk('public')->makeDirectory('settings');
         // Process image: height 112px, max width 392px, maintain aspect ratio, save as PNG
         $file = $request->file('logo');
-        $filename = 'logo_full_' . now()->format('Ymd_His') . '.png';
-        $destPath = storage_path('app/public/settings/' . $filename);
-        $publicPath = 'storage/settings/' . $filename;
+        $filename = 'logo_full_'.now()->format('Ymd_His').'.png';
+        $destPath = storage_path('app/public/settings/'.$filename);
+        $publicPath = 'storage/settings/'.$filename;
         try {
             $processed = $this->processLogoFull($file->getRealPath(), $destPath);
         } catch (\Throwable $e) {
             $processed = false;
-            \Log::warning('Logo full processing failed: ' . $e->getMessage());
+            \Log::warning('Logo full processing failed: '.$e->getMessage());
         }
-        if (!$processed) {
+        if (! $processed) {
             $file->storeAs('settings', $filename, 'public');
         }
 
@@ -131,28 +131,28 @@ class SettingsController extends Controller
 
     private function logoManifestPath(string $key): string
     {
-        return storage_path('app/public/settings/' . $key . '.json');
+        return storage_path('app/public/settings/'.$key.'.json');
     }
 
     private function readLogoManifest(string $key): ?string
     {
         $manifestPath = $this->logoManifestPath($key);
-        if (!file_exists($manifestPath)) {
+        if (! file_exists($manifestPath)) {
             return null;
         }
 
         $raw = @file_get_contents($manifestPath);
-        if (!$raw) {
+        if (! $raw) {
             return null;
         }
 
         $data = json_decode($raw, true);
-        if (!is_array($data) || empty($data['path'])) {
+        if (! is_array($data) || empty($data['path'])) {
             return null;
         }
 
         $publicPath = public_path($data['path']);
-        if (!file_exists($publicPath)) {
+        if (! file_exists($publicPath)) {
             return null;
         }
 
@@ -171,7 +171,7 @@ class SettingsController extends Controller
 
     private function cleanupOldLogos(string $pattern, string $keepPath, int $keep = 3): void
     {
-        $files = glob(storage_path('app/public/settings/' . $pattern)) ?: [];
+        $files = glob(storage_path('app/public/settings/'.$pattern)) ?: [];
         if (empty($files)) {
             return;
         }
@@ -184,11 +184,13 @@ class SettingsController extends Controller
         foreach ($files as $file) {
             if ($file === $keepPath) {
                 $kept++;
+
                 continue;
             }
 
             if ($kept < $keep) {
                 $kept++;
+
                 continue;
             }
 
@@ -198,7 +200,7 @@ class SettingsController extends Controller
 
     private function processLogoMark(string $sourcePath, string $destPath): bool
     {
-        if (!\function_exists('imagecreatefromstring') || !\function_exists('imagepng')) {
+        if (! \function_exists('imagecreatefromstring') || ! \function_exists('imagepng')) {
             return false;
         }
         $data = @file_get_contents($sourcePath);
@@ -207,7 +209,7 @@ class SettingsController extends Controller
         }
 
         $src = @imagecreatefromstring($data);
-        if (!$src) {
+        if (! $src) {
             return false;
         }
 
@@ -227,7 +229,9 @@ class SettingsController extends Controller
         imagefill($target, 0, 0, $trans_colour);
 
         $scale = min($targetSize / $srcW, $targetSize / $srcH);
-        if ($scale > 1) $scale = 1; // avoid upscaling
+        if ($scale > 1) {
+            $scale = 1;
+        } // avoid upscaling
 
         $newW = max(1, (int) round($srcW * $scale));
         $newH = max(1, (int) round($srcH * $scale));
@@ -248,7 +252,7 @@ class SettingsController extends Controller
 
     private function processLogoFull(string $sourcePath, string $destPath): bool
     {
-        if (!\function_exists('imagecreatefromstring') || !\function_exists('imagepng')) {
+        if (! \function_exists('imagecreatefromstring') || ! \function_exists('imagepng')) {
             return false;
         }
         $data = @file_get_contents($sourcePath);
@@ -257,7 +261,7 @@ class SettingsController extends Controller
         }
 
         $src = @imagecreatefromstring($data);
-        if (!$src) {
+        if (! $src) {
             return false;
         }
 
@@ -308,10 +312,18 @@ class SettingsController extends Controller
                 $rgba = imagecolorat($src, $x, $y);
                 $alpha = ($rgba >> 24) & 0x7F;
                 if ($alpha < 127) {
-                    if ($x < $minX) $minX = $x;
-                    if ($y < $minY) $minY = $y;
-                    if ($x > $maxX) $maxX = $x;
-                    if ($y > $maxY) $maxY = $y;
+                    if ($x < $minX) {
+                        $minX = $x;
+                    }
+                    if ($y < $minY) {
+                        $minY = $y;
+                    }
+                    if ($x > $maxX) {
+                        $maxX = $x;
+                    }
+                    if ($y > $maxY) {
+                        $maxY = $y;
+                    }
                 }
             }
         }

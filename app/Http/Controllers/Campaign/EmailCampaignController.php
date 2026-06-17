@@ -2,10 +2,8 @@
 
 namespace App\Http\Controllers\Campaign;
 
-use App\Http\Requests\Campaign\CreateEmailCampaignRequest;
 use App\Http\Requests\Campaign\SendCampaignRequest;
 use App\Jobs\SendEmailCampaignRecipientJob;
-use App\Models\Customer;
 use App\Models\EmailCampaign;
 use App\Models\EmailCampaignRecipient;
 use App\Models\EmailUnsubscribe;
@@ -14,9 +12,7 @@ use App\Models\LeadStage;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Validation\Rule;
 
 class EmailCampaignController extends BaseCampaignController
 {
@@ -86,6 +82,7 @@ class EmailCampaignController extends BaseCampaignController
             $email = trim((string) ($item->contact_email ?? ''));
             if ($email === '') {
                 $missingContactIds[] = $item->id;
+
                 continue;
             }
 
@@ -156,6 +153,7 @@ class EmailCampaignController extends BaseCampaignController
                 $r->status = 'failed';
                 $r->error_message = 'Email vacío.';
                 $r->save();
+
                 continue;
             }
 
@@ -164,6 +162,7 @@ class EmailCampaignController extends BaseCampaignController
                 $r->error_message = 'Desuscrito.';
                 $r->save();
                 $skipped++;
+
                 continue;
             }
 

@@ -23,6 +23,7 @@ return new class extends Migration
 
             if (isset($seenContadores[$contadorId]) || isset($seenCustomers[$customerId])) {
                 $deleteIds[] = (int) $row->id;
+
                 continue;
             }
 
@@ -30,18 +31,18 @@ return new class extends Migration
             $seenCustomers[$customerId] = true;
         }
 
-        if (!empty($deleteIds)) {
+        if (! empty($deleteIds)) {
             DB::table('contador_customer')->whereIn('id', $deleteIds)->delete();
         }
 
         $this->dropIndexIfExists('contador_customer', 'contador_customer_contador_id_customer_id_unique');
-        if (!$this->indexExists('contador_customer', 'contador_customer_contador_id_unique')) {
+        if (! $this->indexExists('contador_customer', 'contador_customer_contador_id_unique')) {
             Schema::table('contador_customer', function (Blueprint $table) {
                 $table->unique('contador_id');
             });
         }
 
-        if (!$this->indexExists('contador_customer', 'contador_customer_customer_id_unique')) {
+        if (! $this->indexExists('contador_customer', 'contador_customer_customer_id_unique')) {
             Schema::table('contador_customer', function (Blueprint $table) {
                 $table->unique('customer_id');
             });
@@ -53,7 +54,7 @@ return new class extends Migration
         $this->dropIndexIfExists('contador_customer', 'contador_customer_customer_id_unique');
         $this->dropIndexIfExists('contador_customer', 'contador_customer_contador_id_unique');
 
-        if (!$this->indexExists('contador_customer', 'contador_customer_contador_id_customer_id_unique')) {
+        if (! $this->indexExists('contador_customer', 'contador_customer_contador_id_customer_id_unique')) {
             Schema::table('contador_customer', function (Blueprint $table) {
                 $table->unique(['contador_id', 'customer_id']);
             });
@@ -71,6 +72,7 @@ return new class extends Migration
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -93,7 +95,7 @@ return new class extends Migration
 
     private function dropIndexIfExists(string $table, string $indexName): void
     {
-        if (!$this->indexExists($table, $indexName)) {
+        if (! $this->indexExists($table, $indexName)) {
             return;
         }
 
@@ -101,6 +103,7 @@ return new class extends Migration
 
         if ($driver === 'sqlite' || $driver === 'pgsql') {
             DB::statement(sprintf('DROP INDEX IF EXISTS "%s"', $indexName));
+
             return;
         }
 

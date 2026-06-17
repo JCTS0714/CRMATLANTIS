@@ -1,140 +1,201 @@
 <template>
-  <div>
-    <div class="mb-4 text-sm text-gray-600 dark:text-slate-300">
-      Gestiona tareas internas con una vista kanban de tres estados o cambia a vista lista para revisar detalles.
+  <div class="space-y-5">
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+      <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+        <div class="space-y-3">
+          <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+            Scrum · Operacion
+          </span>
+          <div>
+            <h2 class="text-2xl font-semibold text-slate-900 dark:text-slate-50">Seguimiento diario de tareas</h2>
+            <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Gestiona la carga del equipo en {{ currentViewLabel.toLowerCase() }}, detecta cuellos de botella y crea nuevas tareas sin salir del tablero.
+            </p>
+          </div>
+        </div>
+
+        <div class="grid gap-3 sm:grid-cols-3 xl:min-w-[420px]">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Tareas</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ filteredTasks.length }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">En la vista actual</div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Responsables</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ filteredResponsibleCount }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Con tareas visibles</div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Filtros</div>
+            <div class="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-50">{{ activeFilterCount }}</div>
+            <div class="mt-1 text-xs text-slate-500 dark:text-slate-400">Reglas activas</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-end">
+        <div class="grid gap-3 md:grid-cols-3">
+          <div class="space-y-2 md:col-span-1">
+            <label for="scrum-search" class="text-sm font-medium text-slate-700 dark:text-slate-200">Buscar tarea</label>
+            <input
+              id="scrum-search"
+              v-model.trim="filters.search"
+              type="text"
+              placeholder="Nombre o descripcion"
+              class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Responsable</label>
+            <select
+              v-model="filters.responsible"
+              class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+            >
+              <option value="">Todos</option>
+              <option v-for="name in responsibleFilterOptions" :key="name" :value="name">{{ name }}</option>
+            </select>
+          </div>
+
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-slate-700 dark:text-slate-200">Prioridad</label>
+            <select
+              v-model="filters.priority"
+              class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+            >
+              <option value="">Todas</option>
+              <option value="alta">Alta</option>
+              <option value="media">Media</option>
+              <option value="baja">Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2 xl:justify-end">
+          <button
+            type="button"
+            class="inline-flex items-center rounded-2xl border px-3 py-2 text-sm font-medium shadow-sm transition"
+            :class="showAdvancedFilters || activeFilterCount
+              ? 'border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200 dark:hover:bg-blue-950/50'
+              : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800'"
+            :aria-expanded="showAdvancedFilters"
+            @click="showAdvancedFilters = !showAdvancedFilters"
+          >
+            {{ showAdvancedFilters ? 'Ocultar filtros avanzados' : activeFilterCount ? `Filtros activos (${activeFilterCount})` : 'Filtros avanzados' }}
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center rounded-2xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            @click="resetFilters"
+          >
+            Limpiar filtros
+          </button>
+
+          <button
+            type="button"
+            class="inline-flex items-center rounded-2xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-60"
+            @click="openForm()"
+          >
+            Nueva tarea
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div v-if="showAdvancedFilters" class="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/40">
+      <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 class="text-sm font-semibold text-slate-900 dark:text-slate-100">Filtro temporal</h3>
+          <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">Recorta el tablero por periodos rápidos, mes o rango de fechas.</p>
+        </div>
+        <span class="inline-flex items-center rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm dark:bg-slate-950 dark:text-slate-300">
+          {{ activeFilterCount }} activos
+        </span>
+      </div>
+
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Periodo</label>
+          <select
+            v-model="periodFilters.mode"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
+          >
+            <option value="all">Todos</option>
+            <option value="last_week">Última semana</option>
+            <option value="month">Por mes</option>
+            <option value="between_months">Entre meses</option>
+            <option value="date">Por fecha</option>
+            <option value="between_dates">Entre fechas</option>
+          </select>
+        </div>
+
+        <div v-if="periodFilters.mode === 'month'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Mes</label>
+          <input
+            v-model="periodFilters.month"
+            type="month"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+
+        <div v-if="periodFilters.mode === 'between_months'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Desde mes</label>
+          <input
+            v-model="periodFilters.fromMonth"
+            type="month"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+
+        <div v-if="periodFilters.mode === 'between_months'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Hasta mes</label>
+          <input
+            v-model="periodFilters.toMonth"
+            type="month"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+
+        <div v-if="periodFilters.mode === 'date'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Fecha</label>
+          <input
+            v-model="periodFilters.date"
+            type="date"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+
+        <div v-if="periodFilters.mode === 'between_dates'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Desde</label>
+          <input
+            v-model="periodFilters.fromDate"
+            type="date"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+
+        <div v-if="periodFilters.mode === 'between_dates'" class="space-y-2">
+          <label class="text-xs font-medium text-gray-600 dark:text-slate-300">Hasta</label>
+          <input
+            v-model="periodFilters.toDate"
+            type="date"
+            class="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:scheme-dark"
+          />
+        </div>
+      </div>
     </div>
 
-    <div class="mb-4 flex flex-wrap items-center gap-3">
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Buscar:</label>
-        <input
-          v-model.trim="filters.search"
-          type="text"
-          placeholder="Nombre o descripcion"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 placeholder:text-gray-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-blue-900/30"
-        />
-      </div>
-
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Responsable:</label>
-        <select
-          v-model="filters.responsible"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
-        >
-          <option value="">Todos</option>
-          <option v-for="name in responsibleFilterOptions" :key="name" :value="name">{{ name }}</option>
-        </select>
-      </div>
-
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Prioridad:</label>
-        <select
-          v-model="filters.priority"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
-        >
-          <option value="">Todas</option>
-          <option value="alta">Alta</option>
-          <option value="media">Media</option>
-          <option value="baja">Baja</option>
-        </select>
-      </div>
-
-      <button
-        type="button"
-        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-        @click="showAdvancedFilters = !showAdvancedFilters"
-      >
-        {{ showAdvancedFilters ? 'Ocultar filtros avanzados' : 'Filtros avanzados' }}
-      </button>
-
-      <button
-        type="button"
-        class="inline-flex items-center rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-        @click="resetFilters"
-      >
-        Limpiar filtros
-      </button>
-    </div>
-
-    <div v-if="showAdvancedFilters" class="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-800 dark:bg-slate-900/40">
-      <div class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Periodo:</label>
-        <select
-          v-model="periodFilters.mode"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30"
-        >
-          <option value="all">Todos</option>
-          <option value="last_week">Última semana</option>
-          <option value="month">Por mes</option>
-          <option value="between_months">Entre meses</option>
-          <option value="date">Por fecha</option>
-          <option value="between_dates">Entre fechas</option>
-        </select>
-      </div>
-
-      <div v-if="periodFilters.mode === 'month'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Mes:</label>
-        <input
-          v-model="periodFilters.month"
-          type="month"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-
-      <div v-if="periodFilters.mode === 'between_months'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Desde mes:</label>
-        <input
-          v-model="periodFilters.fromMonth"
-          type="month"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-
-      <div v-if="periodFilters.mode === 'between_months'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Hasta mes:</label>
-        <input
-          v-model="periodFilters.toMonth"
-          type="month"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-
-      <div v-if="periodFilters.mode === 'date'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Fecha:</label>
-        <input
-          v-model="periodFilters.date"
-          type="date"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-
-      <div v-if="periodFilters.mode === 'between_dates'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Desde:</label>
-        <input
-          v-model="periodFilters.fromDate"
-          type="date"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-
-      <div v-if="periodFilters.mode === 'between_dates'" class="flex items-center gap-2">
-        <label class="text-xs text-gray-600 dark:text-slate-300">Hasta:</label>
-        <input
-          v-model="periodFilters.toDate"
-          type="date"
-          class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-blue-900/30 dark:[color-scheme:dark]"
-        />
-      </div>
-    </div>
-
-    <div v-if="loadingTasks" class="mb-4 text-sm text-gray-600 dark:text-slate-300">Cargando tareas...</div>
-    <div v-if="loadError" class="mb-4 text-sm text-red-600">{{ loadError }}</div>
+    <div v-if="loadingTasks" class="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-gray-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">Cargando tareas...</div>
+    <div v-if="loadError" class="rounded-2xl border border-red-200 bg-white p-4 text-sm text-red-600 shadow-sm dark:border-red-900/40 dark:bg-slate-950">{{ loadError }}</div>
 
     <div v-if="isKanbanView" class="grid grid-cols-1 gap-4 md:grid-cols-3">
       <section
         v-for="column in columns"
         :key="column.id"
-        class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-900"
+        class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950"
         :class="dragOverColumnId === column.id ? 'ring-2 ring-blue-300 dark:ring-blue-700' : ''"
         @dragover.prevent="onDragOverColumn(column.id, $event)"
         @drop.prevent="onDropOnColumn(column.id, $event)"
@@ -142,14 +203,14 @@
         <div class="border-b border-gray-200 p-4 dark:border-slate-800">
           <div class="flex items-center justify-between gap-3">
             <div class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ column.title }}</div>
-            <div class="text-xs text-gray-600 dark:text-slate-300">{{ tasksByColumn[column.id].length }}</div>
+            <div class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">{{ tasksByColumn[column.id].length }}</div>
           </div>
         </div>
 
-        <div class="min-h-[220px] space-y-3 p-3">
+        <div class="min-h-55 space-y-3 p-3">
           <div
             v-if="tasksByColumn[column.id].length === 0"
-            class="rounded-lg border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500 dark:border-slate-700 dark:text-slate-400"
+            class="rounded-2xl border border-dashed border-gray-200 px-3 py-6 text-center text-sm text-gray-500 dark:border-slate-700 dark:text-slate-400"
           >
             Sin tareas.
           </div>
@@ -157,7 +218,7 @@
           <article
             v-for="task in tasksByColumn[column.id]"
             :key="task.id"
-            class="cursor-pointer rounded-lg border border-gray-200 bg-gray-50 p-3 transition hover:shadow-sm dark:border-slate-700 dark:bg-slate-800"
+            class="cursor-pointer rounded-2xl border border-gray-200 bg-gray-50 p-3 transition hover:-translate-y-0.5 hover:shadow-sm dark:border-slate-700 dark:bg-slate-900"
             :class="draggedTaskId === task.id ? 'opacity-70' : ''"
             draggable="true"
             @click="openForm(task)"
@@ -195,7 +256,7 @@
       </section>
     </div>
 
-    <div v-else class="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div v-else class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950">
       <div class="overflow-x-auto">
         <table class="min-w-full divide-y divide-gray-200 text-sm dark:divide-slate-800">
           <thead class="bg-gray-50 dark:bg-slate-900/40">
@@ -483,6 +544,26 @@ const loggedUserName = computed(() => authUser.value?.name ?? 'Usuario actual');
 const responsibleFilterOptions = computed(() => {
   const names = tasks.value.map((task) => task.responsable).filter(Boolean);
   return Array.from(new Set(names)).sort((a, b) => a.localeCompare(b));
+});
+
+const activeFilterCount = computed(() => {
+  let count = 0;
+
+  if (filters.search.trim()) count += 1;
+  if (filters.responsible) count += 1;
+  if (filters.priority) count += 1;
+
+  if (periodFilters.mode !== 'all') {
+    count += 1;
+  }
+
+  return count;
+});
+
+const currentViewLabel = computed(() => (isKanbanView.value ? 'Kanban' : 'Lista'));
+const filteredResponsibleCount = computed(() => {
+  const names = filteredTasks.value.map((task) => task.responsable).filter(Boolean);
+  return new Set(names).size;
 });
 
 const filteredTasks = computed(() => {

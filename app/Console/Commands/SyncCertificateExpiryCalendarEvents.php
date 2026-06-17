@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class SyncCertificateExpiryCalendarEvents extends Command
 {
     protected $signature = 'calendar:sync-certificate-expiries {--assign-to= : User ID fallback when certificate has no creator/updater}';
+
     protected $description = 'Create or update calendar expiry events for existing certificates with expiration date.';
 
     public function __construct(private readonly CalendarCertificateSyncService $syncService)
@@ -34,8 +35,9 @@ class SyncCertificateExpiryCalendarEvents extends Command
                         ? (int) $certificado->created_by
                         : ($certificado->updated_by ? (int) $certificado->updated_by : $assignFallback);
 
-                    if (!$assignedTo) {
+                    if (! $assignedTo) {
                         $skipped++;
+
                         continue;
                     }
 

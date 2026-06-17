@@ -15,7 +15,7 @@ class ConfigService
 
     /**
      * Get all lead stages (cached)
-     * 
+     *
      * @return Collection<LeadStage>
      */
     public function getLeadStages(): Collection
@@ -30,7 +30,7 @@ class ConfigService
 
     /**
      * Get active lead stages (not won)
-     * 
+     *
      * @return Collection<LeadStage>
      */
     public function getActiveLeadStages(): Collection
@@ -50,12 +50,13 @@ class ConfigService
     public function getLeadStageById(int $id): ?LeadStage
     {
         $stages = $this->getLeadStages();
+
         return $stages->firstWhere('id', $id);
     }
 
     /**
      * Get stages indexed by ID for quick lookup
-     * 
+     *
      * @return Collection<int, LeadStage>
      */
     public function getLeadStagesById(): Collection
@@ -69,6 +70,7 @@ class ConfigService
     public function isWonStage(int $stageId): bool
     {
         $stage = $this->getLeadStageById($stageId);
+
         return $stage ? (bool) $stage->is_won : false;
     }
 

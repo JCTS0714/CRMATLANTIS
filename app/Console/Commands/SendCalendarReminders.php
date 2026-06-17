@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class SendCalendarReminders extends Command
 {
     protected $signature = 'calendar:send-reminders';
+
     protected $description = 'Send due calendar reminders to assignees.';
 
     public function handle(): int
@@ -34,9 +35,10 @@ class SendCalendarReminders extends Command
             ->chunkById(200, function ($events) use (&$sent, $now) {
                 foreach ($events as $event) {
                     $user = $event->assignee;
-                    if (!$user) {
+                    if (! $user) {
                         $event->reminded_at = $now;
                         $event->save();
+
                         continue;
                     }
 
@@ -68,7 +70,7 @@ class SendCalendarReminders extends Command
         foreach ($specialEvents as $event) {
             foreach ([1440, 0] as $offsetMinutes) {
                 $dueAt = $event->start_at?->copy()->subMinutes($offsetMinutes);
-                if (!$dueAt || $dueAt->greaterThan($now)) {
+                if (! $dueAt || $dueAt->greaterThan($now)) {
                     continue;
                 }
 
@@ -85,7 +87,7 @@ class SendCalendarReminders extends Command
                 }
 
                 $user = User::query()->find($event->assigned_to);
-                if (!$user) {
+                if (! $user) {
                     continue;
                 }
 

@@ -13,8 +13,7 @@ class EmailCampaignRecipientMailable extends Mailable
     public function __construct(
         public readonly string $subjectText,
         public readonly string $htmlBody
-    ) {
-    }
+    ) {}
 
     public function build(): self
     {

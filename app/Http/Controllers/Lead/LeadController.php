@@ -3,12 +3,11 @@
 namespace App\Http\Controllers\Lead;
 
 use App\DTOs\Lead\LeadResponseDto;
+use App\Http\Controllers\Controller;
 use App\Http\Requests\Lead\CreateLeadRequest;
 use App\Http\Requests\Lead\MoveLeadStageRequest;
 use App\Http\Requests\Lead\UpdateLeadRequest;
-use App\Models\Customer;
 use App\Models\Lead;
-use App\Models\LeadStage;
 use App\Services\Config\ConfigService;
 use App\Services\Lead\LeadService;
 use App\Services\Lead\LeadValidationService;
@@ -16,11 +15,10 @@ use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use App\Http\Controllers\Controller;
 
 /**
  * LeadController - Handles CRUD operations for leads
- * 
+ *
  * Refactored: Data queries moved to LeadDataController
  * Refactored: Import functionality moved to LeadImportController
  * Refactored: Business logic moved to LeadService
@@ -137,15 +135,16 @@ class LeadController extends Controller
         $validated = $request->validated();
         $targetStage = $this->configService->getLeadStageById($validated['stage_id']);
 
-        if (!$targetStage) {
+        if (! $targetStage) {
             return response()->json([
                 'message' => 'La etapa especificada no existe.',
             ], 404);
         }
 
         $updatedLead = DB::transaction(function () use ($lead, $targetStage) {
-            if ($targetStage->is_won && !$lead->customer_id) {
+            if ($targetStage->is_won && ! $lead->customer_id) {
                 $customer = $this->leadService->convertToCustomer($lead);
+
                 // Lead is archived by convertToCustomer
                 return $lead->fresh();
             }
@@ -177,7 +176,7 @@ class LeadController extends Controller
         }
 
         $currentStageIsWon = $this->configService->isWonStage($lead->stage_id);
-        if (!$currentStageIsWon && !$lead->won_at) {
+        if (! $currentStageIsWon && ! $lead->won_at) {
             return response()->json([
                 'message' => 'Solo se puede archivar un lead que esté en la columna GANADO o ya marcado como ganado.',
             ], 422);
@@ -199,5 +198,4 @@ class LeadController extends Controller
             ], 422);
         }
     }
-
 }

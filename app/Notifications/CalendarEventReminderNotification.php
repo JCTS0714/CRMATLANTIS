@@ -11,8 +11,7 @@ class CalendarEventReminderNotification extends Notification
 
     public function __construct(
         public array $payload
-    ) {
-    }
+    ) {}
 
     public function via(object $notifiable): array
     {

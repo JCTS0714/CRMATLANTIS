@@ -20,7 +20,7 @@ class EmailUnsubscribeController extends Controller
         $email = strtolower(trim($validated['email']));
         $token = (string) $validated['token'];
 
-        if (!hash_equals($this->tokenForEmail($email), $token)) {
+        if (! hash_equals($this->tokenForEmail($email), $token)) {
             return response()->view('email.unsubscribe_invalid', [], 422);
         }
 
@@ -38,6 +38,7 @@ class EmailUnsubscribeController extends Controller
     private function tokenForEmail(string $email): string
     {
         $secret = (string) config('app.key');
+
         return hash_hmac('sha256', strtolower(trim($email)), $secret);
     }
 }

@@ -12,7 +12,7 @@ class RequestMetricsMiddleware
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if (!config('observability.request_metrics_enabled', false)) {
+        if (! config('observability.request_metrics_enabled', false)) {
             return $next($request);
         }
 
@@ -35,7 +35,7 @@ class RequestMetricsMiddleware
         $isSlow = $durationMs >= $slowThreshold;
         $isSampled = $sampleRate === 100 || random_int(1, 100) <= $sampleRate;
 
-        if (!$isSlow && !$isSampled) {
+        if (! $isSlow && ! $isSampled) {
             return $response;
         }
 
@@ -44,7 +44,7 @@ class RequestMetricsMiddleware
 
         $context = [
             'method' => $request->getMethod(),
-            'path' => '/' . $path,
+            'path' => '/'.$path,
             'route_name' => $routeName,
             'status' => $response->getStatusCode(),
             'duration_ms' => round($durationMs, 2),

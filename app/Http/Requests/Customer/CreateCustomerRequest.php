@@ -66,14 +66,14 @@ class CreateCustomerRequest extends FormRequest
             $documentType = $this->input('document_type');
             $documentNumber = $this->input('document_number');
 
-            if ($documentNumber && !$documentType) {
+            if ($documentNumber && ! $documentType) {
                 $validator->errors()->add(
                     'document_type',
                     'El tipo de documento es requerido si envías número de documento.'
                 );
             }
 
-            if ($documentType && !$documentNumber) {
+            if ($documentType && ! $documentNumber) {
                 $validator->errors()->add(
                     'document_number',
                     'El número de documento es requerido.'

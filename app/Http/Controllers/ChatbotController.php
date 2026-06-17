@@ -18,11 +18,11 @@ class ChatbotController extends BaseController
         ]);
         $query = $validated['q'];
 
-        // If a FAISS index exists (built by scripts/index_docs.py), use the Python query tool.
-        $scriptsDir = base_path('scripts') . DIRECTORY_SEPARATOR;
-        $userIndexPath = $scriptsDir . 'index_user.faiss';
-        $indexPath = $scriptsDir . 'index.faiss';
-        $pyScript = base_path('scripts') . DIRECTORY_SEPARATOR . 'query_docs.py';
+        // If a FAISS index exists, use the Python query tool in scripts/docs.
+        $docsSearchDir = storage_path('app'.DIRECTORY_SEPARATOR.'ai'.DIRECTORY_SEPARATOR.'docs-search').DIRECTORY_SEPARATOR;
+        $userIndexPath = $docsSearchDir.'index_user.faiss';
+        $indexPath = $docsSearchDir.'index.faiss';
+        $pyScript = base_path('scripts'.DIRECTORY_SEPARATOR.'docs'.DIRECTORY_SEPARATOR.'query_docs.py');
 
         // prefer user-only index if present
         $useScript = $pyScript;
@@ -42,7 +42,7 @@ class ChatbotController extends BaseController
             $metaPath = preg_replace('/\.faiss$/', '_metadata.json', $useIndex);
             $escapedMeta = escapeshellarg($metaPath);
             // call: query_docs.py "query" k index_path meta_path
-            $cmd = $python . ' ' . $escapedScript . ' ' . $escapedQuery . ' ' . $escapedK . ' ' . $escapedIndex . ' ' . $escapedMeta;
+            $cmd = $python.' '.$escapedScript.' '.$escapedQuery.' '.$escapedK.' '.$escapedIndex.' '.$escapedMeta;
 
             try {
                 $output = shell_exec($cmd);
@@ -50,12 +50,17 @@ class ChatbotController extends BaseController
                     $data = json_decode($output, true);
                     if (is_array($data) && isset($data['results'])) {
                         // Build a single, user-friendly answer by concatenating top snippets
-                        $snippets = array_map(function($it){ return preg_replace('/\s+/', ' ', trim(strip_tags($it['snippet']))); }, array_slice($data['results'], 0, 3));
+                        $snippets = array_map(function ($it) {
+                            $snippet = $it['snippet'] ?? $it['text'] ?? '';
+
+                            return preg_replace('/\s+/', ' ', trim(strip_tags($snippet)));
+                        }, array_slice($data['results'], 0, 3));
                         $answer = implode("\n\n", $snippets);
                         // shorten to a reasonable length for a single reply
                         if (mb_strlen($answer) > 800) {
-                            $answer = mb_substr($answer, 0, 780) . '...';
+                            $answer = mb_substr($answer, 0, 780).'...';
                         }
+
                         return response()->json(['answer' => $answer, 'data' => $data['results']]);
                     }
                 }
@@ -92,11 +97,15 @@ class ChatbotController extends BaseController
 
             $score = 0;
             foreach ($tokens as $t) {
-                if (mb_strlen($t) < 2) continue;
+                if (mb_strlen($t) < 2) {
+                    continue;
+                }
                 $score += substr_count($content, $t);
             }
 
-            if ($score <= 0) continue;
+            if ($score <= 0) {
+                continue;
+            }
 
             // extract snippet around first match
             $firstPos = null;
@@ -108,7 +117,9 @@ class ChatbotController extends BaseController
                 }
             }
 
-            if ($firstPos === null) continue;
+            if ($firstPos === null) {
+                continue;
+            }
 
             $start = max(0, $firstPos - 120);
             $snippet = mb_substr($content, $start, 240);
@@ -116,7 +127,7 @@ class ChatbotController extends BaseController
             $snippet = preg_replace('/\s+/', ' ', $snippet);
 
             $results[] = [
-                'file' => str_replace(base_path() . DIRECTORY_SEPARATOR, '', $f),
+                'file' => str_replace(base_path().DIRECTORY_SEPARATOR, '', $f),
                 'score' => $score,
                 'snippet' => $snippet,
             ];
@@ -129,12 +140,15 @@ class ChatbotController extends BaseController
         $top = array_slice($results, 0, 5);
 
         // Synthesize a single natural answer from top snippet(s)
-        if (!empty($top)) {
-            $snippets = array_map(function($it){ return preg_replace('/\s+/', ' ', trim($it['snippet'])); }, array_slice($top, 0, 2));
+        if (! empty($top)) {
+            $snippets = array_map(function ($it) {
+                return preg_replace('/\s+/', ' ', trim($it['snippet']));
+            }, array_slice($top, 0, 2));
             $answer = implode("\n\n", $snippets);
             if (mb_strlen($answer) > 800) {
-                $answer = mb_substr($answer, 0, 780) . '...';
+                $answer = mb_substr($answer, 0, 780).'...';
             }
+
             return response()->json(['answer' => $answer, 'data' => $top]);
         }
 

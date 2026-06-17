@@ -6,14 +6,16 @@ Bienvenido a la documentación del sistema CRM Atlantis.
 
 ## 📁 Estructura de Documentación
 
-### 📈 `/PROGRESO-*.md`
-Bitácoras ejecutivas por fecha con resumen de cambios de sesiones completas.
+### 🗃️ `/archive/`
+Histórico de bitácoras, análisis puntuales y resúmenes que ya no forman parte de la documentación viva.
 
 **Archivos:**
-- `PROGRESO-2026-03-05.md` - Implementación completa del modulo Scrum Tareas (UI + backend + estado_tiempo)
-- `PROGRESO-2026-05-05.md` - Estabilizacion bandeja de facturas, importador CSV y filtros por servidor
+- `archive/progress/PROGRESO-2026-02-04.md` - Reorganización de endpoints, menú y experiencia de navegación
+- `archive/progress/PROGRESO-2026-03-05.md` - Implementación completa del modulo Scrum Tareas
+- `archive/progress/PROGRESO-2026-05-05.md` - Estabilización bandeja de facturas, importador CSV y filtros por servidor
+- `archive/analysis/*` - análisis y resúmenes tácticos ya cerrados
 
-**Uso:** Revisar rapidamente que se hizo en una fecha especifica sin recorrer todos los commits.
+**Uso:** Consultar contexto histórico sin ensuciar la documentación operativa actual.
 
 ### 📘 `/implementation/`
 Documentación técnica detallada de implementaciones completadas.
@@ -23,6 +25,8 @@ Documentación técnica detallada de implementaciones completadas.
 - `dtos-implementation-summary.md` - Data Transfer Objects para APIs
 - `repository-pattern-completed.md` - Patrón Repository implementado
 - `controller-reorganization-completed.md` - Reorganización de controllers por dominio
+- `implementation/notifications-system.md` - Diseño y flujo del sistema de notificaciones
+- `implementation/whatsapp-bsp-options.md` - Opciones BSP e integración WhatsApp
 
 **Uso:** Consultar para entender cómo están implementadas las features técnicas.
 
@@ -33,6 +37,7 @@ Planes de trabajo, roadmaps y seguimiento de progreso.
 
 **Archivos:**
 - `backend-refactor-plan.md` - Plan maestro de refactorización del backend (90% completado)
+- `project-simplification-plan.md` - Plan transversal de simplificación, calidad y orden estructural
 - `lead-refactoring-completed.md` - Resumen de refactorización de módulo Lead
 
 **Uso:** Ver progreso del proyecto, tareas pendientes y métricas.
@@ -87,8 +92,9 @@ Notas de sesiones de trabajo, cambios y decisiones técnicas.
 
 ### Para Desarrolladores
 1. **Entender arquitectura actual:** `/planning/backend-refactor-plan.md`
-2. **Ver implementaciones técnicas:** `/implementation/`
-3. **Revisar decisiones históricas:** `/notes/2026-02-02-refactoring-session.md`
+2. **Ver plan transversal de orden y calidad:** `/planning/project-simplification-plan.md`
+3. **Ver implementaciones técnicas:** `/implementation/`
+4. **Revisar decisiones históricas:** `/notes/2026-02-02-refactoring-session.md`
 
 ### Para Usuarios
 1. **Manual de uso:** `/manuals/manual_usuario_detailed.md`
@@ -96,14 +102,15 @@ Notas de sesiones de trabajo, cambios y decisiones técnicas.
 
 ### Para Project Managers
 1. **Estado del proyecto:** `/planning/backend-refactor-plan.md`
-2. **Últimos cambios:** `/notes/2026-02-02-refactoring-session.md`
-3. **Métricas de progreso:** Ver sección "Métricas de Mejora" en backend-refactor-plan.md
+2. **Plan de simplificación y reducción de deuda:** `/planning/project-simplification-plan.md`
+3. **Últimos cambios:** `/notes/2026-02-02-refactoring-session.md`
+4. **Métricas de progreso:** Ver sección "Métricas de Mejora" en backend-refactor-plan.md
 
 ---
 
 ## 📊 Estado Actual del Proyecto
 
-**Última Actualización:** 5 de Mayo, 2026
+**Última Actualización:** 30 de Mayo, 2026
 
 ### Backend Refactoring
 - **Progreso:** 90% completado
@@ -155,5 +162,5 @@ Para preguntas sobre la documentación o el proyecto:
 
 ---
 
-**Última Sesión:** 5 May 2026 - Bandeja de facturas, importador CSV y filtro por servidor  
-**Próxima Sesión Sugerida:** Verificacion post-import real y limpieza de calidad de CSV
+**Última Sesión:** 30 May 2026 - Limpieza estructural final, orden de dominios y validaciones  
+**Próxima Sesión Sugerida:** Nuevas implementaciones sobre la base ya curada

@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Lead;
 
+use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\WaitingLead;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Http\Controllers\Controller;
 
 class WaitingLeadController extends Controller
 {
@@ -79,28 +79,28 @@ class WaitingLeadController extends Controller
             DB::transaction(function () use ($waitingLead) {
                 // Find the original lead if it still exists
                 $originalLead = $waitingLead->lead_id ? Lead::find($waitingLead->lead_id) : null;
-                
+
                 if ($originalLead && $originalLead->archived_at) {
                     // Reactivate the original lead and place it at top of its stage
                     $maxPosition = Lead::query()
                         ->where('stage_id', $originalLead->stage_id)
                         ->max('position') ?? 0;
-                    
+
                     $originalLead->archived_at = null;
                     $originalLead->position = $maxPosition + 1;
                     $originalLead->save();
                 } else {
                     // Create a new lead from the waiting lead data
                     $firstStage = \App\Models\LeadStage::orderBy('sort_order')->orderBy('id')->first();
-                    if (!$firstStage) {
+                    if (! $firstStage) {
                         throw new \RuntimeException('No hay etapas de leads configuradas.');
                     }
-                    
+
                     // Get highest position in the first stage to place reactivated lead at top
                     $maxPosition = Lead::query()
                         ->where('stage_id', $firstStage->id)
                         ->max('position') ?? 0;
-                    
+
                     Lead::create([
                         'stage_id' => $firstStage->id,
                         'name' => $waitingLead->name,
@@ -116,7 +116,7 @@ class WaitingLeadController extends Controller
                         'position' => $maxPosition + 1, // Place at top (highest position)
                     ]);
                 }
-                
+
                 // Remove from waiting leads
                 $waitingLead->delete();
             });
@@ -126,7 +126,7 @@ class WaitingLeadController extends Controller
             ]);
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'No se pudo reactivar el lead: ' . $e->getMessage(),
+                'message' => 'No se pudo reactivar el lead: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -184,7 +184,7 @@ class WaitingLeadController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'waiting_leads_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'waiting_leads_import_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);

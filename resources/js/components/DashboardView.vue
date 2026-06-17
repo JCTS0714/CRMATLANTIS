@@ -2,37 +2,55 @@
   <div>
     <div
       v-if="loading"
-      class="rounded-lg border border-slate-200 bg-white p-6 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+      class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
     >
       Cargando dashboard…
     </div>
 
     <div
       v-else-if="error"
-      class="rounded-lg border border-red-200 bg-white p-6 text-sm text-red-700 dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300"
+      class="rounded-2xl border border-red-200 bg-white p-6 text-sm text-red-700 shadow-sm dark:border-red-900/40 dark:bg-slate-900 dark:text-red-300"
     >
       {{ error }}
     </div>
 
     <div v-else class="space-y-6">
-      <section class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <div class="flex items-center gap-2">
-          <label class="text-sm text-slate-600 dark:text-slate-300">Mes</label>
-          <input
+      <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+        <div class="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+          <div class="space-y-3">
+            <span class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200">
+              Resumen ejecutivo
+            </span>
+            <div>
+              <h2 class="text-2xl font-semibold text-slate-900 dark:text-slate-50">Vista general del CRM</h2>
+              <p class="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Supervisa oportunidades, clientes, incidencias, vencimientos y agenda desde una sola capa operativa.
+                El periodo activo es <span class="font-semibold text-slate-900 dark:text-slate-100">{{ selectedMonthLabel }}</span>.
+              </p>
+            </div>
+          </div>
+
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900 xl:w-[320px]">
+            <div class="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Filtrar periodo</div>
+            <div class="mt-3 flex flex-col gap-3">
+              <label class="text-sm text-slate-600 dark:text-slate-300">Mes de analisis</label>
+              <input
                 ref="monthInput"
-            v-model="selectedMonth"
-            type="month"
-            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                v-model="selectedMonth"
+                type="month"
+                class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-sky-500 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
                 @click="openMonthPicker"
-          />
-          <button
-            type="button"
-            class="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
-            :disabled="loading"
-            @click="applyMonth"
-          >
-            Ver
-          </button>
+              />
+              <button
+                type="button"
+                class="inline-flex items-center justify-center rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 disabled:opacity-50"
+                :disabled="loading"
+                @click="applyMonth"
+              >
+                Aplicar periodo
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -40,15 +58,18 @@
         <a
           v-if="cards.leads && canViewLeads"
           href="/leads"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Leads</span>
-            <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+            <span class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/30 dark:text-blue-200"
               >Total</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.leads.total }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.leads.total }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Pipeline</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Abiertos: {{ cards.leads.open }} · Archivados: {{ cards.leads.archived }}
           </div>
@@ -57,46 +78,55 @@
         <a
           v-if="cards.customers && canViewCustomers"
           href="/postventa/clientes"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Clientes</span>
-            <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+            <span class="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200"
               >Total</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.customers.total }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.customers.total }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Base activa</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Clientes registrados</div>
         </a>
 
         <a
           v-if="cards.incidencias && canViewIncidencias"
           href="/backlog"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Incidencias</span>
-            <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+            <span class="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-200"
               >Postventa</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.incidencias.open }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.incidencias.open }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Abiertas</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Abiertas · Archivadas: {{ cards.incidencias.archived }}</div>
         </a>
 
         <a
           v-if="cards.certificados && canViewCertificados"
           href="/postventa/certificados"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Certificados</span>
             <span
-              class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+              class="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700 dark:bg-blue-950/30 dark:text-blue-200"
               >Activos</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.certificados.activos }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.certificados.activos }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Control</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Por vencer (30d): {{ cards.certificados.por_vencer_30d }} · Vencidos: {{ cards.certificados.vencidos }}
           </div>
@@ -105,15 +135,18 @@
         <a
           v-if="cards.contadores && canViewContadores"
           href="/postventa/contadores"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Contadores</span>
-            <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+            <span class="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-200"
               >Total</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.contadores.total }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.contadores.total }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Inventario</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">
             Asignados: {{ cards.contadores.assigned }} · Sin asignar: {{ cards.contadores.unassigned }}
           </div>
@@ -122,15 +155,18 @@
         <a
           v-if="cards.calendar && canViewCalendar"
           href="/calendar"
-          class="block rounded-lg border border-slate-200 bg-white p-6 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          class="block rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
         >
           <div class="flex items-center justify-between">
             <span class="text-sm font-medium text-slate-500 dark:text-slate-300">Calendario</span>
-            <span class="inline-flex items-center rounded bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 dark:bg-slate-800 dark:text-slate-200"
+            <span class="inline-flex items-center rounded-full bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-700 dark:bg-violet-950/30 dark:text-violet-200"
               >7 días</span
             >
           </div>
-          <div class="mt-3 text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.calendar.upcoming_7d }}</div>
+          <div class="mt-3 flex items-end justify-between gap-3">
+            <div class="text-3xl font-semibold text-slate-900 dark:text-slate-100">{{ cards.calendar.upcoming_7d }}</div>
+            <span class="text-xs font-medium text-slate-400 dark:text-slate-500">Proximos</span>
+          </div>
           <div class="mt-2 text-sm text-slate-600 dark:text-slate-300">Eventos asignados próximos</div>
         </a>
       </section>
@@ -332,6 +368,20 @@ const lists = ref({
 
 const monthInput = ref(null);
 const selectedMonth = ref('');
+const selectedMonthLabel = computed(() => {
+  if (!selectedMonth.value) {
+    return 'mes actual';
+  }
+
+  const [year, month] = String(selectedMonth.value).split('-');
+  const monthIndex = Number(month) - 1;
+  if (!year || !Number.isInteger(monthIndex) || monthIndex < 0 || monthIndex > 11) {
+    return selectedMonth.value;
+  }
+
+  const date = new Date(Number(year), monthIndex, 1);
+  return new Intl.DateTimeFormat('es-PE', { month: 'long', year: 'numeric' }).format(date);
+});
 
 const authUser = computed(() => window.__AUTH_USER__ ?? null);
 const hasPermission = (permission) => {

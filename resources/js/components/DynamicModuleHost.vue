@@ -15,7 +15,7 @@ const props = defineProps({
   },
 });
 
-const moduleComponents = import.meta.glob('./*.vue');
+const moduleComponents = import.meta.glob('./inbox/*.vue');
 
 const resolvedComponent = computed(() => {
   const key = `./${props.componentFile}`;

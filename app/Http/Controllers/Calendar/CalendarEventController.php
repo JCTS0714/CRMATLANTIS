@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers\Calendar;
 
+use App\Http\Controllers\Controller;
 use App\Models\CalendarEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\Rule;
-use App\Http\Controllers\Controller;
 
 class CalendarEventController extends Controller
 {
@@ -47,6 +47,7 @@ class CalendarEventController extends Controller
                 };
 
                 $isAllDay = (bool) $e->all_day;
+
                 return [
                     'id' => $e->id,
                     'title' => $e->title,
@@ -86,20 +87,20 @@ class CalendarEventController extends Controller
             'meta' => ['nullable', 'array'],
         ]);
 
-        if (($validated['related_type'] ?? null) && !($validated['related_id'] ?? null)) {
+        if (($validated['related_type'] ?? null) && ! ($validated['related_id'] ?? null)) {
             return response()->json([
                 'message' => 'El ID relacionado es requerido si eliges tipo relacionado.',
             ], 422);
         }
 
         $eventType = $validated['event_type'] ?? 'general';
-        if ($eventType === 'customer_payment' && (($validated['related_type'] ?? null) !== 'customer' || !($validated['related_id'] ?? null))) {
+        if ($eventType === 'customer_payment' && (($validated['related_type'] ?? null) !== 'customer' || ! ($validated['related_id'] ?? null))) {
             return response()->json([
                 'message' => 'Los eventos de pago deben estar vinculados a un cliente.',
             ], 422);
         }
 
-        if ($eventType === 'certificate_expiry' && (($validated['related_type'] ?? null) !== 'certificate' || !($validated['related_id'] ?? null))) {
+        if ($eventType === 'certificate_expiry' && (($validated['related_type'] ?? null) !== 'certificate' || ! ($validated['related_id'] ?? null))) {
             return response()->json([
                 'message' => 'Los vencimientos de certificado deben estar vinculados a un certificado.',
             ], 422);
@@ -114,7 +115,7 @@ class CalendarEventController extends Controller
         $relatedType = $validated['related_type'] ?? null;
         $relatedId = $validated['related_id'] ?? null;
 
-        $event = new CalendarEvent();
+        $event = new CalendarEvent;
         $event->event_type = $eventType;
         $event->title = $validated['title'];
         $event->description = $validated['description'] ?? null;
@@ -166,7 +167,7 @@ class CalendarEventController extends Controller
             'meta' => ['nullable', 'array'],
         ]);
 
-        if (($validated['related_type'] ?? null) && !($validated['related_id'] ?? null)) {
+        if (($validated['related_type'] ?? null) && ! ($validated['related_id'] ?? null)) {
             return response()->json([
                 'message' => 'El ID relacionado es requerido si eliges tipo relacionado.',
             ], 422);
@@ -182,13 +183,13 @@ class CalendarEventController extends Controller
             ], 422);
         }
 
-        if ($nextEventType === 'customer_payment' && (($validated['related_type'] ?? null) !== 'customer' || !($validated['related_id'] ?? null))) {
+        if ($nextEventType === 'customer_payment' && (($validated['related_type'] ?? null) !== 'customer' || ! ($validated['related_id'] ?? null))) {
             return response()->json([
                 'message' => 'Los eventos de pago deben estar vinculados a un cliente.',
             ], 422);
         }
 
-        if ($nextEventType === 'certificate_expiry' && (($validated['related_type'] ?? null) !== 'certificate' || !($validated['related_id'] ?? null))) {
+        if ($nextEventType === 'certificate_expiry' && (($validated['related_type'] ?? null) !== 'certificate' || ! ($validated['related_id'] ?? null))) {
             return response()->json([
                 'message' => 'Los vencimientos de certificado deben estar vinculados a un certificado.',
             ], 422);

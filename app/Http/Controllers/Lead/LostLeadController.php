@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers\Lead;
 
+use App\Http\Controllers\Controller;
 use App\Models\Lead;
 use App\Models\LostLead;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
-use App\Http\Controllers\Controller;
 
 class LostLeadController extends Controller
 {
@@ -124,7 +124,7 @@ class LostLeadController extends Controller
 
         /** @var UploadedFile $file */
         $file = $request->file('csv');
-        $filename = 'lost_leads_import_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+        $filename = 'lost_leads_import_'.Str::random(8).'.'.$file->getClientOriginalExtension();
         $path = $file->storeAs('imports', $filename);
 
         $fullPath = Storage::path($path);

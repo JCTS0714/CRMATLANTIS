@@ -5,7 +5,9 @@ use Illuminate\Support\Facades\Route;
 Route::middleware('auth')->group(function () {
     // Rutas del módulo demos
     Route::middleware('permission:demos.view')->group(function () {
-        Route::get('/demo', function () { return view('dashboard'); })->name('demo.index');
+        Route::get('/demo', function () {
+            return view('dashboard');
+        })->name('demo.index');
         Route::get('/demo/data', [\App\Http\Controllers\DemoController::class, 'data'])->name('demo.data');
     });
 

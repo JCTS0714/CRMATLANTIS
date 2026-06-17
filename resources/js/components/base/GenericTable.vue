@@ -2,36 +2,51 @@
   <BaseCard :title="title" :subtitle="subtitle" no-padding>
     <!-- Header with Search and Actions -->
     <template #header>
-      <div class="flex items-center justify-between">
-        <div>
-          <h3 class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ title }}</h3>
-          <p v-if="paginationInfo" class="mt-1 text-xs text-gray-600 dark:text-slate-300">{{ paginationInfo }}</p>
+      <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <h3 class="text-sm font-semibold text-gray-900 dark:text-slate-100">{{ title }}</h3>
+            <span
+              v-if="paginationInfo"
+              class="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:border-blue-900/40 dark:bg-blue-950/30 dark:text-blue-200"
+            >
+              {{ paginationInfo }}
+            </span>
+          </div>
+          <p v-if="subtitle" class="mt-1 text-sm text-gray-600 dark:text-slate-300">{{ subtitle }}</p>
         </div>
-        <div class="flex items-center gap-3">
+
+        <div class="flex flex-wrap items-center gap-3 lg:justify-end">
+          <div
+            v-if="loading"
+            class="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-200"
+          >
+            <span class="h-2 w-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Cargando datos
+          </div>
           <slot name="headerActions" />
-          <div v-if="loading" class="text-xs text-gray-600 dark:text-slate-300">Cargando…</div>
         </div>
       </div>
     </template>
 
     <!-- Filters Section -->
-    <div v-if="showFilters" class="p-4 border-b border-gray-200 dark:border-slate-800">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div v-if="showFilters" class="border-b border-gray-200 bg-gray-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+      <div class="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <!-- Search Input -->
-        <div v-if="searchable" class="flex-1">
+        <div v-if="searchable" class="w-full xl:max-w-md">
           <label class="sr-only" :for="`${tableId}-search`">Buscar</label>
           <input
             :id="`${tableId}-search`"
             :value="searchQuery"
             type="search"
             :placeholder="searchPlaceholder"
-            class="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
+            class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500"
             @input="$emit('search', $event.target.value)"
           />
         </div>
 
         <!-- Additional Filters -->
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2 xl:justify-end">
           <slot name="filters" />
 
           <TableColumnsDropdown
@@ -45,7 +60,7 @@
           <select
             v-if="showPerPageSelector"
             :value="perPage"
-            class="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+            class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
             @change="$emit('per-page-change', Number($event.target.value))"
           >
             <option v-for="option in perPageOptions" :key="option" :value="option">{{ option }}</option>
@@ -60,12 +75,15 @@
     </div>
 
     <!-- Error Display -->
-    <div v-if="error" class="p-4 border-b border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/30">
-      <div class="text-sm text-red-700 dark:text-red-200">{{ error }}</div>
+    <div v-if="error" class="border-b border-red-200 bg-red-50 p-4 dark:border-red-900/40 dark:bg-red-950/30">
+      <div class="flex items-start gap-3 text-sm text-red-700 dark:text-red-200">
+        <span class="mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-100 text-xs font-bold text-red-700 dark:bg-red-900/40 dark:text-red-200">!</span>
+        <span>{{ error }}</span>
+      </div>
     </div>
 
     <!-- Table -->
-    <div ref="tableScrollRef" class="overflow-x-auto">
+    <div ref="tableScrollRef" class="overflow-x-auto bg-white dark:bg-slate-900">
       <table ref="tableRef" class="w-full text-sm text-left text-gray-700 dark:text-slate-200" :class="tableClass">
         <colgroup>
           <col
@@ -75,7 +93,7 @@
           />
         </colgroup>
         <!-- Table Header -->
-        <thead class="text-xs uppercase bg-gray-50 text-gray-700 dark:bg-slate-800 dark:text-slate-200">
+        <thead class="bg-gray-50 text-[11px] uppercase tracking-wide text-gray-600 dark:bg-slate-800 dark:text-slate-300">
           <tr>
             <th v-for="column in columns" :key="column.key" class="px-4 py-3" :class="column.headerClass">
               <div class="flex items-center gap-2">
@@ -83,7 +101,7 @@
                 <button 
                   v-if="column.sortable && sortable"
                   type="button"
-                  class="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300"
+                  class="rounded p-0.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600 dark:hover:bg-slate-700 dark:hover:text-slate-200"
                   @click="$emit('sort', column.key)"
                 >
                   <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -108,9 +126,19 @@
 
           <!-- Empty State -->
           <tr v-if="isEmpty">
-            <td :colspan="columns.length" class="px-4 py-10 text-center text-sm text-gray-600 dark:text-slate-300">
+            <td :colspan="columns.length" class="px-4 py-12 text-center text-sm text-gray-600 dark:text-slate-300">
               <slot name="empty">
-                {{ emptyMessage }}
+                <div class="mx-auto flex max-w-sm flex-col items-center gap-3 text-center">
+                  <div class="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-300">
+                    <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path d="M3 4.75A1.75 1.75 0 014.75 3h10.5A1.75 1.75 0 0117 4.75v10.5A1.75 1.75 0 0115.25 17H4.75A1.75 1.75 0 013 15.25V4.75ZM6 7a.75.75 0 000 1.5h8A.75.75 0 0014 7H6Zm0 4a.75.75 0 000 1.5h5A.75.75 0 0011 11H6Z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="font-medium text-gray-700 dark:text-slate-200">{{ emptyMessage }}</p>
+                    <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">Ajusta filtros o crea un nuevo registro para empezar.</p>
+                  </div>
+                </div>
               </slot>
             </td>
           </tr>
@@ -140,8 +168,15 @@
     </div>
 
     <!-- Pagination -->
-    <div v-if="showPagination && pagination && pagination.last_page > 1" class="p-4 border-t border-gray-200 dark:border-slate-800">
-      <div class="flex items-center justify-between gap-3">
+    <div v-if="showPagination && pagination && pagination.last_page > 1" class="border-t border-gray-200 bg-gray-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="text-xs text-gray-600 dark:text-slate-300">
+          <slot name="paginationInfo">
+            Página {{ pagination.current_page }} / {{ pagination.last_page }}
+          </slot>
+        </div>
+
+        <div class="flex items-center justify-end gap-3">
         <BaseButton 
           variant="secondary" 
           size="sm"
@@ -151,12 +186,6 @@
           Anterior
         </BaseButton>
 
-        <div class="text-xs text-gray-600 dark:text-slate-300">
-          <slot name="paginationInfo">
-            Página {{ pagination.current_page }} / {{ pagination.last_page }}
-          </slot>
-        </div>
-
         <BaseButton 
           variant="secondary" 
           size="sm"
@@ -165,6 +194,7 @@
         >
           Siguiente
         </BaseButton>
+        </div>
       </div>
     </div>
   </BaseCard>

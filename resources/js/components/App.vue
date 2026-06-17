@@ -2,8 +2,21 @@
   <div
     class="min-h-screen flex flex-col bg-gradient-to-br from-blue-50/60 via-gray-50 to-gray-50 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900"
   >
-    <Header :sidebar-collapsed="sidebarCollapsed" @toggle-sidebar="toggleSidebar" />
-    <Sidebar :collapsed="sidebarCollapsed" />
+    <Header
+      :sidebar-collapsed="sidebarCollapsed"
+      :mobile-sidebar-open="mobileSidebarOpen"
+      @toggle-sidebar="toggleSidebar"
+      @toggle-mobile-sidebar="toggleMobileSidebar"
+    />
+    <Sidebar :collapsed="sidebarCollapsed" :mobile-open="mobileSidebarOpen" />
+
+    <button
+      v-if="mobileSidebarOpen"
+      type="button"
+      class="fixed inset-0 z-30 bg-slate-950/50 backdrop-blur-[1px] sm:hidden"
+      aria-label="Cerrar menú lateral"
+      @click="closeMobileSidebar"
+    ></button>
 
     <main
       class="transition-[margin] duration-200 flex-1 flex flex-col"
@@ -107,37 +120,11 @@
             </button>
           </div>
 
-          <UsersTable v-if="isUsers" />
-
-          <RolesTable v-else-if="isRoles" />
-
-          <LeadsBoard v-else-if="isLeadsBoard" />
-
-          <LeadsTable v-else-if="isLeadsList" />
-
-          <InvoiceDispatchInbox v-else-if="isInvoiceDispatchInbox" />
-
-          <IncidenciasTable v-else-if="isIncidencias && currentView === 'table'" />
-
-          <IncidenciasBoard v-else-if="isIncidencias && currentView === 'board'" />
-
-          <BacklogBoard v-else-if="isBacklog" />
-
-          <ScrumTasksView v-else-if="isScrumTasks" :view-mode="scrumViewMode" />
-
-          <PostventaCustomersTable v-else-if="isPostventaCustomers || isCustomers" />
-
-          <ContadoresTable v-else-if="isPostventaContadores" />
-
-          <CertificadosTable v-else-if="isPostventaCertificados" />
-
-          <LostLeadsList v-else-if="isLostLeads" />
-
-          <WaitingLeadsList v-else-if="isWaitingLeads" />
-
-          <SettingsView v-else-if="isSettings" />
-
-          <CalendarView v-else-if="isCalendar" />
+          <component
+            v-if="currentStaticComponent"
+            :is="currentStaticComponent"
+            v-bind="currentStaticProps"
+          />
 
           <DynamicModuleHost
             v-else-if="activeDynamicModule"
@@ -159,35 +146,34 @@
 </template>
 
 <script setup>
-import { computed, ref, defineAsyncComponent, onMounted } from 'vue';
+import { computed, ref, defineAsyncComponent, onBeforeUnmount, onMounted, watch } from 'vue';
 
-import Header from './Header.vue';
-import Sidebar from './Sidebar.vue';
-import Footer from './Footer.vue';
+import Header from './layout/Header.vue';
+import Sidebar from './layout/Sidebar.vue';
+import Footer from './layout/Footer.vue';
 import DynamicModuleHost from './DynamicModuleHost.vue';
 
 // Lazy load heavy components for better performance
 const UsersTable = defineAsyncComponent(() => import('./UsersTable.vue'));
 const RolesTable = defineAsyncComponent(() => import('./RolesTable.vue'));
-const LeadsBoard = defineAsyncComponent(() => import('./LeadsBoard.vue'));
-const LeadsTable = defineAsyncComponent(() => import('./LeadsTable.vue'));
-const InvoiceDispatchInbox = defineAsyncComponent(() => import('./InvoiceDispatchInbox.vue'));
+const LeadsBoard = defineAsyncComponent(() => import('./leads/LeadsBoard.vue'));
+const LeadsTable = defineAsyncComponent(() => import('./leads/LeadsTable.vue'));
 const CalendarView = defineAsyncComponent(() => import('./CalendarView.vue'));
-const IncidenciasTable = defineAsyncComponent(() => import('./IncidenciasTable.vue'));
-const IncidenciasBoard = defineAsyncComponent(() => import('./IncidenciasBoard.vue'));
+const IncidenciasTable = defineAsyncComponent(() => import('./incidencias/IncidenciasTable.vue'));
+const IncidenciasBoard = defineAsyncComponent(() => import('./incidencias/IncidenciasBoard.vue'));
 const BacklogBoard = defineAsyncComponent(() => import('./BacklogBoard.vue'));
 const ScrumTasksView = defineAsyncComponent(() => import('./ScrumTasksView.vue'));
 const PostventaCustomersTable = defineAsyncComponent(() => import('./PostventaCustomersTable.vue'));
 const ContadoresTable = defineAsyncComponent(() => import('./ContadoresTable.vue'));
 const CertificadosTable = defineAsyncComponent(() => import('./CertificadosTable.vue'));
-const LostLeadsList = defineAsyncComponent(() => import('./LostLeadsList.vue'));
-const WaitingLeadsList = defineAsyncComponent(() => import('./WaitingLeadsList.vue'));
-const SettingsView = defineAsyncComponent(() => import('./SettingsView.vue'));
+const LostLeadsList = defineAsyncComponent(() => import('./leads/LostLeadsList.vue'));
+const WaitingLeadsList = defineAsyncComponent(() => import('./leads/WaitingLeadsList.vue'));
+const SettingsView = defineAsyncComponent(() => import('./settings/SettingsView.vue'));
 
 // Keep lighter components as regular imports
 import DashboardView from './DashboardView.vue';
-import IncidenceQuickModal from './IncidenceQuickModal.vue';
-import IncidenceEditModal from './IncidenceEditModal.vue';
+import IncidenceQuickModal from './incidencias/IncidenceQuickModal.vue';
+import IncidenceEditModal from './incidencias/IncidenceEditModal.vue';
 
 const normalizedPath = window.location.pathname.replace(/\/+$/, '') || '/';
 const normalizePath = (value) => {
@@ -216,7 +202,6 @@ const isUsers = computed(() => normalizedPath.startsWith('/users'));
 const isRoles = computed(() => normalizedPath.startsWith('/roles'));
 const isLeadsBoard = computed(() => normalizedPath === '/leads');
 const isLeadsList = computed(() => normalizedPath === '/leads/list');
-const isInvoiceDispatchInbox = computed(() => normalizedPath === '/inbox/facturas');
 const isLeads = computed(() => normalizedPath.startsWith('/leads'));
 const isCustomers = computed(() => normalizedPath.startsWith('/customers'));
 const isCalendar = computed(() => normalizedPath.startsWith('/calendar'));
@@ -233,6 +218,11 @@ const isPostventaCustomers = computed(() => normalizedPath === '/postventa/clien
 const isPostventaContadores = computed(() => normalizedPath === '/postventa/contadores');
 const isPostventaCertificados = computed(() => normalizedPath === '/postventa/certificados');
 const isSettings = computed(() => normalizedPath.startsWith('/configuracion'));
+const isLostLeads = computed(() => normalizedPath === '/desistidos');
+const isWaitingLeads = computed(() => normalizedPath === '/espera');
+
+const scrumQuery = new URLSearchParams(window.location.search);
+const scrumViewMode = computed(() => (scrumQuery.get('view') === 'list' ? 'list' : 'kanban'));
 
 const isPostventaIncidences = computed(() => isIncidencias.value || isBacklog.value);
 
@@ -248,87 +238,125 @@ const canCreateIncidencias = computed(() => hasPermission('incidencias.create'))
 const canCreateContadores = computed(() => hasPermission('contadores.create'));
 const canCreateCertificados = computed(() => hasPermission('certificados.create'));
 
+const staticViewDefinitions = [
+  {
+    matches: () => isUsers.value,
+    component: UsersTable,
+    title: () => 'Usuarios',
+    subtitle: () => 'Gestión de usuarios del sistema',
+  },
+  {
+    matches: () => isRoles.value,
+    component: RolesTable,
+    title: () => 'Roles',
+    subtitle: () => 'Crea roles y asigna permisos',
+  },
+  {
+    matches: () => isLeadsBoard.value,
+    component: LeadsBoard,
+    title: () => 'Leads',
+    subtitle: () => 'Pipeline de oportunidades',
+  },
+  {
+    matches: () => isLeadsList.value,
+    component: LeadsTable,
+    title: () => 'Leads',
+    subtitle: () => 'Gestión de leads por etapas',
+  },
+  {
+    matches: () => isIncidencias.value && currentView.value === 'table',
+    component: IncidenciasTable,
+    title: () => 'Incidencias',
+    subtitle: () => 'Registro y seguimiento de incidencias (vista lista)',
+  },
+  {
+    matches: () => isIncidencias.value && currentView.value === 'board',
+    component: IncidenciasBoard,
+    title: () => 'Incidencias',
+    subtitle: () => 'Registro y seguimiento de incidencias (vista kanban)',
+  },
+  {
+    matches: () => isBacklog.value,
+    component: BacklogBoard,
+    title: () => 'Incidencias',
+    subtitle: () => 'Registro y seguimiento de incidencias (vista backlog)',
+  },
+  {
+    matches: () => isScrumTasks.value,
+    component: ScrumTasksView,
+    props: () => ({ viewMode: scrumViewMode.value }),
+    title: () => 'Scrum',
+    subtitle: () => `Planificacion y seguimiento de tareas (vista ${scrumViewMode.value === 'kanban' ? 'kanban' : 'lista'})`,
+  },
+  {
+    matches: () => isPostventaCustomers.value || isCustomers.value,
+    component: PostventaCustomersTable,
+    title: () => 'Clientes',
+    subtitle: () => (isPostventaCustomers.value ? 'Clientes (postventa)' : 'Listado de clientes'),
+  },
+  {
+    matches: () => isPostventaContadores.value,
+    component: ContadoresTable,
+    title: () => 'Contadores',
+    subtitle: () => 'Gestión de contadores',
+  },
+  {
+    matches: () => isPostventaCertificados.value,
+    component: CertificadosTable,
+    title: () => 'Certificados',
+    subtitle: () => 'Gestión de certificados',
+  },
+  {
+    matches: () => isLostLeads.value,
+    component: LostLeadsList,
+    title: () => 'Desistidos',
+    subtitle: () => 'Leads marcados como desistidos',
+  },
+  {
+    matches: () => isWaitingLeads.value,
+    component: WaitingLeadsList,
+    title: () => 'Zona de espera',
+    subtitle: () => 'Leads enviados a zona de espera',
+  },
+  {
+    matches: () => isSettings.value,
+    component: SettingsView,
+    title: () => 'Configuración',
+    subtitle: () => 'Personalización del sistema',
+  },
+  {
+    matches: () => isCalendar.value,
+    component: CalendarView,
+    title: () => 'Calendario',
+    subtitle: () => 'Agenda y recordatorios',
+  },
+];
+
+const currentStaticView = computed(() => {
+  return staticViewDefinitions.find((view) => view.matches()) ?? null;
+});
+
+const currentStaticComponent = computed(() => currentStaticView.value?.component ?? null);
+const currentStaticProps = computed(() => currentStaticView.value?.props?.() ?? {});
+
 const pageTitle = computed(() =>
   activeDynamicModule.value?.label
     ? activeDynamicModule.value.label
-    : isUsers.value
-    ? 'Usuarios'
-    : isRoles.value
-      ? 'Roles'
-      : isSettings.value
-        ? 'Configuración'
-      : isInvoiceDispatchInbox.value
-        ? 'Bandeja de envios'
-      : isLeads.value
-        ? 'Leads'
-        : normalizedPath === '/desistidos'
-          ? 'Desistidos'
-          : normalizedPath === '/espera'
-            ? 'Zona de espera'
-          : isCustomers.value
-            ? 'Clientes'
-            : isCalendar.value
-              ? 'Calendario'
-                : isScrumTasks.value
-                  ? 'Scrum'
-              : isPostventaIncidences.value
-                ? 'Incidencias'
-                  : isPostventaCustomers.value
-                    ? 'Clientes'
-                    : isPostventaContadores.value
-                      ? 'Contadores'
-                      : isPostventaCertificados.value
-                        ? 'Certificados'
-            : 'Dashboard'
+    : currentStaticView.value?.title?.()
+      ?? (isPostventaIncidences.value ? 'Incidencias' : 'Dashboard')
 );
 const pageSubtitle = computed(() =>
   activeDynamicModule.value?.subtitle
     ? activeDynamicModule.value.subtitle
-    : isUsers.value
-    ? 'Gestión de usuarios del sistema'
-    : isRoles.value
-      ? 'Crea roles y asigna permisos'
-      : isSettings.value
-        ? 'Personalización del sistema'
-      : isInvoiceDispatchInbox.value
-        ? 'Envio de facturas por WhatsApp API, fallback manual y email'
-      : isLeadsBoard.value
-        ? 'Pipeline de oportunidades'
-        : isLeadsList.value
-          ? 'Gestión de leads por etapas'
-          : normalizedPath === '/desistidos'
-            ? 'Leads marcados como desistidos'
-            : normalizedPath === '/espera'
-              ? 'Leads enviados a zona de espera'
-            : isCustomers.value
-              ? 'Listado de clientes'
-              : isCalendar.value
-                ? 'Agenda y recordatorios'
-                : isScrumTasks.value
-                  ? `Planificacion y seguimiento de tareas (vista ${scrumViewMode.value === 'kanban' ? 'kanban' : 'lista'})`
-                  : isIncidencias.value
-                    ? `Registro y seguimiento de incidencias (vista ${currentView.value === 'board' ? 'kanban' : 'lista'})`
-                    : isBacklog.value
-                      ? 'Registro y seguimiento de incidencias (vista backlog)'
-                    : isPostventaCustomers.value
-                      ? 'Clientes (postventa)'
-                      : isPostventaContadores.value
-                        ? 'Gestión de contadores'
-                        : isPostventaCertificados.value
-                          ? 'Gestión de certificados'
-      : 'Resumen general del sistema'
+    : currentStaticView.value?.subtitle?.()
+      ?? (isPostventaIncidences.value
+        ? `Registro y seguimiento de incidencias (vista ${currentView.value === 'board' ? 'kanban' : isBacklog.value ? 'backlog' : 'lista'})`
+        : 'Resumen general del sistema')
 );
 
 const isPostventa = computed(
   () => isPostventaIncidences.value || isPostventaCustomers.value || isPostventaContadores.value || isPostventaCertificados.value
 );
-
-const scrumQuery = new URLSearchParams(window.location.search);
-const scrumViewMode = computed(() => (scrumQuery.get('view') === 'list' ? 'list' : 'kanban'));
-
-const isLostLeads = computed(() => normalizedPath === '/desistidos');
-
-const isWaitingLeads = computed(() => normalizedPath === '/espera');
 
 const toggleLeadsView = () => {
   if (!isLeads.value) return;
@@ -378,12 +406,34 @@ const createCertificado = () => {
 };
 
 const sidebarCollapsed = ref(true);
+const mobileSidebarOpen = ref(false);
+
 const toggleSidebar = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 };
 
+const syncBodyScrollLock = (locked) => {
+  document.body.style.overflow = locked ? 'hidden' : '';
+};
+
+const closeMobileSidebar = () => {
+  mobileSidebarOpen.value = false;
+};
+
+const toggleMobileSidebar = () => {
+  mobileSidebarOpen.value = !mobileSidebarOpen.value;
+};
+
+watch(mobileSidebarOpen, (isOpen) => {
+  syncBodyScrollLock(isOpen);
+});
+
 onMounted(() => {
   // Theme initialization and other setup can go here if needed
   // No longer using Flowbite
+});
+
+onBeforeUnmount(() => {
+  syncBodyScrollLock(false);
 });
 </script>
