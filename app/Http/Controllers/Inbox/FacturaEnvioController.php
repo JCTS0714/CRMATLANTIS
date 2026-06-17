@@ -541,6 +541,8 @@ class FacturaEnvioController extends Controller
 
         $facturaUrl = $this->support->buildPublicFacturaUrl($baseUrl, (string) $envio->archivo_url);
         $filename = basename(parse_url($facturaUrl, PHP_URL_PATH) ?: ('factura_'.$pago->id.'.pdf'));
+        $openingTemplateName = trim((string) $request->input('opening_template_name', '')) ?: null;
+        $openingTemplateLanguage = trim((string) $request->input('opening_template_language', '')) ?: null;
 
         try {
             $kapsoResponse = $this->kapsoService->sendDocument(
@@ -559,7 +561,9 @@ class FacturaEnvioController extends Controller
                 (string) $envio->mensaje,
                 $filename,
                 'pago_'.$pago->id,
-                $request
+                $request,
+                $openingTemplateName,
+                $openingTemplateLanguage
             );
         } catch (\RuntimeException $e) {
             return response()->json([
@@ -805,16 +809,19 @@ class FacturaEnvioController extends Controller
         string $mensaje,
         string $filename,
         string $callbackData,
-        Request $request
+        Request $request,
+        ?string $openingTemplateName = null,
+        ?string $openingTemplateLanguage = null
     ): JsonResponse {
-        $templateName = config('services.kapso.template_opening', 'hello_world');
+        $templateName = $openingTemplateName ?: config('services.kapso.template_opening', 'hello_world');
+        $languageCode = $openingTemplateLanguage ?: (string) config('services.kapso.template_language', 'en_US');
 
         try {
             $this->kapsoService->sendTemplate(
                 $celularConPais,
                 $templateName,
                 [],
-                (string) config('services.kapso.template_language', 'en_US')
+                $languageCode
             );
         } catch (\Throwable $templateError) {
             return response()->json([

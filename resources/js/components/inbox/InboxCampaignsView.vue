@@ -1081,7 +1081,7 @@ async function loadMetaTemplates() {
 
   try {
     const response = await axios.get('/api/integraciones/kapso/templates');
-    metaTemplates.value = response?.data?.data?.templates || [];
+    metaTemplates.value = response?.data?.data?.templates || response?.data?.templates || [];
 
     if (!form.meta_template_name && metaTemplates.value.length > 0) {
       form.meta_template_name = metaTemplates.value[0].name;
@@ -1232,6 +1232,6 @@ watch(
 
 onMounted(async () => {
   await loadKapsoStatus();
-  await Promise.all([loadRecipients(), loadHistory(), loadMetaTemplates()]);
+  await Promise.allSettled([loadRecipients(), loadHistory(), loadMetaTemplates()]);
 });
 </script>

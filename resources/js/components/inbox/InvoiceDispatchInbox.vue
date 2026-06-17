@@ -545,6 +545,40 @@
               </div>
 
               <div class="flex flex-wrap gap-2">
+                <div class="grid gap-3 lg:grid-cols-[1fr,auto]">
+                  <label class="text-sm text-slate-900 dark:text-slate-100">
+                    Plantilla Meta de apertura
+                    <div class="mt-2 flex gap-2">
+                      <select
+                        v-model="invoiceOpeningTemplateName"
+                        class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm text-gray-800 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+                      >
+                        <option value="">Usar configuración por defecto</option>
+                        <option v-for="template in invoiceMetaTemplates" :key="template.id || template.name" :value="template.name">
+                          {{ template.name }} · {{ template.language }} · {{ template.category }}
+                        </option>
+                      </select>
+                      <button
+                        type="button"
+                        class="inline-flex shrink-0 items-center rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+                        :disabled="loadingInvoiceMetaTemplates"
+                        @click="loadInvoiceMetaTemplates"
+                      >
+                        {{ loadingInvoiceMetaTemplates ? 'Cargando...' : 'Traer plantillas' }}
+                      </button>
+                    </div>
+                    <div v-if="invoiceMetaTemplatesError" class="mt-2 text-xs text-red-600 dark:text-red-300">
+                      {{ invoiceMetaTemplatesError }}
+                    </div>
+                  </label>
+
+                  <div v-if="selectedInvoiceMetaTemplate" class="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                    <div class="font-medium">Previsualización de apertura</div>
+                    <div class="mt-2 whitespace-pre-wrap">{{ invoiceOpeningTemplatePreview || 'Selecciona una plantilla para ver el ejemplo.' }}</div>
+                    <div class="mt-2 text-xs text-slate-500 dark:text-slate-400">Parámetros detectados: {{ selectedInvoiceMetaTemplate.parameter_count }}</div>
+                  </div>
+                </div>
+
                 <button
                   type="button"
                   class="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-50"
@@ -1076,6 +1110,11 @@ const bulkSendModal = reactive({
 });
 
 const templates = ref([]);
+const invoiceMetaTemplates = ref([]);
+const loadingInvoiceMetaTemplates = ref(false);
+const invoiceMetaTemplatesError = ref('');
+const invoiceOpeningTemplateName = ref('');
+const selectedInvoiceMetaTemplate = computed(() => invoiceMetaTemplates.value.find((template) => template.name === invoiceOpeningTemplateName.value) || null);
 const selectedTemplateId = ref(null);
 const templateEditor = reactive({
   open: false,
@@ -1218,6 +1257,29 @@ const filteredClientRows = computed(() => {
 const activeTemplate = computed(() => templates.value.find((tpl) => tpl.id === Number(selectedTemplateId.value || 0)) || null);
 const selectedRowCount = computed(() => selectedRowIds.value.length);
 const selectedReadyRows = computed(() => readyRows.value.filter((row) => selectedRowIds.value.includes(row.id)));
+const invoiceTemplatePreviewRow = computed(() => {
+  if (selectedRowIds.value.length > 0) {
+    const target = rows.value.find((row) => selectedRowIds.value.includes(row.id));
+    if (target) {
+      return target;
+    }
+  }
+
+  return readyRows.value[0] || filteredRows.value[0] || null;
+});
+const invoiceOpeningTemplatePreview = computed(() => {
+  const template = selectedInvoiceMetaTemplate.value;
+  if (!template?.body_text) {
+    return '';
+  }
+
+  const parameters = buildKapsoTemplateParameters(invoiceTemplatePreviewRow.value, Number(template.parameter_count || 0));
+
+  return String(template.body_text).replace(/\{\{(\d+)\}\}/g, (_, rawIndex) => {
+    const index = Number(rawIndex) - 1;
+    return String(parameters[index] || `{{${rawIndex}}}`);
+  });
+});
 const visibleRowsForSelection = computed(() => {
   if (activeTab.value === 'clientes') {
     return filteredClientRows.value.map((entry) => entry.row).filter(Boolean);
@@ -1538,11 +1600,37 @@ async function loadTemplates() {
   defaultTemplate.value = preferred?.contenido || defaultTemplate.value;
 }
 
-function onTemplateSelected() {
-  const selected = activeTemplate.value;
-  if (selected) {
-    defaultTemplate.value = selected.contenido;
+async function loadInvoiceMetaTemplates() {
+  loadingInvoiceMetaTemplates.value = true;
+  invoiceMetaTemplatesError.value = '';
+
+  try {
+    const response = await axios.get('/api/integraciones/kapso/templates');
+    invoiceMetaTemplates.value = response?.data?.data?.templates || response?.data?.templates || [];
+
+    if (!invoiceOpeningTemplateName.value && invoiceMetaTemplates.value.length > 0) {
+      invoiceOpeningTemplateName.value = invoiceMetaTemplates.value[0].name;
+    }
+  } catch (error) {
+    invoiceMetaTemplatesError.value = buildApiErrorMessage(error, 'No se pudieron traer las plantillas aprobadas de Meta.');
+  } finally {
+    loadingInvoiceMetaTemplates.value = false;
   }
+}
+
+function buildKapsoTemplateParameters(row, parameterCount) {
+  const customer = row?.cliente || {};
+  const displayName = String(customer.contact_name || customer.name || '').trim();
+  const company = String(customer.company_name || '').trim();
+  const phone = String(customer.contact_phone || '').trim();
+  const defaults = [
+    displayName || company || phone || 'Cliente',
+    company || displayName || 'CRM Atlantis',
+    phone || displayName || 'CRM Atlantis',
+    'CRM Atlantis',
+  ];
+
+  return Array.from({ length: Math.max(0, Number(parameterCount || 0)) }, (_, index) => defaults[index] || defaults[0] || 'CRM Atlantis');
 }
 
 function openTemplateEditor(mode) {
@@ -1793,13 +1881,13 @@ async function enviarWhatsapp(row) {
   busy[row.id] = true;
 
   try {
-    const response = await axios.post(`/api/facturas/${row.id}/enviar-whatsapp`);
-    rowMessages[row.id] = response.data?.message || 'Enviado por WhatsApp API.';
-    await loadRows();
-  } catch (error) {
-    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo enviar por WhatsApp API.');
-    rowDiagnostics[row.id] = error?.response?.data?.diagnostics || [];
+    const payload = {};
+    if (selectedInvoiceMetaTemplate.value) {
+      payload.opening_template_name = selectedInvoiceMetaTemplate.value.name;
+      payload.opening_template_language = selectedInvoiceMetaTemplate.value.language || undefined;
+    }
 
+    const response = await axios.post(`/api/facturas/${row.id}/enviar-whatsapp`, payload);
     const fallback = error?.response?.data?.whatsappUrl;
     if (fallback) {
       preparedData[row.id] = {
@@ -1911,7 +1999,7 @@ async function sendBulkRows(rows, mode) {
   for (const row of rows) {
     bulkSendModal.currentClient = clientName(row);
 
-    const result = await sendRow(row, mode);
+    const result = await sendRow(row, mode, selectedInvoiceMetaTemplate.value);
     bulkSendModal.progress += 1;
 
     if (result.ok) {
@@ -1932,11 +2020,16 @@ async function sendBulkRows(rows, mode) {
   await loadRows();
 }
 
-async function sendRow(row, mode) {
+async function sendRow(row, mode, openingTemplate = null) {
   try {
     let response;
     if (mode === 'whatsapp') {
-      response = await axios.post(`/api/facturas/${row.id}/enviar-whatsapp`);
+      const payload = {};
+      if (openingTemplate) {
+        payload.opening_template_name = openingTemplate.name;
+        payload.opening_template_language = openingTemplate.language || undefined;
+      }
+      response = await axios.post(`/api/facturas/${row.id}/enviar-whatsapp`, payload);
       return { ok: true, message: response.data?.message || 'Enviado por WhatsApp API.' };
     }
 
@@ -2064,6 +2157,7 @@ onMounted(async () => {
     globalError.value = error?.response?.data?.message || 'No se pudieron cargar las plantillas.';
   }
 
+  await loadInvoiceMetaTemplates();
   await loadRows();
 });
 </script>
