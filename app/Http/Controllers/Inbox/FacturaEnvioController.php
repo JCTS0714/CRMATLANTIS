@@ -52,6 +52,13 @@ class FacturaEnvioController extends Controller
             $query->where('mes', $mesFilter);
         }
 
+        $servidor = trim((string) $request->query('servidor', ''));
+        if ($servidor !== '') {
+            $query->whereHas('cliente', function ($q) use ($servidor) {
+                $q->where('servidor', $servidor);
+            });
+        }
+
         $perPage = max(10, min((int) $request->query('per_page', 30), 100));
         $rows = $query->paginate($perPage);
 

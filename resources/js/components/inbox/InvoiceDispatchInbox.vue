@@ -100,6 +100,15 @@
 
             <button
               type="button"
+              class="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-50"
+              :disabled="bulkSendModal.processing || readyRows.length === 0"
+              @click="openBulkSendModal('whatsapp')"
+            >
+              {{ bulkSendModal.processing ? 'Procesando...' : `Enviar PDF masivo (${readyRows.length})` }}
+            </button>
+
+            <button
+              type="button"
               class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
               @click="askKapsoTest"
             >
@@ -154,6 +163,14 @@
             >
               <option :value="0">Mes: todos</option>
               <option v-for="m in monthOptions" :key="m.value" :value="m.value">{{ m.label }}</option>
+            </select>
+
+            <select
+              v-model="filters.servidor"
+              class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+            >
+              <option value="">Servidor: todos</option>
+              <option v-for="server in serverOptions" :key="`filter-server-${server}`" :value="server">{{ server }}</option>
             </select>
 
             <button
@@ -370,6 +387,65 @@
         </section>
 
         <section v-else-if="activeTab === 'archivos'" class="space-y-3">
+          <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/40 dark:bg-blue-950/30">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-100">Carga masiva de comprobantes</h3>
+                <p class="mt-1 text-xs leading-5 text-blue-800/80 dark:text-blue-200/80">
+                  Selecciona todos los PDFs de una sola vez. Se emparejan por nombre de comercio (sin extension) y se preparan automaticamente.
+                </p>
+                <p v-if="filters.servidor" class="mt-2 text-xs font-medium text-blue-900 dark:text-blue-100">
+                  Filtro activo: {{ filters.servidor }}
+                </p>
+              </div>
+
+              <div class="flex flex-wrap items-center gap-2">
+                <input
+                  ref="bulkFileInput"
+                  type="file"
+                  multiple
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  class="hidden"
+                  @change="onBulkFilesSelected"
+                />
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-xl bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-200 disabled:opacity-50"
+                  :disabled="bulkPreparing"
+                  @click="triggerBulkUpload"
+                >
+                  {{ bulkPreparing ? `Preparando ${bulkProgress.done}/${bulkProgress.total}...` : 'Seleccionar PDFs masivos' }}
+                </button>
+              </div>
+            </div>
+
+            <div v-if="bulkSummary.visible" class="mt-4 space-y-3 rounded-xl border border-blue-200 bg-white p-4 text-sm dark:border-blue-900/40 dark:bg-slate-950">
+              <div class="flex flex-wrap gap-2 text-xs">
+                <span class="rounded-full bg-emerald-50 px-3 py-1 font-medium text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  Preparadas: {{ bulkSummary.prepared }}
+                </span>
+                <span class="rounded-full bg-amber-50 px-3 py-1 font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                  Sin coincidencia: {{ bulkSummary.unmatched }}
+                </span>
+                <span v-if="bulkSummary.failed > 0" class="rounded-full bg-rose-50 px-3 py-1 font-medium text-rose-700 dark:bg-rose-950/30 dark:text-rose-200">
+                  Con error: {{ bulkSummary.failed }}
+                </span>
+              </div>
+
+              <ul v-if="bulkSummary.unmatchedFiles.length" class="list-disc space-y-1 pl-5 text-xs text-slate-600 dark:text-slate-300">
+                <li v-for="item in bulkSummary.unmatchedFiles" :key="`unmatched-${item.fileName}`">
+                  {{ item.fileName }} — {{ item.reason }}
+                </li>
+              </ul>
+
+              <ul v-if="bulkSummary.errors.length" class="list-disc space-y-1 pl-5 text-xs text-rose-700 dark:text-rose-200">
+                <li v-for="item in bulkSummary.errors" :key="`bulk-error-${item.fileName}`">
+                  {{ item.fileName }} — {{ item.message }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
           <article
             v-for="row in filteredRows"
             :key="`pdf-${row.id}`"
@@ -459,6 +535,28 @@
         </section>
 
         <section v-else-if="activeTab === 'envios'" class="space-y-3">
+          <div class="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900/30">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div class="text-sm font-semibold text-slate-900 dark:text-slate-100">Acciones masivas</div>
+                <p class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  Envía los PDFs masivos desde esta cola con seguimiento de progreso y errores en un modal.
+                </p>
+              </div>
+
+              <div class="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-50"
+                  :disabled="bulkSendModal.processing || readyRows.length === 0"
+                  @click="openBulkSendModal('whatsapp')"
+                >
+                  {{ bulkSendModal.processing ? 'Procesando...' : `Enviar PDF masivo (${readyRows.length})` }}
+                </button>
+              </div>
+            </div>
+          </div>
+
           <div v-if="selectionMode" class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 shadow-sm dark:border-emerald-900/40 dark:bg-emerald-950/30">
             <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
@@ -480,11 +578,20 @@
 
                 <button
                   type="button"
+                  class="inline-flex items-center rounded-xl bg-emerald-600 px-3 py-2 text-sm font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-4 focus:ring-emerald-200 disabled:opacity-50"
+                  :disabled="bulkSending || bulkSendModal.processing || selectedReadyRows.length === 0"
+                  @click="openBulkSendModal('whatsapp')"
+                >
+                  {{ bulkSending || bulkSendModal.processing ? 'Procesando...' : `Enviar PDF masivo (${selectedReadyRows.length})` }}
+                </button>
+
+                <button
+                  type="button"
                   class="inline-flex items-center rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700 shadow-sm hover:bg-indigo-100 focus:outline-none focus:ring-4 focus:ring-indigo-100 disabled:opacity-50 dark:border-indigo-900/40 dark:bg-indigo-950/30 dark:text-indigo-200"
-                  :disabled="bulkSending || selectedReadyRows.length === 0"
+                  :disabled="bulkSending || bulkSendModal.processing || selectedReadyRows.length === 0"
                   @click="runBulkSend('email')"
                 >
-                  {{ bulkSending ? 'Procesando...' : `Enviar Email a seleccionados (${selectedReadyRows.length})` }}
+                  {{ bulkSending || bulkSendModal.processing ? 'Procesando...' : `Enviar Email a seleccionados (${selectedReadyRows.length})` }}
                 </button>
 
                 <button
@@ -590,6 +697,61 @@
             Aún no hay clientes listos para enviar. Ve a la pestaña "Preparar PDF" y prepara al menos una factura para habilitar esta cola.
           </div>
         </section>
+
+        <div
+          v-if="bulkSendModal.open"
+          class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4"
+          @click.self="closeBulkSendModal"
+        >
+          <div class="w-full max-w-2xl rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-xl">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <h3 class="text-lg font-semibold text-white">Envio masivo de PDF</h3>
+                <p class="mt-2 text-sm text-slate-300">
+                  {{ bulkSendModal.processing ? 'Enviando facturas...' : 'Envio masivo completado.' }}
+                </p>
+              </div>
+              <button
+                type="button"
+                class="rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700 disabled:opacity-50"
+                :disabled="bulkSendModal.processing"
+                @click="closeBulkSendModal"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div class="mt-4 rounded-2xl border border-slate-700 bg-slate-950 p-4">
+              <div class="mb-3 flex items-center justify-between gap-3 text-sm text-slate-300">
+                <span>Modo:</span>
+                <span class="font-medium text-white">{{ bulkSendModal.mode === 'whatsapp' ? 'WhatsApp API' : bulkSendModal.mode === 'email' ? 'Email' : 'Manual' }}</span>
+              </div>
+              <div class="h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  class="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                  :style="{ width: bulkSendModal.total ? `${Math.round((bulkSendModal.progress / bulkSendModal.total) * 100)}%` : '0%' }"
+                ></div>
+              </div>
+              <div class="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+                <span>{{ bulkSendModal.progress }} / {{ bulkSendModal.total }} procesados</span>
+                <span>{{ bulkSendModal.completed }} exitosos · {{ bulkSendModal.failed }} fallidos</span>
+              </div>
+              <div v-if="bulkSendModal.currentClient" class="mt-2 text-sm text-slate-300">
+                Enviando a: <span class="font-medium text-white">{{ bulkSendModal.currentClient }}</span>
+              </div>
+            </div>
+
+            <div v-if="bulkSendModal.errors.length" class="mt-4 rounded-2xl border border-rose-700 bg-rose-950/30 p-4 text-sm text-rose-200">
+              <div class="font-semibold text-white">Errores durante el envio</div>
+              <ul class="mt-3 space-y-2">
+                <li v-for="error in bulkSendModal.errors" :key="`bulk-error-${error.id}`" class="rounded-xl border border-rose-700 bg-rose-950/50 p-3">
+                  <div class="font-medium text-white">{{ error.clientName }}</div>
+                  <div class="mt-1 text-sm text-rose-200">{{ error.message }}</div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
 
         <section v-else-if="activeTab === 'clientes'" class="space-y-3">
           <div class="grid gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/40 lg:grid-cols-6">
@@ -821,6 +983,7 @@ const autoSyncedOnEmpty = ref(false);
 const filters = reactive({
   pagoEstado: '',
   mes: 0,
+  servidor: '',
 });
 
 const kapsoStatus = ref({ enabled: false, configured: false, missing: [] });
@@ -887,6 +1050,30 @@ const quickStateSaving = reactive({});
 const selectionMode = ref(false);
 const selectedRowIds = ref([]);
 const bulkSending = ref(false);
+const bulkFileInput = ref(null);
+const bulkPreparing = ref(false);
+const bulkProgress = reactive({ done: 0, total: 0 });
+const bulkSummary = reactive({
+  visible: false,
+  prepared: 0,
+  unmatched: 0,
+  failed: 0,
+  unmatchedFiles: [],
+  errors: [],
+});
+
+const bulkSendModal = reactive({
+  open: false,
+  processing: false,
+  mode: 'whatsapp',
+  progress: 0,
+  total: 0,
+  completed: 0,
+  failed: 0,
+  errors: [],
+  currentClient: '',
+  rows: [],
+});
 
 const templates = ref([]);
 const selectedTemplateId = ref(null);
@@ -908,12 +1095,24 @@ const filteredRows = computed(() => rows.value.filter((row) => {
     return false;
   }
 
+  if (filters.servidor && String(customer.servidor || '').trim() !== filters.servidor) {
+    return false;
+  }
+
   if (Number(filters.mes) > 0 && Number(row?.mes) !== Number(filters.mes)) {
     return false;
   }
 
   return true;
 }));
+
+const serverOptions = computed(() => {
+  const dynamicValues = rows.value
+    .map((row) => String(row?.cliente?.servidor || '').trim())
+    .filter((value) => value !== '');
+
+  return [...new Set([...KNOWN_SERVER_OPTIONS, ...dynamicValues])];
+});
 
 const stats = computed(() => {
   const pendientes = filteredRows.value.filter((r) => r.estado === 'factura_pendiente').length;
@@ -1118,6 +1317,147 @@ function buildApiErrorMessage(error, fallbackMessage) {
   }
 
   return fallbackMessage;
+}
+
+function normalizeComparableName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function getExpectedNameForRow(row) {
+  return normalizeComparableName(row?.cliente?.company_name || row?.cliente?.name || '');
+}
+
+function getFileBaseName(file) {
+  const rawName = String(file?.name || '');
+  const dotIndex = rawName.lastIndexOf('.');
+  const baseName = dotIndex > 0 ? rawName.slice(0, dotIndex) : rawName;
+  return normalizeComparableName(baseName);
+}
+
+function resetBulkSummary() {
+  bulkSummary.visible = false;
+  bulkSummary.prepared = 0;
+  bulkSummary.unmatched = 0;
+  bulkSummary.failed = 0;
+  bulkSummary.unmatchedFiles = [];
+  bulkSummary.errors = [];
+}
+
+function triggerBulkUpload() {
+  bulkFileInput.value?.click();
+}
+
+function matchBulkFiles(files) {
+  const targetRows = filteredRows.value.filter((row) => ['factura_pendiente', 'factura_enviada'].includes(row.estado));
+  const rowsByName = new Map();
+
+  for (const row of targetRows) {
+    const key = getExpectedNameForRow(row);
+    if (!key) {
+      continue;
+    }
+
+    if (!rowsByName.has(key)) {
+      rowsByName.set(key, []);
+    }
+
+    rowsByName.get(key).push(row);
+  }
+
+  const matches = [];
+  const unmatched = [];
+  const usedRowIds = new Set();
+
+  for (const file of files) {
+    const key = getFileBaseName(file);
+    const candidates = rowsByName.get(key) || [];
+
+    if (candidates.length === 0) {
+      unmatched.push({
+        fileName: file.name,
+        reason: 'Sin cliente coincidente en la bandeja filtrada',
+      });
+      continue;
+    }
+
+    const row = candidates.find((candidate) => !usedRowIds.has(candidate.id)) || null;
+    if (!row) {
+      unmatched.push({
+        fileName: file.name,
+        reason: 'Ya existe otro archivo asignado para ese comercio',
+      });
+      continue;
+    }
+
+    usedRowIds.add(row.id);
+    matches.push({ row, file });
+  }
+
+  return { matches, unmatched };
+}
+
+async function onBulkFilesSelected(event) {
+  const files = Array.from(event?.target?.files || []);
+  if (event?.target) {
+    event.target.value = '';
+  }
+
+  if (files.length === 0) {
+    return;
+  }
+
+  resetBulkSummary();
+  bulkSummary.visible = true;
+
+  const { matches, unmatched } = matchBulkFiles(files);
+  bulkSummary.unmatched = unmatched.length;
+  bulkSummary.unmatchedFiles = unmatched;
+
+  if (matches.length === 0) {
+    globalInfo.value = 'No se encontraron coincidencias para preparar facturas.';
+    return;
+  }
+
+  if (activeTemplate.value) {
+    for (const { row } of matches) {
+      ensureDraft(row.id);
+      drafts[row.id].mensajeTemplate = activeTemplate.value.contenido;
+    }
+  }
+
+  bulkPreparing.value = true;
+  bulkProgress.done = 0;
+  bulkProgress.total = matches.length;
+  globalError.value = '';
+  globalInfo.value = `Preparando ${matches.length} factura(s)...`;
+
+  for (const { row, file } of matches) {
+    ensureDraft(row.id);
+    drafts[row.id].archivo = file;
+
+    const result = await preparar(row, { reload: false, silent: true });
+    bulkProgress.done += 1;
+
+    if (result.ok) {
+      bulkSummary.prepared += 1;
+      continue;
+    }
+
+    bulkSummary.failed += 1;
+    bulkSummary.errors.push({
+      fileName: file.name,
+      message: result.message,
+    });
+  }
+
+  await loadRows();
+
+  bulkPreparing.value = false;
+  globalInfo.value = `Carga masiva completada: ${bulkSummary.prepared} preparada(s), ${bulkSummary.unmatched} sin coincidencia, ${bulkSummary.failed} con error.`;
 }
 
 function onPickFile(pagoId, event) {
@@ -1342,9 +1682,10 @@ async function loadRows() {
     const mes = Number(filters.mes) > 0 ? Number(filters.mes) : undefined;
     const response = await axios.get('/api/facturas/pendientes', {
       params: {
-        per_page: 50,
+        per_page: 100,
         pago_estado: filters.pagoEstado || undefined,
         mes,
+        servidor: filters.servidor || undefined,
       },
     });
 
@@ -1398,14 +1739,20 @@ async function syncCurrentMonth(silent = false) {
   }
 }
 
-async function preparar(row) {
+async function preparar(row, options = {}) {
+  const { reload = true, silent = false } = options;
   ensureDraft(row.id);
-  rowMessages[row.id] = '';
-  rowDiagnostics[row.id] = [];
+  if (!silent) {
+    rowMessages[row.id] = '';
+    rowDiagnostics[row.id] = [];
+  }
 
   if (!drafts[row.id].archivo) {
-    rowMessages[row.id] = 'Selecciona un archivo antes de preparar.';
-    return;
+    const message = 'Selecciona un archivo antes de preparar.';
+    if (!silent) {
+      rowMessages[row.id] = message;
+    }
+    return { ok: false, message };
   }
 
   busy[row.id] = true;
@@ -1421,11 +1768,20 @@ async function preparar(row) {
 
     preparedData[row.id] = response.data?.data || {};
     rowDiagnostics[row.id] = response.data?.data?.whatsappDiagnostics || [];
-    rowMessages[row.id] = response.data?.message || 'Factura preparada.';
-    await loadRows();
+    if (!silent) {
+      rowMessages[row.id] = response.data?.message || 'Factura preparada.';
+    }
+
+    if (reload) {
+      await loadRows();
+    }
+
+    return { ok: true, message: response.data?.message || 'Factura preparada.' };
   } catch (error) {
-    rowMessages[row.id] = buildApiErrorMessage(error, 'No se pudo preparar la factura.');
+    const message = buildApiErrorMessage(error, 'No se pudo preparar la factura.');
+    rowMessages[row.id] = message;
     rowDiagnostics[row.id] = error?.response?.data?.diagnostics || [];
+    return { ok: false, message };
   } finally {
     busy[row.id] = false;
   }
@@ -1514,6 +1870,88 @@ async function runBulkSend(mode) {
     globalError.value = error?.response?.data?.message || 'Fallo el procesamiento masivo.';
   } finally {
     bulkSending.value = false;
+  }
+}
+
+function openBulkSendModal(mode) {
+  const targetRows = selectionMode.value && selectedReadyRows.value.length > 0
+    ? [...selectedReadyRows.value]
+    : [...readyRows.value];
+
+  if (targetRows.length === 0) {
+    globalError.value = 'No hay clientes listos para envio masivo.';
+    return;
+  }
+
+  bulkSendModal.open = true;
+  bulkSendModal.processing = true;
+  bulkSendModal.mode = mode;
+  bulkSendModal.progress = 0;
+  bulkSendModal.total = targetRows.length;
+  bulkSendModal.completed = 0;
+  bulkSendModal.failed = 0;
+  bulkSendModal.errors = [];
+  bulkSendModal.currentClient = '';
+  bulkSendModal.rows = targetRows;
+
+  sendBulkRows(targetRows, mode);
+}
+
+function closeBulkSendModal() {
+  if (bulkSendModal.processing) {
+    return;
+  }
+  bulkSendModal.open = false;
+}
+
+async function sendBulkRows(rows, mode) {
+  globalError.value = '';
+  globalInfo.value = '';
+
+  for (const row of rows) {
+    bulkSendModal.currentClient = clientName(row);
+
+    const result = await sendRow(row, mode);
+    bulkSendModal.progress += 1;
+
+    if (result.ok) {
+      bulkSendModal.completed += 1;
+    } else {
+      bulkSendModal.failed += 1;
+      bulkSendModal.errors.push({
+        id: row.id,
+        clientName: clientName(row),
+        message: result.message,
+      });
+    }
+  }
+
+  bulkSendModal.currentClient = '';
+  bulkSendModal.processing = false;
+  globalInfo.value = `Envio masivo completado: ${bulkSendModal.completed} exitosos, ${bulkSendModal.failed} con error.`;
+  await loadRows();
+}
+
+async function sendRow(row, mode) {
+  try {
+    let response;
+    if (mode === 'whatsapp') {
+      response = await axios.post(`/api/facturas/${row.id}/enviar-whatsapp`);
+      return { ok: true, message: response.data?.message || 'Enviado por WhatsApp API.' };
+    }
+
+    if (mode === 'email') {
+      response = await axios.post(`/api/facturas/${row.id}/enviar-email`);
+      return { ok: true, message: response.data?.message || 'Email enviado.' };
+    }
+
+    response = await axios.post(`/api/facturas/${row.id}/marcar-enviada`);
+    return { ok: true, message: response.data?.message || 'Marcada como enviada.' };
+  } catch (error) {
+    return {
+      ok: false,
+      message: buildApiErrorMessage(error, mode === 'email' ? 'No se pudo enviar por email.' : mode === 'manual' ? 'No se pudo marcar como enviada.' : 'No se pudo enviar por WhatsApp API.'),
+    };
   }
 }
 
